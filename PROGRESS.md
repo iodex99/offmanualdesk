@@ -4,11 +4,11 @@
 
 ## Current focus
 
-M1 Research + lab spikes: research and scripts done; code pushed to GitHub (`iodex99/offmanualdesk`), first CI run pending review. Waiting on Dwahnil for the lab VM run and decisions on Proposed ADRs.
+M0 done (CI green, merged to `main`). M2 Server Agent core in progress on `m2-server-agent` (TOTP, PIN, lockout done). M1 waits on Dwahnil's lab run and decisions on Proposed ADRs.
 
 ## Next step
 
-1. Check the first CI run of `ci.yml` on `m0-scaffold` (https://github.com/iodex99/offmanualdesk/actions); fix anything red (Rust/Tauri and PSScriptAnalyzer have only ever run in CI), then merge to `main`. This session can't read Actions for a private repo without `gh`: ask Dwahnil to paste failures or allow `gh`.
+1. M2 on branch `m2-server-agent`: SQLite store + migrations (DATA_MODEL §2), port/token lease allocator (ADR-020), JSON-RPC framing over a fake pipe. `gh` is logged in (`C:\Program Files\GitHub CLI\gh.exe`): watch CI with `gh run watch`.
 2. When lab output arrives: `/lab-result L<n>` for each; promote/supersede ADR-019…029 accordingly; flip [A] markers in ARCHITECTURE.md.
 3. Unblocked meanwhile (M2, recorded exception below): Server Agent SQLite store + migrations, JSON-RPC framing over a fake pipe, TOTP/PIN verification, port-lease allocator, all with fakes for Windows-only parts.
 
@@ -38,7 +38,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] `.gitignore`, `.env.example` per app (console has secrets; others have none yet)
 - [x] CI: Go + Rust on windows-latest, console + plugins on ubuntu-latest (+ Go on Linux, lab parse, actionlint, gitleaks)
 - [x] CLAUDE.md "Commands" section filled in
-- [ ] First CI run green on GitHub (needs the repo) → merge `m0-scaffold` to `main`
+- [x] First CI run green on GitHub (run 45011292407, all 6 jobs) → `m0-scaffold` merged to `main` (fast-forward)
 
 ### M1 Research + lab spikes
 - [x] OpenClaw version pinned (ADR-019: 2026.11.6, commit 06afb10d; Node 24.22.3)
