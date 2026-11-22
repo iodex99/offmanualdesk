@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Desk repairs the assistant's data automatically when a new OpenClaw version needs it (backup first, then repair, then one retry).
 - Billing: monthly draft invoices from each firm's contract, issuing with numbers per financial year (OM/FY2026-27/0001), manual payments, and firm status following the payment ladder (with a reasoned override).
 - Desk locks itself after the firm's idle time without keyboard or mouse use in your Windows session.
 - First sign-in: a new employee signs in with their work Google or Microsoft account and types the code it shows into Desk; Off Manual then knows their Windows account.

@@ -81,7 +81,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
 - [x] Idle lock: session idle from `GetLastInputInfo` (Rust `idle.rs`, per RDS session) polled every 30 s, firm `lockTimeoutMax` from policy.get (default 15), fallback to in-window activity, `lock.set` then back to the unlock screen; [ ] step-up prompt
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
-- [ ] Gateway: listener check (ADR-020), idle stop, doctor on exit code 78, restart policy
+- [x] Gateway: early exit detected during startup; exit code 78 → state snapshot (ADR-025, newest 3 kept) → `doctor --fix --yes --non-interactive` without the token (≤ 5 min) → retry once; lease released on failure; start holds the lock (no double start), status non-blocking; [ ] listener check (ADR-020, lab), idle stop, restart after a crash
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
 - [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 10:20: Gateway Doctor retry (M4, F4)
+- Changed: `gateway.rs` (EXIT_NEEDS_DOCTOR, doctor_arguments/environment, Startup + wait_ready_or_exit, backup_state with recursive copy and pruning, `backups_dir` in Layout; probe-only `wait_ready` now test-only), `gateway_manager.rs` (start loop with one Doctor retry, spawn/run_doctor/release helpers, try_lock in status).
+- Tests (CI only): early exit 78 seen via a real `cmd /C exit 78`, ready while a process runs, doctor args/env without token, backup copy + keep newest 3, needs_doctor rules.
+- Half-done / next: idle stop + crash restart; listener check after lab L1/L2.
 
 ### 2026-11-23 09:50: Billing tables, invoice run, issue, payments, ladder → firm status (M9)
 - Changed: console schema + migration 0003, `lib/billing/run.ts` (parseLineSpec with strict zod, seatDaysFor, generateDraft, runMonth, issueInvoice, recordPayment, refreshFirmStatus, billingConfigFromEnv), `lib/billing/admin.ts` (superadmin actions, firm-scoped invoice list with money as strings), routes `/api/admin/billing`, `/api/admin/firms/[firmId]/invoices`. ADR-045.
