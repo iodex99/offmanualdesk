@@ -36,6 +36,46 @@ function fakeAgent(replies: Record<string, unknown[] | ((p: Record<string, unkno
   return { agent, calls };
 }
 
+describe("licence", () => {
+  it("shows the paused message instead of the assistant and checks again", async () => {
+    const start = vi.fn(async () => ({ running: true, port: 18800 }));
+    const { agent } = fakeAgent({
+      "session.hello": [
+        {
+          ...base,
+          locked: false,
+          servicePaused: true,
+          pausedMessage: "Off Manual is paused for your firm. Please contact your admin.",
+        },
+        { ...base, locked: false },
+      ],
+    });
+    render(<Unlock agent={agent} startGateway={start} />);
+    expect(await screen.findByText(/paused for your firm/)).toBeTruthy();
+    expect(start).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Check again"));
+    expect(await screen.findByText(/You're signed in, Asha/)).toBeTruthy();
+  });
+
+  it("shows the overdue notice above a working assistant", async () => {
+    const { agent } = fakeAgent({
+      "session.hello": [
+        {
+          ...base,
+          locked: false,
+          notice: "Your firm's Off Manual bill is overdue. Your admin has been told.",
+        },
+      ],
+    });
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
+    expect(await screen.findByRole("status")).toHaveProperty(
+      "textContent",
+      "Your firm's Off Manual bill is overdue. Your admin has been told.",
+    );
+    expect(screen.getByText(/You're signed in, Asha/)).toBeTruthy();
+  });
+});
+
 describe("Unlock flow", () => {
   it("explains what to do when the Windows account isn't set up", async () => {
     const { agent } = fakeAgent({

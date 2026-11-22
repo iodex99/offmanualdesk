@@ -65,3 +65,19 @@ func TestLockGetCarriesLicence(t *testing.T) {
 		t.Fatalf("overdue: %v", st)
 	}
 }
+
+func TestHelloCarriesLicence(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	_ = e.st.SetMeta(ctx, metaFirmStatus, "restricted")
+	_ = e.st.SetMeta(ctx, metaLastContact, e.clock.Format(time.RFC3339))
+	h := e.mustOK(asha, "session.hello", nil)
+	if h["notice"] != NoticeOverdue || h["servicePaused"] != nil {
+		t.Fatalf("restricted hello: %v", h)
+	}
+	_ = e.st.SetMeta(ctx, metaFirmStatus, "closed")
+	h = e.mustOK(asha, "session.hello", nil)
+	if h["servicePaused"] != true || h["pausedMessage"] != MsgPaused {
+		t.Fatalf("closed hello: %v", h)
+	}
+}

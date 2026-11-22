@@ -24,6 +24,10 @@ type helloResult struct {
 	DayUnlocked bool     `json:"dayUnlocked"`
 	LockedUntil string   `json:"lockedUntil,omitempty"`
 	Packs       []string `json:"packs,omitempty"`
+	// Licence (ADR-042) so Desk can show a banner or the paused message.
+	ServicePaused bool   `json:"servicePaused,omitempty"`
+	PausedMessage string `json:"pausedMessage,omitempty"`
+	Notice        string `json:"notice,omitempty"`
 }
 
 func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any, error) {
@@ -42,7 +46,8 @@ func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any
 		return nil, err
 	}
 	return helloResult{Known: true, Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
-		PINSet: e.PINHash != "", Locked: st.Locked, DayUnlocked: st.DayUnlocked, LockedUntil: st.LockedUntil, Packs: e.Packs}, nil
+		PINSet: e.PINHash != "", Locked: st.Locked, DayUnlocked: st.DayUnlocked, LockedUntil: st.LockedUntil, Packs: e.Packs,
+		ServicePaused: st.ServicePaused, PausedMessage: st.PausedMessage, Notice: st.Notice}, nil
 }
 
 // ---- TOTP enrolment ----

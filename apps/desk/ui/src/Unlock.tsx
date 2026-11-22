@@ -15,6 +15,10 @@ interface Hello {
   locked: boolean;
   dayUnlocked: boolean;
   lockedUntil?: string;
+  /** Licence (ADR-042): paused firms get one plain message instead of the assistant. */
+  servicePaused?: boolean;
+  pausedMessage?: string;
+  notice?: string;
 }
 
 type Screen =
@@ -24,7 +28,8 @@ type Screen =
   | { kind: "enrol"; qr: string; secret: string }
   | { kind: "pin" }
   | { kind: "unlock"; usePin: boolean }
-  | { kind: "ready"; name: string };
+  | { kind: "ready"; name: string; notice?: string }
+  | { kind: "paused"; message: string };
 
 const message = (e: unknown) => (isAgentError(e) ? e.message : "Something went wrong. Try again.");
 
@@ -57,7 +62,13 @@ export function Unlock({
       }
       if (!h.pinSet) return setScreen({ kind: "pin" });
       if (h.locked) return setScreen({ kind: "unlock", usePin: h.dayUnlocked && !h.lockedUntil });
-      setScreen({ kind: "ready", name: h.name ?? "" });
+      if (h.servicePaused) {
+        return setScreen({
+          kind: "paused",
+          message: h.pausedMessage || "Off Manual is paused for your firm. Please contact your admin.",
+        });
+      }
+      setScreen({ kind: "ready", name: h.name ?? "", ...(h.notice ? { notice: h.notice } : {}) });
     } catch (e) {
       setScreen({ kind: "unavailable", message: message(e) });
     }
@@ -166,9 +177,21 @@ export function Unlock({
           {error && <p role="alert">{error}</p>}
         </form>
       );
+    case "paused":
+      return (
+        <div role="alert">
+          <p>{screen.message}</p>
+          <button onClick={() => void refresh()}>Check again</button>
+        </div>
+      );
     case "ready":
       return (
         <div>
+          {screen.notice && (
+            <p className="notice" role="status">
+              {screen.notice}
+            </p>
+          )}
           <p>You're signed in{screen.name ? `, ${screen.name}` : ""}.</p>
           <Assistant agent={agent} {...(startGateway ? { start: startGateway } : {})} />
           <button
