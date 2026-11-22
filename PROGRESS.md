@@ -84,7 +84,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Idle lock timer, step-up prompt
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
 - [ ] Gateway: listener check (ADR-020), idle stop, doctor on exit code 78, restart policy
-- [ ] Gateway client in Rust: protocol v4 + device auth (ADR-021)
+- [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
+- [ ] Gateway client in Rust for Desk's chat panel (ADR-021): port of the Go client
 - [ ] Docked chat panel + global hotkey
 - [ ] Explorer right-click "Ask Off Manual"
 - [ ] Notifications area (updates, billing, admin)
@@ -161,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 04:15: Gateway client protocol (Go)
+- Changed: `internal/gateway/client.go` (Device with sha256 id + base64url key/signature, PayloadV3, Dial with connect.challenge → connect → hello-ok, Chat accumulating deltas with replace, Abort), dependency github.com/coder/websocket v1.8.15. OPENCLAW_NOTES: device-auth and chat-event facts verified in source.
+- Tests: gateway 82.9% against a fake gateway that re-implements the server's v3 signature + device id checks (handshake, wrong token refused, streamed reply, error/aborted, other runs' events ignored).
+- Half-done / next: Telegram router (Bot API long poll, linking, relay through this client).
 
 ### 2026-11-23 03:45: Skill vetting + first India-pack skills (M7)
 - Changed: `tools/skill-vet/vet.mjs` (check/lock CLI, rules, checklist); `verifySkillsLock` accepts `pending` (hash-checked, never shipped) and reports approved count; release workflow copies and locks only approved skills; skills `offmanual/client-directory`, `compliance-calendar`, `ledger-scrutiny` (instruction-only, no scripts; pending review); `test:tools` runs every tool's tests. ADR-039.
