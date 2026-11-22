@@ -272,6 +272,9 @@ func (s *Store) DisableEmployee(ctx context.Context, sid string) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM day_grants WHERE sid = ?`, sid); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM telegram_links WHERE sid = ?`, sid); err != nil {
+			return err
+		}
 		_, err := tx.ExecContext(ctx, `DELETE FROM leases WHERE sid = ?`, sid)
 		return err
 	})

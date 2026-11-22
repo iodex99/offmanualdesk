@@ -376,6 +376,11 @@ func (a *Agent) gatewayLease(ctx context.Context, c rpc.Caller, p json.RawMessag
 	if err != nil {
 		return nil, err
 	}
+	// The relay (Telegram, ADR-023) connects to this gateway too: keep the token
+	// DPAPI-protected next to its hash. agent.db is SYSTEM/Administrators only (ADR-033).
+	if blob, perr := a.secrets.Protect([]byte(token)); perr == nil {
+		_ = a.store.SetLeaseTokenProtected(ctx, e.SID, blob)
+	}
 	a.audit(ctx, e.SID, "gateway", "lease", "ok")
 	// The token is returned once, to the employee's own process; only its hash is stored.
 	return map[string]any{"port": lease.Port, "token": token}, nil

@@ -387,3 +387,53 @@ func TestPolicyUsesSyncedConsolePolicy(t *testing.T) {
 		t.Fatalf("unknown telegram mode must fall back to off: %v", p)
 	}
 }
+
+func TestTelegramLinkStartAndUnlock(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if _, errObj := e.call(asha, "telegram.linkStart", nil); code(errObj) != rpc.CodeConflict {
+		t.Fatalf("no bot configured: %v", errObj)
+	}
+	_ = e.st.SetMeta(ctx, MetaBotUsername, "MehtaCABot")
+	res := e.mustOK(asha, "telegram.linkStart", nil)
+	if !strings.HasPrefix(res["url"].(string), "https://t.me/MehtaCABot?start=") {
+		t.Fatalf("url %v", res["url"])
+	}
+	secret := e.enrol(asha)
+	if err := e.ag.TelegramUnlock(ctx, asha.SID, "000000"); err == nil || !strings.Contains(err.Error(), "isn't right") {
+		t.Fatalf("wrong code: %v", err)
+	}
+	e.advance(30 * time.Second)
+	if err := e.ag.TelegramUnlock(ctx, asha.SID, e.totp(secret)); err != nil {
+		t.Fatalf("unlock: %v", err)
+	}
+	l, _ := e.st.Lock(ctx, asha.SID)
+	if !l.TelegramUnlockedUntil.Equal(e.clock.Add(60 * time.Minute)) {
+		t.Fatalf("telegram window %v", l.TelegramUnlockedUntil)
+	}
+	if st := e.mustOK(asha, "lock.get", nil); st["telegramUnlockedUntil"] == nil {
+		t.Fatalf("lock.get must report the Telegram window: %v", st)
+	}
+	if err := e.ag.TelegramUnlock(ctx, nobod.SID, "123456"); err == nil {
+		t.Fatal("unknown SID unlocked")
+	}
+	if e.ag.TelegramMode(ctx) != "off" || !e.ag.ActiveEmployee(ctx, asha.SID) || e.ag.ActiveEmployee(ctx, nobod.SID) {
+		t.Fatal("mode/active hooks wrong")
+	}
+}
+
+func TestLeaseKeepsProtectedTokenForRelay(t *testing.T) {
+	e := newEnv(t)
+	s := e.enrol(asha)
+	e.advance(30 * time.Second)
+	e.mustOK(asha, "auth.verifyDaily", map[string]string{"code": e.totp(s)})
+	res := e.mustOK(asha, "gateway.lease", nil)
+	blob, err := e.st.LeaseTokenProtected(context.Background(), asha.SID)
+	if err != nil || strings.Contains(string(blob), res["token"].(string)) {
+		t.Fatalf("protected token: %v (must not be stored in clear)", err)
+	}
+	plain, err := e.ag.secrets.Unprotect(blob)
+	if err != nil || string(plain) != res["token"] {
+		t.Fatal("protected token does not round-trip")
+	}
+}

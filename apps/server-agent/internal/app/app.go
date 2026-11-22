@@ -82,7 +82,9 @@ func Run(ctx context.Context, o Options) error {
 	}
 	startSync(ctx, st, prot, log, o.DataDir)
 	srv := rpc.NewServer(log)
-	agent.New(st, prot, o.Agent, log).Register(srv)
+	ag := agent.New(st, prot, o.Agent, log)
+	ag.Register(srv)
+	startTelegram(ctx, st, prot, ag, log)
 
 	l, err := listen(o.PipeName)
 	if err != nil {

@@ -83,6 +83,7 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("gateway.release", a.gatewayRelease)
 	srv.Handle("audit.append", a.auditAppend)
 	srv.Handle("policy.get", a.policyGet)
+	srv.Handle("telegram.linkStart", a.telegramLinkStart)
 }
 
 // ---- errors in plain words ----

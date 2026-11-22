@@ -37,8 +37,8 @@ func TestMigrationsApplyOnceAndReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	v, _ := s.SchemaVersion(ctx)
-	if v != 2 {
-		t.Fatalf("schema version %d, want 2", v)
+	if v != 3 {
+		t.Fatalf("schema version %d, want 3", v)
 	}
 	_ = s.SetMeta(ctx, "server_id", "srv-1")
 	_ = s.Close()

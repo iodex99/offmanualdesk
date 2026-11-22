@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
@@ -30,6 +31,7 @@ Usage:
   server-agent preflight [-share \\fs\Clients] [-json]  Check this server is ready
   server-agent bridge               Relay stdin/stdout to the agent pipe (for Node clients; ADR-034)
   server-agent enroll -console URL CODE  Register this server with the Off Manual console
+  server-agent telegram-setup -username FirmBot  Store the firm bot (token read from stdin)
   server-agent help                 Show this help
 
 `
@@ -149,6 +151,23 @@ func run(args []string, stdout, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stderr, "enrol failed: %v\n", err)
 			return 1
 		}
+		return 0
+	case "telegram-setup":
+		fs := flag.NewFlagSet("telegram-setup", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		username := fs.String("username", "", "the firm bot's @username from BotFather")
+		data := fs.String("data", "", "data directory")
+		if err := fs.Parse(args[1:]); err != nil || *username == "" {
+			_, _ = fmt.Fprintln(stderr, "usage: server-agent telegram-setup -username FirmBot  (then paste the bot token and press Enter)")
+			return 2
+		}
+		_, _ = fmt.Fprint(stdout, "Paste the bot token from BotFather and press Enter: ")
+		token, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err := app.SetupTelegram(context.Background(), *data, *username, token); err != nil {
+			_, _ = fmt.Fprintf(stderr, "telegram setup failed: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintln(stdout, "Saved. Restart the OffManualAgent service to start the bot.")
 		return 0
 	case "uninstall":
 		if err := uninstallService(); err != nil {
