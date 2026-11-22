@@ -24,6 +24,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
 - [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
+- [ ] **MSI tool licence (M8)**: WiX v4 is out of support; v7 (current) requires accepting the Open Source Maintenance Fee EULA, and organisations with annual revenue ≥ US$10,000 must sponsor `wixtoolset` on GitHub (fee is "not a license fee"; non-payment can suspend access to the binaries; building WiX from its MS-RL source avoids the EULA). Decide: (a) accept the EULA and sponsor if over the threshold, (b) build WiX from source in CI, or (c) another installer. Until then the MSI isn't built and the install runbook's manual steps apply.
 - [ ] Later (M8): Azure Trusted Signing account (or code-signing certificate) as GitHub secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`; release store (ADR-016) secrets `RELEASE_STORE_*`
 - [ ] Later (M9): Razorpay test keys; Off Manual GSTIN, state, SAC code confirmed with the CA
 
@@ -121,7 +122,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Rings + firm pins (logic + superadmin `promote`) and superadmin `/releases` page (promote, firm ring + pin = rollback, servers running/staged per version); only Authenticode-signed releases leave ring 0 unless `OM_ALLOW_UNSIGNED_RELEASES=true` (ADR-057)
 - [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat); Authenticode check (ADR-055: manifest `authenticode` flag set by the release workflow when it signed; then every .exe/.dll must pass WinVerifyTrust with whole-chain revocation)
 - [x] Desk notice + restart-to-update + security deadline (ADR-048): `update.status` (staged version, severity, deadline; migration 0004), per-employee `desk\version.json`, gateway starts from `versions\<v>`, exit 78 → backup → Doctor → retry; failure restores the snapshot and the previous version; security releases install themselves after the deadline
-- [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); console-driven rollback = firm pin to the previous version on `/releases`, [ ] `current` junction move + Desk/Server Agent binary self-update
+- [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); console-driven rollback = firm pin to the previous version on `/releases`, `current` junction move + Server Agent self-update (ADR-062: quiet hours 02–05 IST with no active lease, or a security deadline; restart via SCM recovery incl. non-crash failures); Desk binary follows at the next sign-in
 - [ ] MSI (WiX v4) for first installs
 
 ### M9 Billing
@@ -161,6 +162,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 01:00: `current` switch and Server Agent self-update (M8, ADR-062)
+- Changed: `internal/update/current.go` (CurrentVersion via Readlink, SwitchCurrent: next junction + rename swap + rollback, only staged versions with a manifest; Switcher: quiet hours 02–05 IST with no active lease or past a security deadline, never backwards, marks `active`, asks for a restart when the agent changed), junction via `mklink /J` (`link_windows.go`), app `switchLoop` (15 min) cancels Run with ErrRestartForUpdate; **fix**: service install now sets `SetRecoveryActionsOnNonCrashFailures(true)`; before, an agent that stopped itself with an error was not restarted although the code said so; `install` registers through `current`. CI round trip asserts the flag with `sc qfailureflag`.
+- Tests: real junctions on Windows (switch, files of the old version untouched, no helper links left, bad/unstaged/traversal versions refused without moving current), switcher (working hours wait, active leases wait, quiet + idle switches and asks for restart, security deadline overrides, never goes back, no restart when the agent didn't change), service path mapping; golangci-lint both OSes 0; actionlint. CI for task roles green; `main` at 09db8da. WiX research: decision added to Waiting on Dwahnil.
 
 ### 2026-11-24 00:30: Task roles (M7, ADR-061)
 - Changed: console `employees.task_role` (migration 0009), `addEmployee` accepts it, `setTaskRole` + route `POST .../employees/[employeeId]/task-role` (firm-scoped, bumps policy), firm page "Tasks shown first" select, policy carries `taskRole`; agent migration 0010, `SetEmployeeTaskRole` (unknown → none), ApplyPolicy, `session.hello` `taskRole`; Desk `ROLE_TASKS`/`splitTasks` (SKILLS.md §5 defaults), TaskButtons role prop with More tasks, Assistant reads hello.

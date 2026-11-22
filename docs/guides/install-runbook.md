@@ -25,9 +25,11 @@ step given instead.
 5. **Telegram (optional)**: create the firm's bot with BotFather, then
    `server-agent.exe telegram-setup -username <FirmBot>` and paste the token when asked. Restart the
    `OffManualAgent` service.
-6. **Desk autostart** **(MSI to build)**. Manually: add `C:\Program Files\OffManual\current\desk\offmanual-desk.exe`
+6. Register the service from the `current` path so updates take effect at restart:
+   `"C:\Program Files\OffManual\current\server-agent.exe" install` (the command rewrites a `versions\<v>` path to `current` anyway).
+7. **Desk autostart** **(MSI to build)**. Manually: add `C:\Program Files\OffManual\current\desk\offmanual-desk.exe`
    to the All Users Startup folder.
-7. **Explorer "Ask Off Manual"** **(MSI to build)**. Manually, in an elevated command prompt (all users):
+8. **Explorer "Ask Off Manual"** **(MSI to build)**. Manually, in an elevated command prompt (all users):
    ```
    reg add "HKLM\Software\Classes\*\shell\OffManualDesk" /ve /d "Ask Off Manual" /f
    reg add "HKLM\Software\Classes\*\shell\OffManualDesk\command" /ve /d "\"C:\Program Files\OffManual\current\desk\offmanual-desk.exe\" --ask \"%1\"" /f

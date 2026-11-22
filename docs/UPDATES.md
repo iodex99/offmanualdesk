@@ -31,8 +31,8 @@ Implemented (2026-11-23): `apps/server-agent/internal/update/stager.go`, driven 
 
 1. Learns of the assigned release via SSE push or 15-min poll (`GET /api/agent/releases`: the firm's pinned version, else the newest release promoted to a ring ≥ the firm's ring).
 2. Downloads payload to `staging\`, verifies manifest signature (embedded public keys by key_id), payload hash, every file hash, and (when the signed manifest says `authenticode: true`) Authenticode on every .exe/.dll via WinVerifyTrust (ADR-055). The verification and safe-extraction code already exists in `apps/server-agent/pkg/manifest` (`Verify`, `VerifyFileHash`, `ExtractZip`, `VerifyDir`); M8 wires it into the service and adds `go:embed` of `pkg/manifest/keys/*.pub`.
-3. Unpacks to `versions\<new>\`, reports `staged`. Does **not** move `current` until no employee gateway runs the old version, or for new gateway starts only (decide in M8; record ADR).
-4. Server Agent self-update: staged like everything else, swapped by a small updater that restarts the service.
+3. Unpacks to `versions\<new>\`, reports `staged`. Employees' gateways move on their own *Restart to update* (§4). `current` (what new launches of the Server Agent, Desk and the guard bridge use) moves to the staged release between 02:00 and 05:00 IST when no gateway lease is active, or straight away once a security release's deadline has passed; never to an older version. The switch makes `current.next` (a junction), renames `current` away, renames the new one in, and restores the old one on failure (`internal/update/current.go`, ADR-062).
+4. Server Agent self-update: after the switch the agent exits with an error; SCM recovery (set for non-crash failures too) starts `current\server-agent.exe`, i.e. the new release, 5 seconds later. The service is always registered through `current` (`install` rewrites a `versions\<v>\` path). Running Desks keep their binary until the employee's next sign-in.
 
 ## 4. Desk notice and switch
 

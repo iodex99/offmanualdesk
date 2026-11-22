@@ -136,3 +136,20 @@ func TestRestoreRefusals(t *testing.T) {
 		t.Fatal("temporary copy left behind")
 	}
 }
+
+func TestServiceBinaryPathFollowsCurrent(t *testing.T) {
+	root := filepath.Join("C:"+string(filepath.Separator), "Program Files", "OffManual")
+	in := filepath.Join(root, "versions", "1.2.0", "server-agent.exe")
+	if got, want := serviceBinaryPath(root, in), filepath.Join(root, "current", "server-agent.exe"); got != want {
+		t.Fatalf("%q, want %q", got, want)
+	}
+	for _, p := range []string{
+		filepath.Join(root, "current", "server-agent.exe"),
+		filepath.Join("D:"+string(filepath.Separator), "dev", "server-agent.exe"),
+		filepath.Join(root, "versions", "server-agent.exe"),
+	} {
+		if got := serviceBinaryPath(root, p); got != p {
+			t.Fatalf("%q changed to %q", p, got)
+		}
+	}
+}

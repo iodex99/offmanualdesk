@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- The Server Agent moves `current` to a staged release at a quiet time (or after a security deadline) and restarts into it.
 - Task roles: the firm admin picks Article, Senior, Manager or Partner per person, and their Desk shows that role's task buttons first.
 - The Server Agent backs up its database every day (last 7 kept) and `server-agent restore -from FILE` brings one back.
 - Desk runs once per Windows session; opening it again brings the running one forward. Explorer "Ask Off Manual" (`--ask <path>`) puts the file or folder in the chat box.
@@ -82,6 +83,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - ARCHITECTURE flows F4–F7 rewritten from verified OpenClaw behaviour; several assumptions now carry Proposed ADRs (020–028).
 
 ### Fixed
+- The Server Agent service is now restarted by Windows when it stops itself with an error, not only after a crash.
 - Enrolling a server no longer fails when a pre-flight check has a long message.
 - Memory hooks: removed a dead initial assignment flagged by ESLint.
 - CI: shellcheck findings in the release workflow; secret scan no longer fails when artifact storage is full.

@@ -185,3 +185,25 @@ func installRoot() string {
 	}
 	return filepath.Join(pf, "OffManual")
 }
+
+// InstallRoot is C:\Program Files\OffManual (or OFFMANUAL_INSTALL_ROOT).
+func InstallRoot() string { return installRoot() }
+
+// ServiceBinaryPath maps an executable inside <root>\versions\<v>\ to
+// <root>\current\<name>, so the service follows `current` (ADR-062). Other paths are
+// returned unchanged (developer builds).
+func ServiceBinaryPath(exe string) string {
+	return serviceBinaryPath(installRoot(), exe)
+}
+
+func serviceBinaryPath(root, exe string) string {
+	rel, err := filepath.Rel(filepath.Join(root, "versions"), exe)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return exe
+	}
+	parts := strings.SplitN(filepath.ToSlash(rel), "/", 2)
+	if len(parts) != 2 || parts[1] == "" {
+		return exe
+	}
+	return filepath.Join(root, "current", filepath.FromSlash(parts[1]))
+}

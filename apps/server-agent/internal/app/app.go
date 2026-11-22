@@ -20,6 +20,7 @@ import (
 	"offmanual/desk/server-agent/internal/rpc"
 	"offmanual/desk/server-agent/internal/secrets"
 	"offmanual/desk/server-agent/internal/store"
+	"offmanual/desk/server-agent/internal/update"
 	"offmanual/desk/server-agent/internal/version"
 )
 
@@ -99,6 +100,16 @@ func Run(ctx context.Context, o Options) error {
 	go arch.Loop(ctx, 15*time.Minute)
 	go backupLoop(ctx, st, agentBackupDir(o.DataDir), log) // daily agent.db backup (ADR-060)
 
+	// Move `current` to the staged release at a quiet time and restart into it (ADR-062).
+	ctx, stopForUpdate := context.WithCancelCause(ctx)
+	defer stopForUpdate(nil)
+	sw := &update.Switcher{Root: installRoot(), Store: st, AgentVersion: version.Get().Version,
+		ActiveLeases: func(ctx context.Context) int {
+			n, _ := st.ActiveLeases(ctx, time.Now().Add(-time.Hour))
+			return n
+		}}
+	go switchLoop(ctx, sw, log, stopForUpdate)
+
 	l, err := listen(o.PipeName)
 	if err != nil {
 		log.Error("pipe listen failed", "error", err.Error())
@@ -110,5 +121,29 @@ func Run(ctx context.Context, o Options) error {
 	}
 	err = pipe.Serve(ctx, l, srv, log)
 	log.Info("stopped")
+	if cause := context.Cause(ctx); errors.Is(cause, update.ErrRestartForUpdate) {
+		return cause // the service exits non-zero; SCM recovery starts the new binary
+	}
 	return err
+}
+
+// switchLoop checks every 15 minutes whether to move `current` (ADR-062).
+func switchLoop(ctx context.Context, sw *update.Switcher, log *slog.Logger, stop context.CancelCauseFunc) {
+	t := time.NewTicker(15 * time.Minute)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		switch err := sw.Tick(ctx); {
+		case errors.Is(err, update.ErrRestartForUpdate):
+			log.Info("current switched to the staged release; restarting")
+			stop(err)
+			return
+		case err != nil:
+			log.Error("switching current failed", "error", err.Error())
+		}
+	}
 }

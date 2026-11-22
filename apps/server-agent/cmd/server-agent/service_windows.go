@@ -81,6 +81,8 @@ func installService(dataDir string) error {
 	if err != nil {
 		return err
 	}
+	// Register through `current` so a switch to a new release takes effect at restart (ADR-062).
+	exe = app.ServiceBinaryPath(exe)
 	if dataDir == "" {
 		dataDir = app.DefaultDataDir()
 	}
@@ -116,6 +118,11 @@ func installService(dataDir string) error {
 		{Type: mgr.ServiceRestart, Delay: 2 * time.Minute},
 	}, uint32((24 * time.Hour).Seconds())); err != nil {
 		return fmt.Errorf("set recovery actions: %w", err)
+	}
+	// Also restart after the agent stops itself with an error (e.g. to run a new release,
+	// ADR-062); without this flag SCM only acts on crashes.
+	if err := s.SetRecoveryActionsOnNonCrashFailures(true); err != nil {
+		return fmt.Errorf("set recovery on non-crash failures: %w", err)
 	}
 	return s.Start()
 }

@@ -105,6 +105,10 @@ jobs:
             $deadline = (Get-Date).AddSeconds(30)
             while ((Get-Service OffManualAgent).Status -ne 'Running' -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
             if ((Get-Service OffManualAgent).Status -ne 'Running') { throw "service not running" }
+            # ADR-062: SCM must also restart the agent when it stops itself with an error
+            # (that is how it restarts into a new release).
+            $flag = (sc.exe qfailureflag OffManualAgent) -join "`n"
+            if ($flag -notmatch 'FAILURE_ACTIONS_ON_NONCRASH_FAILURES\s*:\s*TRUE') { throw "non-crash recovery flag not set: $flag" }
             # ADR-029/034: a standard GENERIC_READ|GENERIC_WRITE client must be refused, because
             # GENERIC_WRITE includes FILE_CREATE_PIPE_INSTANCE (squatting). Even an admin is refused.
             $std = New-Object System.IO.Pipes.NamedPipeClientStream('.', 'offmanual-agent', [System.IO.Pipes.PipeDirection]::InOut)
