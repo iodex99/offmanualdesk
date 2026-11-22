@@ -54,6 +54,7 @@ export default async function BillingPage() {
                 <td align="right">{formatINR(BigInt(i.totalPaise), { showPaise: true })}</td>
                 <td>{i.status}</td>
                 <td>
+                  <a href={`/api/admin/firms/${i.firmId}/invoices/${i.id}/pdf`}>PDF</a>{" "}
                   {i.status === "draft" && <IssueButton invoiceId={i.id} />}
                   {i.status === "issued" && <PaymentForm invoiceId={i.id} />}
                 </td>

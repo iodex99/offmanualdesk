@@ -130,6 +130,9 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                   <td>{i.dueOn ? formatDate(new Date(`${i.dueOn}T00:00:00+05:30`)) : "-"}</td>
                   <td align="right">{formatINR(BigInt(i.totalPaise), { showPaise: true })}</td>
                   <td>{i.status}</td>
+                  <td>
+                    <a href={`/api/admin/firms/${firmId}/invoices/${i.id}/pdf`}>PDF</a>
+                  </td>
                 </tr>
               ))}
             </tbody>

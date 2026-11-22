@@ -2,7 +2,8 @@
 // records payments and overrides; a firm admin can only read their own invoices.
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { firms, invoices, ladderOverrides } from "@/db/schema";
+import { firms, invoiceLines, invoices, ladderOverrides } from "@/db/schema";
+import { renderInvoicePdf } from "./pdf";
 import { InputError } from "../admin";
 import { requireConsole, requireFirmAccess, type SessionState } from "../auth";
 import { uuidv7 } from "../ids";
@@ -155,4 +156,57 @@ export async function billingBoard(deps: BillingDeps, s: SessionState | null) {
     invoices: rows.map((r) => ({ ...r, totalPaise: r.totalPaise.toString() })),
     firms: firmRows,
   };
+}
+
+/** The invoice as a PDF. Firm admins get issued/paid invoices of their own firm only. */
+export async function invoicePdf(
+  deps: BillingDeps,
+  cfg: BillingConfig,
+  s: SessionState | null,
+  firmId: string,
+  invoiceId: string,
+): Promise<{ filename: string; bytes: Uint8Array }> {
+  const p = requireFirmAccess(s, firmId);
+  const inv = (
+    await deps.db
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.firmId, firmId)))
+  )[0];
+  if (!inv || (p.kind !== "console" && inv.status !== "issued" && inv.status !== "paid")) {
+    throw new InputError("That invoice doesn't exist.");
+  }
+  const firm = (await deps.db.select().from(firms).where(eq(firms.id, firmId)))[0]!;
+  const lines = await deps.db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, invoiceId));
+  const bytes = await renderInvoicePdf(
+    {
+      number: inv.number,
+      issuedOn: inv.issuedOn,
+      dueOn: inv.dueOn,
+      periodStart: inv.periodStart,
+      periodEnd: inv.periodEnd,
+      seller: {
+        legalName: cfg.legalName ?? "Off Manual",
+        address: cfg.address ?? "",
+        gstin: cfg.gstin,
+        stateCode: cfg.offManualStateCode,
+      },
+      buyer: { legalName: firm.legalName, gstin: firm.gstin, stateCode: firm.stateCode },
+      lines: lines.map((l) => ({
+        description: l.description,
+        sac: l.sac,
+        quantity: l.quantity,
+        amountPaise: l.amountPaise,
+      })),
+      taxablePaise: inv.taxablePaise,
+      cgstPaise: inv.cgstPaise,
+      sgstPaise: inv.sgstPaise,
+      igstPaise: inv.igstPaise,
+      totalPaise: inv.totalPaise,
+      gstRatePct: cfg.gstRatePct,
+    },
+    deps.now(),
+  );
+  const filename = `${(inv.number ?? `draft-${inv.periodStart}`).replace(/[^A-Za-z0-9-]+/g, "-")}.pdf`;
+  return { filename, bytes };
 }

@@ -25,7 +25,7 @@ import {
   type BillingConfig,
 } from "@/lib/billing/run";
 import type { SessionState } from "@/lib/auth";
-import { billingAction, billingBoard, listInvoices } from "@/lib/billing/admin";
+import { billingAction, billingBoard, invoicePdf, listInvoices } from "@/lib/billing/admin";
 import { dailyBilling, previousMonth } from "@/lib/billing/cron";
 import { rupeesToPaise } from "@/app/billing/forms";
 import type { DB } from "@/lib/db";
@@ -449,5 +449,27 @@ describe("rupee input", () => {
     expect(rupeesToPaise("2360.5")).toBe("236050");
     expect(rupeesToPaise(" 0.05 ")).toBe("5");
     for (const bad of ["", "0", "1.234", "-5", "1,000", "abc"]) expect(rupeesToPaise(bad), bad).toBeNull();
+  });
+});
+
+describe("invoice PDF access", () => {
+  it("drafts only for staff; issued for the firm's own admin; never across firms", async () => {
+    await contract(1, "2026-10-01", null, [AMC]);
+    const nov = await generateDraft(deps(), cfg, firmId, 2026, 11);
+    const draft = await invoicePdf(deps(), cfg, superadmin, firmId, nov!.invoiceId);
+    expect(draft.filename).toBe("draft-2026-11-01.pdf");
+    await expect(invoicePdf(deps(), cfg, adminOf(firmId), firmId, nov!.invoiceId)).rejects.toThrow(
+      /doesn't exist/,
+    );
+    await issueInvoice(deps(), cfg, nov!.invoiceId);
+    const issued = await invoicePdf(deps(), cfg, adminOf(firmId), firmId, nov!.invoiceId);
+    expect(issued.filename).toBe("OM-FY2026-27-0001.pdf");
+    expect(new TextDecoder().decode(issued.bytes.slice(0, 5))).toBe("%PDF-");
+    await expect(invoicePdf(deps(), cfg, adminOf(uuidv7()), firmId, nov!.invoiceId)).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(invoicePdf(deps(), cfg, superadmin, uuidv7(), nov!.invoiceId)).rejects.toThrow(
+      /doesn't exist/,
+    );
   });
 });

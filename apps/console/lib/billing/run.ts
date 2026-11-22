@@ -31,6 +31,9 @@ export interface BillingConfig {
   gstin: string | null;
   offManualStateCode: string;
   gstRatePct: string;
+  /** Seller details printed on invoices. */
+  legalName?: string;
+  address?: string;
 }
 
 export function billingConfigFromEnv(env: NodeJS.ProcessEnv = process.env): BillingConfig {
@@ -38,6 +41,8 @@ export function billingConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Bill
     gstin: env.OFFMANUAL_GSTIN?.trim() || null,
     offManualStateCode: env.OFFMANUAL_STATE_CODE?.trim() || "27",
     gstRatePct: env.OFFMANUAL_GST_RATE_PCT?.trim() || "18",
+    legalName: env.OFFMANUAL_LEGAL_NAME?.trim() || "Off Manual",
+    address: env.OFFMANUAL_ADDRESS?.trim() || "Mumbai, Maharashtra",
   };
 }
 
