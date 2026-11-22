@@ -2,9 +2,11 @@
 // (ARCHITECTURE F4). The token never reaches the UI; Rust keeps it.
 import { useCallback, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { callAgent, type AgentCall } from "./agent";
 import { Chat } from "./Chat";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
 import { Review } from "./Review";
+import { TelegramLink } from "./TelegramLink";
 
 export interface GatewayStatus {
   running: boolean;
@@ -23,12 +25,14 @@ type State = { kind: "starting" } | { kind: "ready" } | { kind: "failed"; messag
 export function Assistant({
   start = startGateway,
   api = tauriGateway,
+  agent = callAgent,
 }: {
   start?: StartGateway;
   api?: GatewayApi;
+  agent?: AgentCall;
 }) {
   const [state, setState] = useState<State>({ kind: "starting" });
-  const [tab, setTab] = useState<"chat" | "review">("chat");
+  const [tab, setTab] = useState<"chat" | "review" | "telegram">("chat");
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -64,8 +68,13 @@ export function Assistant({
             <button role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>
               Review
             </button>
+            <button role="tab" aria-selected={tab === "telegram"} onClick={() => setTab("telegram")}>
+              Telegram
+            </button>
           </nav>
-          {tab === "chat" ? <Chat api={api} /> : <Review api={api} />}
+          {tab === "chat" && <Chat api={api} />}
+          {tab === "review" && <Review api={api} />}
+          {tab === "telegram" && <TelegramLink agent={agent} />}
         </div>
       );
     case "failed":

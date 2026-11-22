@@ -170,7 +170,7 @@ export function Unlock({
       return (
         <div>
           <p>You're signed in{screen.name ? `, ${screen.name}` : ""}.</p>
-          <Assistant {...(startGateway ? { start: startGateway } : {})} />
+          <Assistant agent={agent} {...(startGateway ? { start: startGateway } : {})} />
           <button
             onClick={() =>
               void run(async () => {
