@@ -1,0 +1,1 @@
+ALTER TABLE "releases" ADD COLUMN "authenticode" boolean DEFAULT false NOT NULL;

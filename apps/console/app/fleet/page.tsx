@@ -17,7 +17,7 @@ export default async function FleetPage() {
     <main style={{ fontFamily: "system-ui, sans-serif" }}>
       <p>
         <Link href="/firms">Firms</Link> · <Link href="/billing">Billing</Link> ·{" "}
-        <Link href="/support">Problem reports</Link>
+        <Link href="/support">Problem reports</Link> · <Link href="/releases">Releases</Link>
       </p>
       <h1>Fleet</h1>
       <p>

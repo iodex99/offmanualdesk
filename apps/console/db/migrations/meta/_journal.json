@@ -57,6 +57,13 @@
       "when": 1795361874421,
       "tag": "0007_smart_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795365009396,
+      "tag": "0008_ambiguous_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

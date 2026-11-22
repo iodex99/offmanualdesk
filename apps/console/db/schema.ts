@@ -265,6 +265,9 @@ export const releases = pgTable("releases", {
   manifestUrl: text("manifest_url"),
   payloadSha256: text("payload_sha256").notNull(),
   keyId: text("key_id").notNull(),
+  // The release workflow Authenticode-signed every .exe/.dll (ADR-055); only such
+  // releases go beyond ring 0 unless OM_ALLOW_UNSIGNED_RELEASES=true (ADR-057).
+  authenticode: boolean("authenticode").notNull().default(false),
   changelogMd: text("changelog_md").notNull().default(""),
   openclawVersion: text("openclaw_version").notNull(),
   createdAt: createdAt(),

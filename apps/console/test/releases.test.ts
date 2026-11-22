@@ -4,7 +4,15 @@ import { consoleUsers, firms, releaseRings, servers } from "@/db/schema";
 import { AuthError, type SessionState } from "@/lib/auth";
 import type { DB } from "@/lib/db";
 import { uuidv7 } from "@/lib/ids";
-import { assignedRelease, promote, registerRelease, type ReleaseDeps } from "@/lib/releases";
+import {
+  assignedRelease,
+  promote,
+  registerRelease,
+  releaseAction,
+  releasesBoard,
+  setFirmRollout,
+  type ReleaseDeps,
+} from "@/lib/releases";
 import { testDb } from "./helpers/db";
 
 let db: DB;
@@ -19,13 +27,14 @@ const superadmin: SessionState = {
   token: "t",
 };
 
-const body = (version: string, severity = "normal") => ({
+const body = (version: string, severity = "normal", authenticode = true) => ({
   manifest: {
     schema: 1,
     version,
     severity,
     openclawVersion: "2026.11.6",
     keyId: "om-rel-2026a",
+    authenticode,
     payload: { name: `offmanual-${version}.zip`, sha256: "a".repeat(64), size: 10 },
     files: [],
   },
@@ -110,5 +119,83 @@ describe("rings and pins", () => {
     await expect(promote(deps, staff, "1.0.0", 2)).rejects.toBeInstanceOf(AuthError);
     await expect(promote(deps, superadmin, "1.0.0", 3)).rejects.toThrow(/ring/);
     await expect(promote(deps, superadmin, "9.9.9", 2)).rejects.toThrow(/unknown/);
+  });
+});
+
+describe("signing rule (ADR-057)", () => {
+  it("an unsigned release stays in ring 0 unless explicitly allowed", async () => {
+    await post(body("1.2.0", "normal", false));
+    await expect(promote(deps, superadmin, "1.2.0", 1)).rejects.toThrow(/Authenticode/);
+    await expect(setFirmRollout(deps, superadmin, firmId, 2, "1.2.0")).rejects.toThrow(/Authenticode/);
+    await setFirmRollout(deps, superadmin, firmId, 0, "1.2.0"); // a lab firm may pin it
+    deps.allowUnsigned = true;
+    await promote(deps, superadmin, "1.2.0", 1);
+    await setFirmRollout(deps, superadmin, firmId, 2, "1.2.0");
+    expect((await assignedRelease(db, serverId))?.version).toBe("1.2.0");
+  });
+  it("records the flag from the manifest", async () => {
+    await post(body("1.0.0", "normal", true));
+    await post(body("1.0.1", "normal", false));
+    const b = await releasesBoard(deps, superadmin);
+    expect(b.releases.map((r) => [r.version, r.authenticode])).toEqual([
+      ["1.0.1", false],
+      ["1.0.0", true],
+    ]);
+  });
+});
+
+describe("firm rollout and the board", () => {
+  const staff: SessionState = {
+    ...superadmin,
+    principal: { ...superadmin.principal, role: "staff" } as never,
+  };
+  it("pin to the previous version rolls back; clearing it follows the ring again", async () => {
+    await post(body("1.0.0"));
+    await post(body("1.1.0"));
+    await releaseAction(deps, superadmin, { action: "promote", version: "1.0.0", ring: 2 });
+    await releaseAction(deps, superadmin, { action: "promote", version: "1.1.0", ring: 2 });
+    expect((await assignedRelease(db, serverId))?.version).toBe("1.1.0");
+    await releaseAction(deps, superadmin, { action: "rollout", firmId, ring: 2, pin: "1.0.0" });
+    expect((await assignedRelease(db, serverId))?.version).toBe("1.0.0");
+    await releaseAction(deps, superadmin, { action: "rollout", firmId, ring: 2, pin: null });
+    expect((await assignedRelease(db, serverId))?.version).toBe("1.1.0");
+  });
+  it("refuses bad input, unknown versions and firms, and anyone but a superadmin", async () => {
+    await post(body("1.0.0"));
+    const bad = [
+      { action: "rollout", firmId, ring: 3, pin: null },
+      { action: "rollout", firmId, ring: 1, pin: "latest" },
+      { action: "rollout", firmId, ring: 1 },
+      { action: "promote", version: "1.0.0", ring: 2, extra: 1 },
+      { action: "delete", version: "1.0.0" },
+    ];
+    for (const b of bad) await expect(releaseAction(deps, superadmin, b)).rejects.toThrow(/format/);
+    await expect(
+      releaseAction(deps, superadmin, { action: "rollout", firmId, ring: 1, pin: "9.9.9" }),
+    ).rejects.toThrow(/unknown/);
+    await expect(
+      releaseAction(deps, superadmin, { action: "rollout", firmId: uuidv7(), ring: 1, pin: null }),
+    ).rejects.toThrow(/no such firm/);
+    await expect(
+      releaseAction(deps, staff, { action: "rollout", firmId, ring: 0, pin: null }),
+    ).rejects.toBeInstanceOf(AuthError);
+    await expect(releasesBoard(deps, staff)).rejects.toBeInstanceOf(AuthError);
+    await expect(releasesBoard(deps, null)).rejects.toBeInstanceOf(AuthError);
+  });
+  it("board lists rings, servers running or staging each version, and firms", async () => {
+    await post(body("1.0.0"));
+    await post(body("1.1.0"));
+    await promote(deps, superadmin, "1.0.0", 2);
+    await db
+      .update(servers)
+      .set({ agentVersion: "1.0.0", stagedVersion: "1.1.0" })
+      .where(eq(servers.id, serverId));
+    const b = await releasesBoard(deps, superadmin);
+    expect(b.releases).toMatchObject([
+      { version: "1.1.0", rings: [0], running: 0, staged: 1 },
+      { version: "1.0.0", rings: [0, 2], running: 1, staged: 0 },
+    ]);
+    expect(b.firms).toEqual([{ id: firmId, name: "Mehta", status: "trial", ring: 2, pin: null }]);
+    expect(b.allowUnsigned).toBe(false);
   });
 });

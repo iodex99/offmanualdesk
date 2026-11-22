@@ -15,7 +15,8 @@ export default async function FirmsPage() {
       <h1>Firms</h1>
       {staff && (
         <p>
-          <Link href="/fleet">Fleet board</Link> · <Link href="/billing">Billing</Link>
+          <Link href="/fleet">Fleet board</Link> · <Link href="/billing">Billing</Link> ·{" "}
+          <Link href="/releases">Releases</Link>
         </p>
       )}
       {firms.length === 0 ? (

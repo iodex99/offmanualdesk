@@ -23,7 +23,7 @@ Trigger: tag `v*.*.*` (normal release), or *Run workflow* with an existing tag, 
 
 ## 2. Rings
 
-0 = Off Manual lab server, 1 = pilot firm(s), 2 = all. Superadmin promotes in the console. A firm can be pinned to a version (support cases). Security releases can skip straight to ring 2 with a deadline.
+0 = Off Manual lab server, 1 = pilot firm(s), 2 = all. Superadmin promotes on the console's `/releases` page and sets each firm's ring and pin there; a pin to the previous version is the rollback. Only Authenticode-signed releases (manifest `authenticode: true`) leave ring 0 unless the console runs with `OM_ALLOW_UNSIGNED_RELEASES=true` (ADR-057). Security releases can skip straight to ring 2 with a deadline.
 
 ## 3. Staging (Server Agent)
 

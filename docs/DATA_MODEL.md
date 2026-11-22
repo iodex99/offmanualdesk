@@ -30,7 +30,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 ### Releases
 | Table | Key columns |
 | --- | --- |
-| `releases` | version, channel, severity (`normal`/`security`), deadline_at, manifest_url, payload_sha256, key_id, changelog_md, openclaw_version |
+| `releases` | version, channel, severity (`normal`/`security`), deadline_at, manifest_url, payload_sha256, key_id, changelog_md, openclaw_version, authenticode (bool; migration 0008, ADR-057) |
 | `release_rings` | release_id, ring (0/1/2), promoted_at, promoted_by |
 
 ### Usage, audit, support

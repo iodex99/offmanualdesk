@@ -118,10 +118,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Manifest sign/verify/safe-extract library (`apps/server-agent/pkg/manifest`) + `tools/sign-manifest`
 - [x] Console `POST /api/releases` (bearer `OM_RELEASE_REGISTER_TOKEN`, ring 0) and `GET /api/agent/releases` (firm pin, else newest release promoted to a ring ≥ the firm's ring)
 - [ ] Release store (R2, ADR-016) + presigned URLs; workflow passes `manifestUrl`
-- [x] Rings + firm pins (logic + superadmin `promote`); [ ] UI
+- [x] Rings + firm pins (logic + superadmin `promote`) and superadmin `/releases` page (promote, firm ring + pin = rollback, servers running/staged per version); only Authenticode-signed releases leave ring 0 unless `OM_ALLOW_UNSIGNED_RELEASES=true` (ADR-057)
 - [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat); Authenticode check (ADR-055: manifest `authenticode` flag set by the release workflow when it signed; then every .exe/.dll must pass WinVerifyTrust with whole-chain revocation)
 - [x] Desk notice + restart-to-update + security deadline (ADR-048): `update.status` (staged version, severity, deadline; migration 0004), per-employee `desk\version.json`, gateway starts from `versions\<v>`, exit 78 → backup → Doctor → retry; failure restores the snapshot and the previous version; security releases install themselves after the deadline
-- [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); [ ] console-driven rollback = firm pin to the previous version (logic exists), [ ] `current` junction move + Desk/Server Agent binary self-update
+- [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); console-driven rollback = firm pin to the previous version on `/releases`, [ ] `current` junction move + Desk/Server Agent binary self-update
 - [ ] MSI (WiX v4) for first installs
 
 ### M9 Billing
@@ -161,6 +161,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 22:10: Releases page and the signing rule (M8, ADR-057)
+- Changed: console `releases.authenticode` (migration 0008, from the signed manifest at registration), `promote` refuses unsigned releases beyond ring 0 unless `OM_ALLOW_UNSIGNED_RELEASES=true`, `setFirmRollout` (ring 0–2 + pin; unsigned pins only for lab firms), `releaseAction` (strict schema), `releasesBoard` (rings, servers running/staged per version, firms), route `POST /api/admin/releases`, page `/releases` + links.
+- Tests: console 133/133 (unsigned stays in ring 0, lab firm may pin it, allowed by the flag; flag recorded; pin = rollback, clear = follow ring; bad input, unknown version/firm, staff and anonymous refused; board counts); lint, typecheck, `next build` lists the routes. CI for the offboarding archive green; `main` fast-forwarded to 2c61535.
+- Half-done / next: publisher pinning once the signing certificate exists.
 
 ### 2026-11-23 21:40: Offboarding archive and retention purge (F10, ADR-056)
 - Changed: agent migration 0008 (`offboarding` cycles), store methods (DisableEmployee opens a cycle; CancelOffboarding; due/cleanup/purge lists), `internal/offboard` (Archiver: ProfileList registry lookup, zip of `openclaw-state` + `backups` through `os.Root`, removal, purge after retention; audit category `offboarding`; reasons without paths), console `RetentionDays` from the synced policy, ApplyPolicy cancels the cycle when someone is active again, app runs the loop every 15 min.

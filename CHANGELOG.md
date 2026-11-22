@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Console releases page: move a release to the pilot or all firms, set a firm's ring, pin a firm to a version (rollback). Only Authenticode-signed releases leave the lab ring.
 - Guides: employee quick start, firm admin guide and install runbook.
 - Fleet board shows firm status, all component versions, pending updates and recent problem reports per server.
 - Setup: the firm page shows what each server's checks found and how to fix it, and admins can add many people at once by pasting "Name, email" lines; Desk has a "Build client list" task.
