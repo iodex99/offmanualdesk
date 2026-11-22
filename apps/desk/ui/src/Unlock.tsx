@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import { isAgentError, type AgentCall } from "./agent";
 import { Assistant, type StartGateway } from "./Assistant";
+import { useIdleLock, type ReadIdle } from "./idleLock";
 
 interface Hello {
   known: boolean;
@@ -37,10 +38,12 @@ export function Unlock({
   agent,
   onLock,
   startGateway,
+  readIdle,
 }: {
   agent: AgentCall;
   onLock?: () => void;
   startGateway?: StartGateway;
+  readIdle?: ReadIdle;
 }) {
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
   const [hello, setHello] = useState<Hello | null>(null);
@@ -89,6 +92,17 @@ export function Unlock({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const onIdleLocked = useCallback(() => {
+    void refresh();
+    onLock?.();
+  }, [refresh, onLock]);
+  useIdleLock({
+    active: screen.kind === "ready",
+    agent,
+    onLocked: onIdleLocked,
+    ...(readIdle ? { readIdle } : {}),
+  });
 
   async function run(fn: () => Promise<unknown>, after?: (err: unknown) => void) {
     setError(null);

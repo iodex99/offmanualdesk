@@ -8,10 +8,17 @@ mod dpapi;
 mod gateway;
 mod gateway_client;
 mod gateway_manager;
+mod idle;
 mod info;
 
 use std::sync::Arc;
 use tauri::Emitter;
+
+/// Seconds since the last keyboard/mouse input in this Windows session (idle lock, F3).
+#[tauri::command]
+fn idle_seconds() -> Option<u32> {
+    idle::idle_seconds()
+}
 
 #[tauri::command]
 fn app_info() -> info::AppInfo {
@@ -182,6 +189,7 @@ fn main() {
         .manage(Arc::new(chat::ChatState::default()))
         .invoke_handler(tauri::generate_handler![
             app_info,
+            idle_seconds,
             agent_call,
             gateway_start,
             gateway_stop,
