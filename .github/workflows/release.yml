@@ -167,12 +167,14 @@ jobs:
           node -e '
             const fs = require("fs"), path = require("path");
             const lock = require("./skills/registry.lock.json");
-            for (const s of lock.skills) for (const rel of Object.keys(s.files)) {
+            // Only approved skills ship; pending ones stay in the repo for review.
+            for (const s of lock.skills.filter((x) => x.review.status === "approved")) for (const rel of Object.keys(s.files)) {
               const dst = path.join("payload/skills", s.path, rel);
               fs.mkdirSync(path.dirname(dst), { recursive: true });
               fs.copyFileSync(path.join("skills", s.path, rel), dst);
             }
-            fs.copyFileSync("skills/registry.lock.json", "payload/skills/registry.lock.json");'
+            const shipped = { schema: 1, skills: lock.skills.filter((x) => x.review.status === "approved") };
+            fs.writeFileSync("payload/skills/registry.lock.json", JSON.stringify(shipped, null, 2));'
 
       - name: Authenticode (Azure Trusted Signing)
         id: authenticode

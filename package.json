@@ -13,7 +13,7 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test && pnpm run test:hooks && pnpm run test:tools",
     "test:hooks": "node --test \".claude/hooks/test/*.test.mjs\"",
-    "test:tools": "node --test \"tools/release/test/*.test.mjs\"",
+    "test:tools": "node --test \"tools/*/test/*.test.mjs\"",
     "build": "pnpm -r --if-present run build",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test"
   },

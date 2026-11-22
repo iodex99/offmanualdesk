@@ -148,7 +148,8 @@ function walk(dir) {
  * Verifies skills/registry.lock.json against the files on disk (docs/SKILLS.md §2):
  * every listed file exists with the locked SHA-256; no unlisted files under a skill's
  * path or anywhere in vendored/ or offmanual/ (README.md/.gitkeep placeholders aside);
- * only approved skills may be packed. Returns { skills, files } counts or throws with every problem.
+ * only approved or pending skills may be listed, and only approved ones are ever shipped.
+ * Returns { skills, approved, files } counts or throws with every problem.
  */
 export function verifySkillsLock(root) {
   const skillsDir = join(root, "skills");
@@ -160,9 +161,14 @@ export function verifySkillsLock(root) {
   for (const s of lock.skills) {
     if (ids.has(s.id)) problems.push(`duplicate skill id ${s.id}`);
     ids.add(s.id);
-    if (s.review?.status !== "approved")
-      problems.push(`${s.id}: review status is ${s.review?.status ?? "missing"}`);
-    if (!s.review?.reviewer || !s.review?.date) problems.push(`${s.id}: reviewer/date missing`);
+    // "pending" skills are hash-checked but never shipped; "approved" needs a reviewer and date.
+    const status = s.review?.status;
+    if (status !== "approved" && status !== "pending") {
+      problems.push(`${s.id}: review status is ${status ?? "missing"}`);
+    }
+    if (status === "approved" && (!s.review?.reviewer || !s.review?.date)) {
+      problems.push(`${s.id}: reviewer/date missing`);
+    }
     if (!/^(vendored|offmanual)\/[a-z0-9._-]+(__[a-z0-9._-]+)?$/i.test(s.path ?? "")) {
       problems.push(`${s.id}: path must be vendored/<owner>__<slug> or offmanual/<skill>`);
       continue;
@@ -187,5 +193,6 @@ export function verifySkillsLock(root) {
     }
   }
   if (problems.length) throw new Error(`skills lock check failed:\n- ${problems.join("\n- ")}`);
-  return { skills: lock.skills.length, files: listed.size };
+  const approved = lock.skills.filter((s) => s.review?.status === "approved").length;
+  return { skills: lock.skills.length, approved, files: listed.size };
 }

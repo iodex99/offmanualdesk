@@ -1,4 +1,47 @@
 {
   "schema": 1,
-  "skills": []
+  "skills": [
+    {
+      "id": "offmanual/client-directory",
+      "version": "0.1.0",
+      "path": "offmanual/client-directory",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "c5621b578493edeb7e2cad8ec8d3f9f07f078c2a97fe8c7e625488f61def4c3f"
+      }
+    },
+    {
+      "id": "offmanual/compliance-calendar",
+      "version": "0.1.0",
+      "path": "offmanual/compliance-calendar",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "5a8ffa359139baae3730e8940e2f4dba9cbdd59788135805d88f3dd6653b7157"
+      }
+    },
+    {
+      "id": "offmanual/ledger-scrutiny",
+      "version": "0.1.0",
+      "path": "offmanual/ledger-scrutiny",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "d757f182ae35278b137c33b0c8d85739efd92b72fab647f017d33225dcbe77ab"
+      }
+    }
+  ]
 }

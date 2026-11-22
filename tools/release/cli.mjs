@@ -61,7 +61,9 @@ try {
       break;
     case "verify-skills": {
       const r = verifySkillsLock(root);
-      console.log(`OK: ${r.skills} skills, ${r.files} files match skills/registry.lock.json`);
+      console.log(
+        `OK: ${r.skills} skills (${r.approved} approved for release), ${r.files} files match skills/registry.lock.json`,
+      );
       break;
     }
     default:

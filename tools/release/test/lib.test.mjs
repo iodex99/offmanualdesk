@@ -141,7 +141,7 @@ function skillsTree() {
 
 test("verifySkillsLock accepts a matching tree", () => {
   const { root } = skillsTree();
-  assert.deepEqual(verifySkillsLock(root), { skills: 1, files: 1 });
+  assert.deepEqual(verifySkillsLock(root), { skills: 1, approved: 1, files: 1 });
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -156,6 +156,11 @@ test("verifySkillsLock rejects tampering, unlisted files and unapproved skills",
 
   const t3 = skillsTree();
   t3.lock.skills[0].review.status = "rejected";
+  const t3p = skillsTree();
+  t3p.lock.skills[0].review = { status: "pending", reviewer: "", date: "" };
+  writeFileSync(join(t3p.s, "registry.lock.json"), JSON.stringify(t3p.lock));
+  assert.deepEqual(verifySkillsLock(t3p.root), { skills: 1, approved: 0, files: 1 });
+  rmSync(t3p.root, { recursive: true, force: true });
   writeFileSync(join(t3.s, "registry.lock.json"), JSON.stringify(t3.lock));
   assert.throws(() => verifySkillsLock(t3.root), /review status is rejected/);
 
