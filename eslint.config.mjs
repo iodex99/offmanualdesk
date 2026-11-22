@@ -43,7 +43,7 @@ export default tseslint.config(
   },
   {
     // Scripts and hooks are CLIs: printing is their job.
-    files: [".claude/hooks/**/*.mjs", "tools/**/*.mjs", "**/*.config.{js,mjs,ts}"],
+    files: [".claude/hooks/**/*.mjs", "tools/**/*.mjs", "**/scripts/**/*.mjs", "**/*.config.{js,mjs,ts}"],
     rules: { "no-console": "off" },
   },
 );

@@ -438,9 +438,8 @@ func (a *Agent) policyGet(ctx context.Context, c rpc.Caller, p json.RawMessage) 
 	if err != nil {
 		return nil, err
 	}
-	// Firm-level policy arrives from the console in M3; until then, safe defaults:
-	// Telegram off, review required for every listed action.
-	return map[string]any{
+	// Safe defaults until the console's firm policy has synced: Telegram off.
+	out := map[string]any{
 		"packs":          e.Packs,
 		"telegramMode":   "off",
 		"lockTimeoutMax": 15,
@@ -448,5 +447,48 @@ func (a *Agent) policyGet(ctx context.Context, c rpc.Caller, p json.RawMessage) 
 		"dayEndHourIST":  a.cfg.DayEndHourIST,
 		"generatedAt":    rfc(a.now()),
 		"stepUpValidity": int(a.cfg.StepUpValidity / time.Second),
-	}, nil
+		"source":         "defaults",
+	}
+	if fp, ok := a.firmPolicy(ctx); ok {
+		out["telegramMode"] = fp.TelegramMode
+		out["lockTimeoutMax"] = fp.LockTimeoutMaxMin
+		out["stepUpActions"] = fp.StepUpActions
+		out["dayEndHourIST"] = fp.DayEndHourIST
+		out["telegramAllowedPacks"] = fp.TelegramAllowedPacks
+		out["gatewayIdleStopHours"] = fp.GatewayIdleStopHours
+		out["source"] = "console"
+	}
+	return out, nil
+}
+
+// firmPolicy is the console policy as synced into meta "policy_json".
+type firmPolicy struct {
+	LockTimeoutMaxMin    int      `json:"lockTimeoutMaxMin"`
+	DayEndHourIST        int      `json:"dayEndHourIst"`
+	TelegramMode         string   `json:"telegramMode"`
+	TelegramAllowedPacks []string `json:"telegramAllowedPacks"`
+	StepUpActions        []string `json:"stepUpActions"`
+	GatewayIdleStopHours int      `json:"gatewayIdleStopHours"`
+}
+
+func (a *Agent) firmPolicy(ctx context.Context) (firmPolicy, bool) {
+	raw, err := a.store.Meta(ctx, "policy_json")
+	if err != nil {
+		return firmPolicy{}, false
+	}
+	var doc struct {
+		Policy *firmPolicy `json:"policy"`
+	}
+	if json.Unmarshal([]byte(raw), &doc) != nil || doc.Policy == nil {
+		return firmPolicy{}, false
+	}
+	switch doc.Policy.TelegramMode {
+	case "off", "text", "files":
+	default:
+		doc.Policy.TelegramMode = "off" // unknown value: most restrictive
+	}
+	if doc.Policy.DayEndHourIST < 0 || doc.Policy.DayEndHourIST > 23 {
+		doc.Policy.DayEndHourIST = a.cfg.DayEndHourIST
+	}
+	return *doc.Policy, true
 }

@@ -374,3 +374,16 @@ func TestDayEndRollsOver(t *testing.T) {
 		t.Fatalf("after: %v", got)
 	}
 }
+
+func TestPolicyUsesSyncedConsolePolicy(t *testing.T) {
+	e := newEnv(t)
+	_ = e.st.SetMeta(context.Background(), "policy_json", `{"policy":{"lockTimeoutMaxMin":10,"dayEndHourIst":20,"telegramMode":"text","telegramAllowedPacks":["core"],"stepUpActions":["tally.post"],"gatewayIdleStopHours":4}}`)
+	p := e.mustOK(asha, "policy.get", nil)
+	if p["source"] != "console" || p["telegramMode"] != "text" || p["lockTimeoutMax"].(float64) != 10 {
+		t.Fatalf("synced policy not used: %v", p)
+	}
+	_ = e.st.SetMeta(context.Background(), "policy_json", `{"policy":{"telegramMode":"everything"}}`)
+	if p := e.mustOK(asha, "policy.get", nil); p["telegramMode"] != "off" {
+		t.Fatalf("unknown telegram mode must fall back to off: %v", p)
+	}
+}

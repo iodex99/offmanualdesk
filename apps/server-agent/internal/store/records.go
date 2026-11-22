@@ -243,3 +243,36 @@ func unixOrZero(v int64) time.Time {
 	}
 	return time.Unix(v, 0)
 }
+
+// EmployeeSIDs lists every employee SID in the local store.
+func (s *Store) EmployeeSIDs(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT sid FROM employees ORDER BY sid`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var sid string
+		if err := rows.Scan(&sid); err != nil {
+			return nil, err
+		}
+		out = append(out, sid)
+	}
+	return out, rows.Err()
+}
+
+// DisableEmployee marks an employee disabled, ends their day grant and frees their
+// gateway lease (offboarding, ARCHITECTURE F10).
+func (s *Store) DisableEmployee(ctx context.Context, sid string) error {
+	return s.inTx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `UPDATE employees SET status = 'disabled', updated_at = ? WHERE sid = ?`, s.now().Unix(), sid); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM day_grants WHERE sid = ?`, sid); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `DELETE FROM leases WHERE sid = ?`, sid)
+		return err
+	})
+}

@@ -120,3 +120,10 @@ func (s *Store) ExpireLeases(ctx context.Context, cutoff time.Time) (int, error)
 	n, err := res.RowsAffected()
 	return int(n), err
 }
+
+// ActiveLeases counts leases seen since the given time (active seats for heartbeats).
+func (s *Store) ActiveLeases(ctx context.Context, since time.Time) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM leases WHERE last_seen_at >= ?`, since.Unix()).Scan(&n)
+	return n, err
+}

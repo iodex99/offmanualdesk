@@ -29,9 +29,9 @@ Usage:
   server-agent uninstall            Stop and remove the Windows service (run as Administrator)
   server-agent preflight [-share \\fs\Clients] [-json]  Check this server is ready
   server-agent bridge               Relay stdin/stdout to the agent pipe (for Node clients; ADR-034)
+  server-agent enroll -console URL CODE  Register this server with the Off Manual console
   server-agent help                 Show this help
 
-Coming next: enroll <code>.
 `
 
 func main() {
@@ -133,6 +133,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stdout, "\nOverall: %s\n", strings.ToUpper(string(r.Overall)))
 		}
 		if r.Overall == preflight.Fail {
+			return 1
+		}
+		return 0
+	case "enroll":
+		fs := flag.NewFlagSet("enroll", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		consoleURL := fs.String("console", "", "console URL, e.g. https://console.offmanual.in")
+		data := fs.String("data", "", `data directory (default %ProgramData%\OffManual)`)
+		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 1 || *consoleURL == "" {
+			_, _ = fmt.Fprintln(stderr, "usage: server-agent enroll -console URL CODE")
+			return 2
+		}
+		if err := app.Enrol(context.Background(), *data, *consoleURL, fs.Arg(0), stdout); err != nil {
+			_, _ = fmt.Fprintf(stderr, "enrol failed: %v\n", err)
 			return 1
 		}
 		return 0
