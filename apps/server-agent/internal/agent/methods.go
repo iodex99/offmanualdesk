@@ -28,6 +28,8 @@ type helloResult struct {
 	ServicePaused bool   `json:"servicePaused,omitempty"`
 	PausedMessage string `json:"pausedMessage,omitempty"`
 	Notice        string `json:"notice,omitempty"`
+	// Admin: the employee is also a firm admin (sees everyone's access requests, ADR-058).
+	Admin bool `json:"admin,omitempty"`
 }
 
 func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any, error) {
@@ -45,7 +47,11 @@ func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any
 	if err != nil {
 		return nil, err
 	}
-	return helloResult{Known: true, Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
+	admin, err := a.store.IsAdmin(ctx, e.SID)
+	if err != nil {
+		return nil, err
+	}
+	return helloResult{Known: true, Admin: admin, Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
 		PINSet: e.PINHash != "", Locked: st.Locked, DayUnlocked: st.DayUnlocked, LockedUntil: st.LockedUntil, Packs: e.Packs,
 		ServicePaused: st.ServicePaused, PausedMessage: st.PausedMessage, Notice: st.Notice}, nil
 }

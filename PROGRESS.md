@@ -94,7 +94,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Licence (firm status) enforcement (ADR-042): Server Agent `Licence` from synced `firm_status` + last console contact (7-day offline grace), carried in `lock.get` (`servicePaused`, `pausedMessage`, `notice`); guard blocks every turn while paused; Telegram router replies with the plain message
 - [x] Skill packs → tool allowlist (ADR-043): `skills/packs.json` ships in the signed release; guard `before_tool_call` allows only tools of the employee's granted packs (policy.get, cached 30 s, fail closed), Telegram = core + firm-allowed packs; release tooling validates packs.json and skills' pack names; Desk passes `packsPath`. [ ] AD-group grants resolved on the server (needs lab: group names from the caller token), [ ] per-pack skill visibility in the gateway config
 - [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
-- [ ] Desk side: `chat.abort` + Request access button
+- [x] Desk side: Request access (ADR-058): card after a reply for each folder refused since it was sent, note to the firm's admins (local only), Access tab (own requests; admins close them); no `chat.abort` needed (guard blocks further tools)
 - [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; [ ] Desk Review tab (needs the Rust gateway client), step-up on approve, Tally/email actions
 - [x] Audit events to Server Agent (access denials)
 - [x] Telegram policy enforcement (off / text / files) in the Server Agent router; replies stripped of encoded dumps and local links (security review #5)
@@ -161,6 +161,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 22:40: Request access (M5, ADR-058)
+- Changed: agent migration 0009 (`access_requests`), store (RecentDenials from the guard's local audit rows, CreateAccessRequest copies the path from the caller's own row, ≤ 20 open, AccessRequests, Resolve, IsAdmin), pipe methods `access.denials|request|list|resolve` (shared IPC schema, Desk allowlist), `session.hello` carries `admin`; Desk `AccessRequests.tsx` (DenialCards after each reply, Access tab), Chat `onRunEnd`.
+- Tests: Go (own denials only, someone else's denial refused, note bounds, extra `target` field refused, single request per denial, admin sees all and closes, non-admin can't, closed twice, week/day windows, 20-open cap, hello admin flag); desk 62/62 (cards only for new unrequested denials, only id + note sent, plain error, admin close, employee view, Assistant end to end); `pnpm run check` green; golangci-lint both OSes 0; cargo fmt. CI for the releases page green; `main` at 65f20ff.
+- Half-done / next: count of access requests in the weekly digest (audit category counts already uploaded).
 
 ### 2026-11-23 22:10: Releases page and the signing rule (M8, ADR-057)
 - Changed: console `releases.authenticode` (migration 0008, from the signed manifest at registration), `promote` refuses unsigned releases beyond ring 0 unless `OM_ALLOW_UNSIGNED_RELEASES=true`, `setFirmRollout` (ring 0–2 + pin; unsigned pins only for lab firms), `releaseAction` (strict schema), `releasesBoard` (rings, servers running/staged per version, firms), route `POST /api/admin/releases`, page `/releases` + links.

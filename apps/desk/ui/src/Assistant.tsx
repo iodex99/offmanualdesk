@@ -2,6 +2,7 @@
 // (ARCHITECTURE F4). The token never reaches the UI; Rust keeps it.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { AccessRequests, DenialCards } from "./AccessRequests";
 import { callAgent, type AgentCall } from "./agent";
 import { Chat, type QueuedMessage } from "./Chat";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
@@ -70,7 +71,9 @@ export function Assistant({
     [start, control],
   );
   const kept = useMemo(() => keptGateway(api, keeper), [api, keeper]);
-  const [tab, setTab] = useState<"chat" | "tasks" | "review" | "telegram" | "help">("chat");
+  const [tab, setTab] = useState<"chat" | "tasks" | "review" | "access" | "telegram" | "help">("chat");
+  // After each reply, look for folders the assistant was refused (Request access, ADR-058).
+  const [denialsSince, setDenialsSince] = useState<number | null>(null);
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -131,6 +134,9 @@ export function Assistant({
             <button role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>
               Review
             </button>
+            <button role="tab" aria-selected={tab === "access"} onClick={() => setTab("access")}>
+              Access
+            </button>
             <button role="tab" aria-selected={tab === "telegram"} onClick={() => setTab("telegram")}>
               Telegram
             </button>
@@ -138,7 +144,10 @@ export function Assistant({
               Report a problem
             </button>
           </nav>
-          {tab === "chat" && <Chat api={kept} queued={queued} />}
+          {tab === "chat" && denialsSince !== null && (
+            <DenialCards key={denialsSince} agent={agent} since={denialsSince} />
+          )}
+          {tab === "chat" && <Chat api={kept} queued={queued} onRunEnd={setDenialsSince} />}
           {tab === "tasks" && (
             <TaskButtons
               onRun={(text) => {
@@ -148,6 +157,7 @@ export function Assistant({
             />
           )}
           {tab === "review" && <Review api={kept} agent={agent} />}
+          {tab === "access" && <AccessRequests agent={agent} />}
           {tab === "telegram" && <TelegramLink agent={agent} />}
           {tab === "help" && <ReportProblem agent={agent} />}
         </div>

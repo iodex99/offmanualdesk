@@ -102,6 +102,10 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("usage.add", a.usageAdd)
 	srv.Handle("notices.list", a.noticesList)
 	srv.Handle("notices.ack", a.noticesAck)
+	srv.Handle("access.denials", a.accessDenials)
+	srv.Handle("access.request", a.accessRequest)
+	srv.Handle("access.list", a.accessList)
+	srv.Handle("access.resolve", a.accessResolve)
 }
 
 // ---- errors in plain words ----

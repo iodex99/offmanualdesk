@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Request access: when the assistant is refused a folder, Desk offers a note to the firm's admins, who see and close requests in their own Desk. Folder names stay on the firm's server.
 - Console releases page: move a release to the pilot or all firms, set a firm's ring, pin a firm to a version (rollback). Only Authenticode-signed releases leave the lab ring.
 - Guides: employee quick start, firm admin guide and install runbook.
 - Fleet board shows firm status, all component versions, pending updates and recent problem reports per server.

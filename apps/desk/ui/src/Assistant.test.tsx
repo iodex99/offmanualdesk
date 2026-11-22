@@ -6,6 +6,8 @@ import { fakeGateway } from "./testGateway";
 
 afterEach(cleanup);
 
+const MEHTA = String.raw`C:\Clients\Mehta`;
+
 describe("Assistant", () => {
   it("shows starting, then ready", async () => {
     render(
@@ -54,5 +56,23 @@ describe("Assistant keeper", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+  it("after a reply, offers Request access for a folder the assistant was refused (ADR-058)", async () => {
+    const g = fakeGateway();
+    g.state.eventsDuringSend = [{ state: "final", deltaText: "", replace: false, errorMessage: "" }];
+    const agent = vi.fn(async (method: string) => {
+      if (method === "access.denials")
+        return {
+          denials: [{ id: 4, at: new Date().toISOString(), target: MEHTA, requested: false }],
+        };
+      return {};
+    });
+    render(
+      <Assistant start={() => Promise.resolve({ running: true, port: 18800 })} api={g.api} agent={agent} />,
+    );
+    fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Open Mehta's ledger" } });
+    fireEvent.click(screen.getByText("Send"));
+    expect(await screen.findByText("Request access")).toBeTruthy();
+    expect(screen.getByText(MEHTA)).toBeTruthy();
   });
 });

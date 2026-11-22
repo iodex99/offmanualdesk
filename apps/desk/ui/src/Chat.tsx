@@ -15,13 +15,25 @@ export interface QueuedMessage {
   text: string;
 }
 
-export function Chat({ api, queued }: { api: GatewayApi; queued?: QueuedMessage | null }) {
+export function Chat({
+  api,
+  queued,
+  onRunEnd,
+}: {
+  api: GatewayApi;
+  queued?: QueuedMessage | null;
+  /** Called when a reply ends, with the time (ms) the message was sent. */
+  onRunEnd?: (startedAt: number) => void;
+}) {
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState("");
   const [runId, setRunId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const runRef = useRef<string | null>(null);
+  const startedAt = useRef(0);
+  const endRef = useRef(onRunEnd);
+  endRef.current = onRunEnd;
   // Events can arrive before chat_send returns the run id; hold them until then.
   const early = useRef<ChatEvent[]>([]);
 
@@ -48,6 +60,7 @@ export function Chat({ api, queued }: { api: GatewayApi; queued?: QueuedMessage 
       runRef.current = null;
       setRunId(null);
       setBusy(false);
+      endRef.current?.(startedAt.current);
     }
   };
 
@@ -77,6 +90,7 @@ export function Chat({ api, queued }: { api: GatewayApi; queued?: QueuedMessage 
     if (!text || busy) return;
     setError("");
     setBusy(true);
+    startedAt.current = Date.now();
     early.current = [];
     setLines((prev) => [...prev, { who: "you", text }]);
     if (override === undefined) setDraft("");

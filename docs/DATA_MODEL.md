@@ -74,6 +74,7 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 | `usage` | date, sid, input_tokens, output_tokens, turns, tasks_completed |
 | `notices` | id, kind (`update`/`billing`/`admin`), audience (`all`/`admins`), title, body, created_at, ack (per sid in `notice_acks`); mirrors the console's active list each sync (ADR-052). `employees.is_admin` (migration 0007) decides who sees `admins` notices |
 | `usage_daily` | sid, date (IST), turns, input_tokens, output_tokens (migration 0006; from the guard's `usage.add`; uploaded once per complete day, ADR-051) |
+| `access_requests` | id, sid, audit_id (unique; the guard's access_denied row), target (path, local only), note (≤ 300), created_at, status (`open`/`done`/`declined`), resolved_by, resolved_at (migration 0009, ADR-058) |
 | `offboarding` | id, sid, disabled_at, cancelled_at, archive_name, archived_at, cleaned_at, purged_at, attempts, last_error (migration 0008; one open cycle per SID, opened by `DisableEmployee`, cancelled when the employee is active again; ADR-056) |
 | `updates` | version, state (`available`/`downloading`/`staged`/`failed`/`active`), verified_at, error, severity (`normal`/`security`), deadline_at (migration 0004) |
 

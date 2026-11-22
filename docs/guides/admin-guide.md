@@ -53,6 +53,13 @@ attention.
 Download any issued invoice as a PDF. You also get an email when an invoice is issued, a week before it's due,
 on the due date and if it becomes overdue, plus a Monday summary of how your firm used Off Manual.
 
+## Access requests
+
+When someone's assistant is refused a folder, they can send you a request from Desk. If you're a firm admin,
+open the **Access** tab in your own Desk: it lists who asked, which folder and why. Off Manual never changes
+folder rights: give access in Windows (folder Properties → Security, or your usual AD group), then click
+**Done**, or **Decline**. Requests stay on your server; Off Manual's cloud never sees the folder names.
+
 ## What Off Manual can and can't see
 
 - It works **as each employee's Windows account**, so it can only open what that person can open on your file

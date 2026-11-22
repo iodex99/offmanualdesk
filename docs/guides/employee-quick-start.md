@@ -34,8 +34,9 @@ opens what your Windows account can open, and anything that can't be undone wait
 
 - **Files stay in the office.** Your files, chats and prompts never go to Off Manual. Only numbers (how many
   questions, which version) do.
-- **"You don't have permission"** means your Windows account can't open that folder. Off Manual won't look for
-  another copy. Ask your admin for access.
+- **"You are not authorised to open …"** means your Windows account can't open that folder. Off Manual won't look
+  for another copy. Click **Request access** under the reply, say in a few words why you need it, and send. Your
+  admin sees it in their Desk; the **Access** tab shows you the answer.
 - **Don't put client details in a problem report.** We don't need names, PAN or amounts to help.
 - **Updates.** When Desk says "Off Manual … is ready. Restart to update", click it when it suits you; your
   assistant restarts for a few seconds. If an update ever fails, Desk goes back to the previous version by itself.
