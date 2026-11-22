@@ -8,7 +8,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 
 ## Next step
 
-1. Merge `m4-desk` to `main` (fast-forward; CI green).
+1. `main` = `m4-desk` at 9501d19 (fast-forwarded 2026-11-23 after CI green); keep working on `m4-desk` and fast-forward after each green run.
 2. Unblocked next: `update.status/switch` + restart-to-update (ADR-025; Doctor + backup pieces exist in Desk); gateway idle stop + crash restart; admin UI pages (employees, invites, billing, policy incl. `stepUpActions`, authenticator reset); invoice PDF; invite email behind an injectable sender (Resend key later); remaining India-pack skills (pending CA review).
 3. When lab output arrives: `/lab-result L<n>` for each; promote/supersede the lab-dependent ADRs (020, 021, 022, 024, 040 session key, 041 tool registration, 043 tool list); flip [A] markers in ARCHITECTURE.md.
 
