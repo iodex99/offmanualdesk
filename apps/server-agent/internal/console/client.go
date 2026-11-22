@@ -212,3 +212,27 @@ func (c *Client) SendAuditSummary(ctx context.Context, date string, counts []Aud
 		map[string]any{"date": date, "counts": counts}, nil)
 	return err
 }
+
+// AssignedRelease is the console's answer to GET /api/agent/releases.
+type AssignedRelease struct {
+	Version       string `json:"version"`
+	Severity      string `json:"severity"`
+	ManifestURL   string `json:"manifestUrl"`
+	PayloadSHA256 string `json:"payloadSha256"`
+	KeyID         string `json:"keyId"`
+}
+
+// FetchRelease asks which release this server should stage (nil = none).
+func (c *Client) FetchRelease(ctx context.Context) (*AssignedRelease, error) {
+	_, _, body, err := c.do(ctx, c.ServerID, c.Key, http.MethodGet, "/api/agent/releases", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Release *AssignedRelease `json:"release"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, err
+	}
+	return out.Release, nil
+}

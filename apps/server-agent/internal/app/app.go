@@ -80,7 +80,7 @@ func Run(ctx context.Context, o Options) error {
 	if err != nil {
 		return err
 	}
-	startSync(ctx, st, prot, log)
+	startSync(ctx, st, prot, log, o.DataDir)
 	srv := rpc.NewServer(log)
 	agent.New(st, prot, o.Agent, log).Register(srv)
 

@@ -276,3 +276,39 @@ func (s *Store) DisableEmployee(ctx context.Context, sid string) error {
 		return err
 	})
 }
+
+// SetUpdateState records staging progress for a release version.
+func (s *Store) SetUpdateState(ctx context.Context, version, state, errMsg string) error {
+	var verified any
+	if state == "staged" {
+		verified = s.now().Unix()
+	}
+	var e any
+	if errMsg != "" {
+		e = errMsg
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO updates (version, state, verified_at, error) VALUES (?, ?, ?, ?)
+		ON CONFLICT (version) DO UPDATE SET state = excluded.state, verified_at = excluded.verified_at, error = excluded.error`,
+		version, state, verified, e)
+	return err
+}
+
+// UpdateState returns the recorded state of a version ("" if none).
+func (s *Store) UpdateState(ctx context.Context, version string) (string, error) {
+	var st string
+	err := s.db.QueryRowContext(ctx, `SELECT state FROM updates WHERE version = ?`, version).Scan(&st)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return st, err
+}
+
+// StagedVersion returns the newest version in state "staged" ("" if none).
+func (s *Store) StagedVersion(ctx context.Context) (string, error) {
+	var v string
+	err := s.db.QueryRowContext(ctx, `SELECT version FROM updates WHERE state = 'staged' ORDER BY verified_at DESC LIMIT 1`).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return v, err
+}

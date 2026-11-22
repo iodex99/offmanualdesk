@@ -20,6 +20,7 @@ import {
 import type { DB } from "./db";
 import { canonical, HEADERS, verifyAgentRequest, verifySignature, type NonceStore } from "./agent-auth";
 import { serverPublicId, serverUuid, uuidv7 } from "./ids";
+import { assignedRelease } from "./releases";
 
 export interface Deps {
   db: DB;
@@ -301,6 +302,25 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
     },
     { etag },
   );
+}
+
+// ---- GET /api/agent/releases ----
+
+export async function agentReleases(deps: Deps, req: Request): Promise<Response> {
+  const a = await authenticate(deps, req);
+  if (!a.ok) return a.res;
+  const r = await assignedRelease(deps.db, a.serverUuid);
+  if (!r) return json(200, { release: null });
+  return json(200, {
+    release: {
+      version: r.version,
+      severity: r.severity,
+      deadlineAt: r.deadlineAt?.toISOString() ?? null,
+      manifestUrl: r.manifestUrl,
+      payloadSha256: r.payloadSha256,
+      keyId: r.keyId,
+    },
+  });
 }
 
 // ---- POST /api/agent/audit-summary ----

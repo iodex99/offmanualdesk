@@ -18,7 +18,9 @@ import (
 	"offmanual/desk/server-agent/internal/preflight"
 	"offmanual/desk/server-agent/internal/secrets"
 	"offmanual/desk/server-agent/internal/store"
+	"offmanual/desk/server-agent/internal/update"
 	"offmanual/desk/server-agent/internal/version"
+	"offmanual/desk/server-agent/pkg/manifest"
 )
 
 // Enrol registers this server with the console using a one-time code (F1 step 3).
@@ -119,7 +121,7 @@ func loadIdentity(ctx context.Context, st *store.Store, prot secrets.Protector) 
 }
 
 // startSync launches the console loop if enrolled.
-func startSync(ctx context.Context, st *store.Store, prot secrets.Protector, log *slog.Logger) {
+func startSync(ctx context.Context, st *store.Store, prot secrets.Protector, log *slog.Logger, dataDir string) {
 	c, err := loadIdentity(ctx, st, prot)
 	if err != nil {
 		log.Error("console identity unavailable", "error", err.Error())
@@ -129,10 +131,36 @@ func startSync(ctx context.Context, st *store.Store, prot secrets.Protector, log
 		log.Info("not enrolled with the console yet; run: server-agent enroll -console URL CODE")
 		return
 	}
-	s := &console.Syncer{Client: c, Store: st, Log: log, AgentVersion: version.Get().Version,
+	keys, err := manifest.TrustedKeys()
+	if err != nil {
+		log.Error("release keys unreadable; updates disabled", "error", err.Error())
+	}
+	var stager *update.Stager
+	if err == nil {
+		stager = &update.Stager{
+			VersionsDir:  filepath.Join(installRoot(), "versions"),
+			StagingDir:   filepath.Join(dataDir, "staging"),
+			Keys:         keys,
+			AgentVersion: version.Get().Version,
+			States:       st,
+		}
+	}
+	s := &console.Syncer{Client: c, Store: st, Log: log, AgentVersion: version.Get().Version, Stager: stager,
 		Seats: func(ctx context.Context) int {
 			n, _ := st.ActiveLeases(ctx, time.Now().Add(-time.Hour))
 			return n
 		}}
 	go s.Run(ctx)
+}
+
+// installRoot is C:\Program Files\OffManual (OFFMANUAL_INSTALL_ROOT overrides for development).
+func installRoot() string {
+	if v := os.Getenv("OFFMANUAL_INSTALL_ROOT"); v != "" {
+		return v
+	}
+	pf := os.Getenv("ProgramFiles")
+	if pf == "" {
+		pf = `C:\Program Files`
+	}
+	return filepath.Join(pf, "OffManual")
 }

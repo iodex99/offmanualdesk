@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"offmanual/desk/server-agent/internal/store"
+	"offmanual/desk/server-agent/internal/update"
 )
 
 // Meta keys in agent.db.
@@ -29,6 +31,9 @@ type Syncer struct {
 	Interval     time.Duration
 	AgentVersion string
 	Seats        func(context.Context) int
+	// Stager stages the assigned release in the background (nil disables updates).
+	Stager  *update.Stager
+	staging atomic.Bool
 }
 
 var ist = time.FixedZone("IST", 5*3600+1800)
@@ -57,7 +62,8 @@ func (s *Syncer) Once(ctx context.Context) {
 	if s.Seats != nil {
 		seats = s.Seats(ctx)
 	}
-	reply, err := s.Client.SendHeartbeat(ctx, Heartbeat{AgentVersion: s.AgentVersion, Health: "green", ActiveSeats: seats})
+	staged, _ := s.Store.StagedVersion(ctx)
+	reply, err := s.Client.SendHeartbeat(ctx, Heartbeat{AgentVersion: s.AgentVersion, Health: "green", ActiveSeats: seats, StagedVersion: staged})
 	if err != nil {
 		s.Log.Warn("heartbeat failed", "error", err.Error())
 		return
@@ -70,6 +76,35 @@ func (s *Syncer) Once(ctx context.Context) {
 	if err := s.uploadAudit(ctx); err != nil {
 		s.Log.Warn("audit summary upload failed", "error", err.Error())
 	}
+	s.maybeStage(ctx)
+}
+
+// maybeStage fetches the assigned release and stages it once, in the background.
+func (s *Syncer) maybeStage(ctx context.Context) {
+	if s.Stager == nil || !s.staging.CompareAndSwap(false, true) {
+		return
+	}
+	rel, err := s.Client.FetchRelease(ctx)
+	if err != nil || rel == nil || rel.Version == s.AgentVersion {
+		s.staging.Store(false)
+		if err != nil {
+			s.Log.Warn("release check failed", "error", err.Error())
+		}
+		return
+	}
+	if st, _ := s.Store.UpdateState(ctx, rel.Version); st == "staged" || st == "active" {
+		s.staging.Store(false)
+		return
+	}
+	go func() {
+		defer s.staging.Store(false)
+		err := s.Stager.Stage(ctx, update.Release{Version: rel.Version, ManifestURL: rel.ManifestURL, PayloadSHA256: rel.PayloadSHA256, KeyID: rel.KeyID})
+		if err != nil {
+			s.Log.Error("staging failed", "version", rel.Version, "error", err.Error())
+			return
+		}
+		s.Log.Info("release staged", "version", rel.Version)
+	}()
 }
 
 func (s *Syncer) syncPolicy(ctx context.Context) error {
