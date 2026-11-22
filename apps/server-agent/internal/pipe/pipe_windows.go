@@ -192,7 +192,6 @@ func currentUserSID() (string, error) {
 	return u.User.Sid.String(), nil
 }
 
-
 func quiet(err error) error {
 	if err == nil || errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 		return nil

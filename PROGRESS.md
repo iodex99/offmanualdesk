@@ -149,6 +149,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Half-done / next: …
 -->
 
+### 2026-11-22 21:00: CI service round trip fixes
+- Changed: CI on the real LocalSystem service confirmed GENERIC_WRITE clients are refused; the bridge timed out because PowerShell appends a blank line and the server sends no reply for blank lines. `lineCounter` (now in portable `pipe.go`, unit-tested) counts only non-blank request lines.
+- Tests: pipe tests pass; golangci-lint linux clean.
+- Lesson: never pipe a check through `tail` inside an `&&` chain: it hides the exit code.
+
 ### 2026-11-22 20:45: Agent ↔ console signed requests
 - Changed: ADR-013 made concrete (ADR-035): canonical string `OM-AGENT-1\nMETHOD\npath?query\nserverId\nts\nnonce\nsha256(body)`, headers X-OM-Server/Timestamp/Nonce/Signature, ed25519. Go `internal/console/sign.go`; TS `apps/console/lib/agent-auth.ts` with clock window, nonce store (signature checked before the nonce is consumed). Golden vector `packages/shared-schema/fixtures/agent-signature.json` (test seed 1..32) verified by both; `.gitleaks.toml` allowlists that one file. Test caught a nonce-purge bug (wall clock vs request time), fixed.
 - Tests: Go console pkg 89.5%; console vitest 12/12.
