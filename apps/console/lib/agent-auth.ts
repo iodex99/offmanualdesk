@@ -92,7 +92,12 @@ export async function verifyAgentRequest(input: {
   const msg = canonical(input.method, input.pathAndQuery, serverId, ts, nonce, input.body);
   if (!verifySignature(key, msg, signature)) return { ok: false, status: 401, reason: "bad signature" };
   // Only after the signature checks out, so attackers can't burn nonces.
-  const fresh = await input.nonces.useOnce(serverId, nonce, new Date((ts + MAX_SKEW_SECONDS) * 1000), input.now);
+  const fresh = await input.nonces.useOnce(
+    serverId,
+    nonce,
+    new Date((ts + MAX_SKEW_SECONDS) * 1000),
+    input.now,
+  );
   if (!fresh) return { ok: false, status: 401, reason: "replayed request" };
   return { ok: true, serverId };
 }
