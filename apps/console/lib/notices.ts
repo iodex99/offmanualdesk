@@ -45,6 +45,7 @@ export async function postNotice(deps: NoticeDeps, s: SessionState | null, input
     startsAt: deps.now(),
     endsAt: n.endsAt ? new Date(n.endsAt) : null,
     createdBy: p.userId || null,
+    createdAt: deps.now(), // app clock, so "created since" checks match (ADR-053)
   });
   return { id };
 }
@@ -78,7 +79,7 @@ async function createOnce(
 ): Promise<boolean> {
   const rows = await db
     .insert(notices)
-    .values({ id: uuidv7(), kind: "billing", audience: "admins", ...v })
+    .values({ id: uuidv7(), kind: "billing", audience: "admins", createdAt: v.startsAt, ...v })
     .onConflictDoNothing()
     .returning({ id: notices.id });
   return rows.length === 1;

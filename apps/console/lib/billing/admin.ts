@@ -3,6 +3,8 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { firms, invoiceLines, invoices, ladderOverrides } from "@/db/schema";
+import { emailBillingNotices } from "../admin-mail";
+import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
 import { renderInvoicePdf } from "./pdf";
 import { InputError } from "../admin";
@@ -53,7 +55,7 @@ const actionSchema = z.discriminatedUnion("action", [
 
 /** POST /api/admin/billing */
 export async function billingAction(
-  deps: BillingDeps,
+  deps: BillingDeps & { mailer?: Mailer | null },
   cfg: BillingConfig,
   s: SessionState | null,
   body: unknown,
@@ -68,7 +70,9 @@ export async function billingAction(
         return await runMonth(deps, cfg, a.year, a.month);
       case "issue": {
         const number = await issueInvoice(deps, cfg, a.invoiceId);
+        const since = deps.now();
         await billingNotices(deps); // "invoice issued" notice for the firm's admins (ADR-052)
+        await emailBillingNotices(deps, since); // and its email copy (ADR-053)
         return { number };
       }
       case "payment":

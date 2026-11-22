@@ -1,13 +1,14 @@
 import { dailyBilling } from "@/lib/billing/cron";
 import { billingConfigFromEnv } from "@/lib/billing/run";
 import { getDb } from "@/lib/db";
+import { mailerFromEnv } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export function GET(req: Request): Promise<Response> {
   return dailyBilling(
-    { db: getDb(), now: () => new Date() },
+    { db: getDb(), now: () => new Date(), mailer: mailerFromEnv() },
     billingConfigFromEnv(),
     process.env.CRON_SECRET,
     req,

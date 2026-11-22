@@ -503,3 +503,16 @@ export const notices = pgTable("notices", {
   createdBy: uuid("created_by"),
   createdAt: createdAt(),
 });
+
+/** Weekly partner digest sent per firm and week (M10, ADR-053). */
+export const digestRuns = pgTable(
+  "digest_runs",
+  {
+    firmId: uuid("firm_id")
+      .notNull()
+      .references(() => firms.id),
+    weekStart: date("week_start").notNull(), // Monday, IST
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.firmId, t.weekStart] })],
+);

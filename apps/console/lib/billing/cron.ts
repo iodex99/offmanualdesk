@@ -4,6 +4,8 @@
 // drafts for the previous month. Issuing stays a superadmin action.
 import { timingSafeEqual } from "node:crypto";
 import { firms } from "@/db/schema";
+import { emailBillingNotices, weeklyDigests } from "../admin-mail";
+import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
 import { istDate, refreshFirmStatus, runMonth, type BillingConfig, type BillingDeps } from "./run";
 
@@ -21,7 +23,7 @@ export function previousMonth(today: string): { year: number; month: number } {
 }
 
 export async function dailyBilling(
-  deps: BillingDeps,
+  deps: BillingDeps & { mailer?: Mailer | null },
   cfg: BillingConfig,
   secret: string | undefined,
   req: Request,
@@ -38,7 +40,11 @@ export async function dailyBilling(
     const { year, month } = previousMonth(today);
     drafts = (await runMonth(deps, cfg, year, month)).drafts;
   }
+  const since = deps.now();
   const noticesCreated = await billingNotices(deps); // due soon / due today / overdue (ADR-052)
+  const emailsSent = await emailBillingNotices(deps, since); // copies to firm admins (ADR-053)
+  // Weekly partner digest on Mondays (IST), last week's counts (ADR-053).
+  const digests = new Date(`${today}T00:00:00Z`).getUTCDay() === 1 ? await weeklyDigests(deps) : 0;
   const ids = await deps.db.select({ id: firms.id }).from(firms);
   let changed = 0;
   for (const f of ids) if ((await refreshFirmStatus(deps, f.id)) !== null) changed++;
@@ -48,5 +54,7 @@ export async function dailyBilling(
     firmsChecked: ids.length,
     firmsWithContract: changed,
     noticesCreated,
+    emailsSent,
+    digests,
   });
 }

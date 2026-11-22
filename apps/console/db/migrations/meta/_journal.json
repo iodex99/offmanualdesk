@@ -50,6 +50,13 @@
       "when": 1795361142134,
       "tag": "0006_orange_lethal_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795361874421,
+      "tag": "0007_smart_silver_sable",
+      "breakpoints": true
     }
   ]
 }
