@@ -156,7 +156,7 @@ Template:
 
 ## ADR-021: Desk talks to its gateway from the Rust side with the full device-auth handshake; loopback rate limiting on
 - Date: 2026-11-22
-- Status: Proposed
+- Status: Proposed (option A implemented 2026-11-23 in `apps/desk/src-tauri/src/gateway_client.rs`; client.id/mode and session key still wait on L2)
 - Context: Gateway WS needs token auth plus an Ed25519 device identity signing `connect.challenge`; `client.id` is a closed enum; browser-origin connects are origin-checked and get no local pairing (a Tauri WebView origin likely fails); a shared token is full `operator.admin`; `gateway.auth.rateLimit.exemptLoopback` defaults to true, and on an RDS host every user is "loopback", so token guessing would be unlimited (OPENCLAW_NOTES.md §3).
 - Options: A implement protocol v4 in Desk's Rust side (no Origin header) / B a small Node sidecar embedding `@openclaw/gateway-client` 2026.11.6 / C `@openclaw/gateway-client/browser` in the WebView with an allowlisted origin
 - Decision (recommended): A (B if A proves slow to build). Whatever the option, always: `exemptLoopback: false`, `controlUi.enabled: false`, `terminal.enabled: false`, protocol pinned to 4, device key DPAPI-protected per user, 256-bit random token per lease.
@@ -319,3 +319,11 @@ Template:
 - Options: A block built-ins + replay via `/tools/invoke` (doesn't work for the tools that matter) / B guard-owned proposal tools whose `execute` only stores a proposal; the guard runs the stored, validated action itself on approval; built-in deletes blocked with a pointer to the tool / C `requireApproval` prompts (synchronous, ≤ 10 min, no list)
 - Decision: B. Store is `review.json` under the guard's state dir (no SQLite dependency inside the gateway; tiny data). Decisions come only through gateway methods `offmanual.review.list|decide` with scope `operator.approvals`; the agent can't reach them (`gateway` tool denied). Each approval is claimed atomically and runs once; an item found mid-execution at startup is marked failed, never re-run. Edits are re-validated by the action's parser. v1 action: `delete_files` (absolute or UNC files, ≤ 50, no folders, no wildcards). Tally voucher and client email become further actions in their packs.
 - Consequences: Every irreversible capability Off Manual adds must be a proposal action (SKILLS.md packs list them). The delete-pattern block on built-ins is a heuristic (defence in depth), not the guarantee; the guarantee is that our own irreversible actions only exist as proposals and Windows rights bound everything else (rule 2).
+
+## ADR-042: Licence enforced on the server from synced firm status, fail closed
+- Date: 2026-11-23
+- Status: Accepted
+- Context: BILLING §6 defines the ladder and a 7-day offline grace; the console sends `firmStatus` with every heartbeat reply. Employees reach the assistant through Desk (guard `before_agent_run`) and Telegram (Server Agent relay).
+- Options: A guard reads firm status itself / B Server Agent derives one licence result and serves it inside `lock.get` (one round trip, already cached ≤ 5 s by the guard) and to the Telegram router
+- Decision: B. Rules: never synced or no contact time → not activated (paused); `suspended`/`closed` → paused; unknown status or unparseable time → paused (fail closed); last contact older than 7 days → paused (offline); `overdue`/`restricted` → usable with a notice; `trial`/`active` → usable. The licence check runs before every lock rule, so a Telegram unlock window doesn't bypass it. The grace is a constant (7 days) until contracts carry `offline_grace_days` to the server.
+- Consequences: A new server is unusable until its first successful heartbeat (expected: enrolment does one). Firm admins are paused too in v1 (BILLING says Desk opens for admins only); needs admin identity on the server.

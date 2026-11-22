@@ -52,4 +52,6 @@ Admins' seats can be marked free via an `adjustment` line.
 
 `active` → due date passes → `overdue` (banner only) → `grace_days` pass → `restricted` (no new seats or packs) → `suspend_after_days` pass → `suspended` (Desk opens for firm admins only; no data deleted; Telegram replies "service paused, contact your admin"). Superadmin can override any state for a firm with a reason (logged).
 
+Enforcement on the server (ADR-042): the Server Agent derives the licence from the `firmStatus` it gets with each heartbeat and the time of the last successful contact; `lock.get` returns `servicePaused`/`pausedMessage`/`notice`; the guard refuses turns while paused and the Telegram router replies with the same message. v1 pauses all employees when suspended (the firm-admin exception needs admin identity on the server: later).
+
 Offline rule: if the Server Agent can't reach the console, the licence keeps working for `offline_grace_days` (default 7) before any ladder step applies.

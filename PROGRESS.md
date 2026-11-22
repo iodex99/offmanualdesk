@@ -85,15 +85,15 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
 - [ ] Gateway: listener check (ADR-020), idle stop, doctor on exit code 78, restart policy
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
-- [ ] Gateway client in Rust for Desk's chat panel (ADR-021): port of the Go client
-- [ ] Docked chat panel + global hotkey
+- [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
+- [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
 - [ ] Explorer right-click "Ask Off Manual"
 - [ ] Notifications area (updates, billing, admin)
 
 ### M5 Guard plugin
 - [x] Packaging + SDK typing: `openclaw.plugin.json`, `dist/plugin.js`, `before_install` block (M1)
 - [x] Lock enforcement on every inbound turn (`before_agent_run` via `server-agent bridge`, 5 s cache, fail closed, Telegram window) 
-- [ ] Licence (firm status) enforcement
+- [x] Licence (firm status) enforcement (ADR-042): Server Agent `Licence` from synced `firm_status` + last console contact (7-day offline grace), carried in `lock.get` (`servicePaused`, `pausedMessage`, `notice`); guard blocks every turn while paused; Telegram router replies with the plain message
 - [ ] Skill packs from policy (AD groups + console overrides)
 - [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
 - [ ] Desk side: `chat.abort` + Request access button
@@ -104,7 +104,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 ### M6 Telegram
 - [x] Server Agent long-polls the firm bot (Bot API getUpdates/sendMessage), routes by linked Telegram user ID, persists the offset, ignores groups/bots, text-only by default, 4096-char chunking (`internal/telegram`)
 - [x] Relay: Server Agent as gateway client (ADR-023/040) through `internal/gateway`; only to a gateway Desk started (fresh lease), else "Open Desk" (ADR-026)
-- [x] Link via deep link one-time code (`telegram.linkStart`, hashed, 10 min, single use; offboarding unlinks)
+- [x] Link via deep link one-time code (`telegram.linkStart`, hashed, 10 min, single use; offboarding unlinks); Desk Telegram tab shows the link as a QR code for the phone (`TelegramLink.tsx`)
 - [x] `/unlock <code>` opens a Telegram-only window (firm `telegram_unlock_max_min`, default 60); [ ] inline Approve button for Desk unlock
 - [ ] ~~Wake stopped gateway on message~~ out of v1 if ADR-026 is accepted
 
@@ -134,7 +134,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
 - [ ] Notification engine + Desk banners
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
-- [ ] Ladder wired to firm status, Desk banners, override UI
+- [~] Ladder wired to firm status: agent + guard + Telegram enforce suspended/closed/offline (ADR-042); [ ] console computes `firms.status` from the ladder, Desk banner for `notice`, override UI
 
 ### M10 Admin and ease
 - [ ] Admin agent tools
@@ -162,6 +162,16 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 07:15: Licence enforcement (M5/M9)
+- Changed: agent `licence.go` (Licence / PausedMessage: not activated, suspended/closed → paused, unknown status or bad timestamp → paused, offline > 7 days → paused, overdue/restricted → usable with notice), `lockStatus` gains servicePaused/pausedMessage/notice; Telegram `Hooks.Paused` checked before mode and relay; guard `lockGate` blocks with reason `licence` on both channels before any lock rule. ADR-042.
+- Tests: agent licence table (9 cases + never synced + bad timestamp) and lock.get fields; telegram paused reply without relaying; guard 60/60; Go vet both OSes, golangci-lint both OSes 0; CI run 45024580640 green incl. Desk Rust (first compile of the gateway client).
+- Half-done / next: console computes firm status from the ladder (needs billing tables); Desk banner for `notice`.
+
+### 2026-11-23 06:45: Desk gateway client, chat panel, Review tab (M4)
+- Changed: Rust `gateway_client.rs` (tungstenite 0.30 sync client on a dedicated thread, ed25519-dalek 3, sha2 0.11, base64 0.23, getrandom 0.4; APIs checked in the fetched crate sources), `dpapi.rs` (CryptProtectData/CryptUnprotectData CurrentUser + entropy; second audited unsafe module), `chat.rs` (connect on first use, plain errors, message limit 20 000 chars, review param checks), Tauri commands `chat_send`, `chat_abort`, `review_list`, `review_decide`; `GatewayState::endpoint`; UI `gatewayApi.ts`, `Chat.tsx`, `Review.tsx`, tabs in `Assistant.tsx` (Chat, Review, Telegram: `TelegramLink.tsx` shows the one-time link as a QR code, only `https://t.me/` links accepted).
+- Tests: desk vitest 22/22 (streaming, events before the run id, replace, stop, plain errors, approve / approve all / reject / edit / retry, Telegram link QR + plain errors + non-Telegram URL refused); Rust tests (payload string identical to the Go test, signature verifies, chat-event trimming, fake gateway re-implementing the v3 signature + device-id check: handshake, request, events, error, hang-up, wrong token → Auth, nothing listening, DPAPI round trip + tamper, review param shapes) run in CI only.
+- Half-done / next: lab L2 confirms client.id/mode and session keys; docked window + hotkey; Telegram approve-unlock button.
 
 ### 2026-11-23 06:00: Review queue core (M5)
 - Changed: guard `src/review.ts` (ReviewStore: JSON file, serialised writes, atomic rename, finished-item cap, corrupt file refuses to load, interrupted approvals → failed; ReviewQueue: propose/decide; `bypassBlockReason` for exec/apply_patch/fs_delete deletes), `src/delete-files.ts` (first action: absolute/UNC paths only, files only, Windows rights decide), `plugin.ts` registers the tool, the two gateway methods and the before_tool_call check; manifest `contracts.tools`. ADR-041. OPENCLAW_NOTES §4: registerTool / registerGatewayMethod / contracts.tools / resolveStateDir / tools-invoke facts.

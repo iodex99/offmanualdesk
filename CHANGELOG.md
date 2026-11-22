@@ -5,6 +5,9 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Licence: when a firm is suspended or closed, or the server hasn't reached Off Manual for over 7 days, employees get one plain message in Desk and Telegram instead of answers; overdue firms keep working with a notice.
+- Desk: Telegram tab shows a QR code to link your phone's Telegram in one scan.
+- Desk: chat with your assistant (replies appear as they are written; Stop button) and a Review tab to approve, edit or reject what the assistant asked to do.
 - Review queue: Off Manual can now only ask to delete files; the request waits until a person approves it (approve, edit, reject, approve all), runs once, and reports what happened. Delete commands that would skip the queue are blocked.
 - Project kit: CLAUDE.md, PROGRESS.md, DECISIONS.md, docs/, Claude Code hooks and skills.
 - Monorepo scaffold: pnpm workspace (console, desk, shared-schema, guard, channel-relay), Go workspace (server-agent, sign-manifest), Tauri 2 Desk with React UI, Next.js console with `/api/health`.
