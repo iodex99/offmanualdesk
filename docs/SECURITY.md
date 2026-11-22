@@ -1,0 +1,54 @@
+# Security
+
+## 1. Assets
+
+Client financial data (books, statements, returns, notices), client identifiers (PAN, Aadhaar, GSTIN, bank details), firm credentials (portal logins, DSC), employees' mail and Telegram accounts, LLM keys, Off Manual's release-signing keys.
+
+## 2. Threats and controls
+
+| Threat | Control |
+| --- | --- |
+| Malicious or compromised skill | No ClawHub at runtime; vendored, read, scanned, pinned by SHA-256, signed into release (SKILLS.md §2) |
+| Employee reads another employee's work | Gateway per employee as their Windows account; unique port + token; Desk-only token holder |
+| Another session connects to my gateway on loopback | Token auth on every gateway; token DPAPI CurrentUser; port leases tracked by Server Agent |
+| Spoofed identity over the pipe | Identity from OS client token only; ACL on pipe |
+| Agent works around Access Denied | Guard stops the turn on access errors; no alternate path, no copy; audit |
+| Prompt injection from a document or email makes the agent act | Review queue for irreversible/external actions; skill packs limit tools; Telegram text-only; no portal submission |
+| Client data leaks to Off Manual | Console receives counts/versions/health only; audit summaries without paths |
+| Client data leaks via Telegram | Text-only default; files only if firm enables; Server Agent enforces |
+| Stolen employee password | OAuth bound to SID + TOTP; daily code; lockouts |
+| Shoulder access to unlocked desk | Idle lock, PIN, step-up for sensitive actions |
+| Tampered update | Authenticode on binaries + ed25519-signed manifest with SHA-256 of payload; agent verifies both before staging |
+| Stolen release key | Key only in GitHub Actions secrets / HSM-backed signing; rotation procedure; manifest carries key ID |
+| Lost LLM key | Firm-owned key DPAPI machine scope; rotate via console |
+| Tally posting errors | Read-only default; review queue; read-back check |
+| Departed employee | Console disable → gateway stop, Telegram unlink, token revoke |
+
+## 3. Unbreakable rules
+
+See BUILD_PROMPT.md §3. Any code that would violate one needs an ADR and Dwahnil's explicit approval first.
+
+## 4. Logging
+
+- Log: timestamps, correlation IDs, SIDs (hashed in anything sent to console), event types, durations, error codes, versions.
+- Never log: prompts, model output, file contents, file names in console-bound data, PAN/Aadhaar/GSTIN, tokens, secrets.
+- Local audit log (on firm server) may contain paths; it is visible only to the firm admin.
+
+## 5. Data protection
+
+- Firm signs a data-processing note: what goes to the LLM provider, Telegram policy, retention.
+- LLM provider: API terms that exclude training on customer data; record provider and terms version in the firm's contract.
+- Retention: archived agent state per firm setting (default 180 days), then deleted.
+- PAN/Aadhaar masking (`india-id-check`) in anything shared outside the firm's server.
+
+## 6. Review checklist (M11)
+
+- [ ] Pipe ACL and SID derivation tested with a second user trying to call as the first
+- [ ] Gateway token isolation tested across two RDS sessions
+- [ ] Access-denied path tested on UNC, mapped drive, OneDrive folder
+- [ ] Review queue cannot be bypassed by any skill in the pack
+- [ ] Telegram text-only blocks attachments, links to files and base64 dumps
+- [ ] Console payloads inspected: no client content
+- [ ] Update with bad signature / bad hash refused
+- [ ] Offboarding leaves no running process, token or Telegram link
+- [ ] Secrets scan on repo history

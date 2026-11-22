@@ -1,0 +1,73 @@
+# Data model
+
+Keep this file in step with `apps/console/db/schema.ts` and `apps/server-agent/internal/store/migrations`. Every migration updates this file in the same commit.
+
+## 1. Console (Postgres, Drizzle)
+
+IDs are UUIDv7. All tables have `created_at`, `updated_at`. Money in paise as `bigint`. Secrets encrypted at rest (envelope encryption, key in Vercel env).
+
+### Identity and tenancy
+| Table | Key columns |
+| --- | --- |
+| `console_users` | email, name, role (`superadmin` / `staff`), totp_secret_enc, totp_enrolled_at, disabled_at |
+| `firms` | name, legal_name, gstin, state_code, billing_email, billing_phone, status (`trial`/`active`/`overdue`/`restricted`/`suspended`/`closed`), rollout_ring, version_pin, data_note_signed_at, llm_key_mode (`firm`/`offmanual`) |
+| `firm_admins` | firm_id, email, name, totp_secret_enc, role (`owner`/`admin`), disabled_at |
+| `servers` | firm_id, hostname, public_key, enrolled_at, last_heartbeat_at, agent_version, openclaw_version, desk_version, health (`green`/`amber`/`red`), preflight_json, staged_version |
+| `enrolment_codes` | firm_id, server_name, code_hash, expires_at, used_at |
+| `employees` | firm_id, name, email, windows_sid, windows_username, role_label, oauth_provider, oauth_subject, bound_at, totp_secret_enc, totp_enrolled_at, telegram_linked (bool only), status (`invited`/`active`/`disabled`), enabled_from, disabled_at |
+| `invites` | employee_id, channel (`email`/`whatsapp`), sent_at, accepted_at |
+
+### Capabilities and policy
+| Table | Key columns |
+| --- | --- |
+| `skill_packs` | key (`core`, `tally-read`, `tally-post`, `email-send`, `portals`, `admin`), name, skills (jsonb list of skill IDs), actions (jsonb allowlist), review_required (jsonb) |
+| `pack_grants` | firm_id, pack_key, ad_group (nullable), employee_id (nullable) |
+| `firm_policies` | firm_id, lock_timeout_max_min, working_day_hours, telegram_mode (`off`/`text`/`files`), telegram_unlock_max_min, telegram_allowed_packs, step_up_actions, gateway_idle_stop_hours, retention_days |
+
+### Releases
+| Table | Key columns |
+| --- | --- |
+| `releases` | version, channel, severity (`normal`/`security`), deadline_at, manifest_url, payload_sha256, key_id, changelog_md, openclaw_version |
+| `release_rings` | release_id, ring (0/1/2), promoted_at, promoted_by |
+
+### Usage, audit, support
+| Table | Key columns |
+| --- | --- |
+| `usage_daily` | firm_id, employee_id, date, input_tokens, output_tokens, turns, tasks_completed |
+| `seat_days` | firm_id, employee_id, date, enabled (bool), active (bool) |
+| `audit_summaries` | firm_id, date, category, count |
+| `support_tickets` | firm_id, server_id, employee_id, bundle_url, status, notes |
+
+### Billing (see BILLING.md)
+| Table | Key columns |
+| --- | --- |
+| `contracts` | firm_id, version, starts_on, ends_on, payment_terms_days, grace_days, seat_count_mode, ladder (jsonb), currency, notes, status |
+| `contract_lines` | contract_id, type (`one_time`/`recurring_flat`/`per_seat`/`usage`/`adjustment`), label, sac_code, amount_paise, unit, interval (`month`/`quarter`/`year`/null), bands (jsonb), markup_pct, included_quota, starts_on, ends_on |
+| `invoices` | firm_id, number, period_start, period_end, issued_on, due_on, subtotal_paise, cgst_paise, sgst_paise, igst_paise, total_paise, status (`draft`/`issued`/`paid`/`overdue`/`void`), pdf_url |
+| `invoice_lines` | invoice_id, contract_line_id, description, qty, rate_paise, amount_paise |
+| `payments` | invoice_id, provider (`razorpay`/`manual`), provider_ref, amount_paise, paid_at, method |
+| `mandates` | firm_id, provider_ref, type (`upi_autopay`/`emandate`), status |
+| `notifications` | firm_id, audience (`firm_admin`/`all_employees`/`offmanual`), trigger, title, body, channels (jsonb), send_at, sent_at |
+| `notification_receipts` | notification_id, recipient, channel, delivered_at, seen_at |
+
+## 2. Server Agent (SQLite, `C:\ProgramData\OffManual\agent.db`)
+
+| Table | Key columns |
+| --- | --- |
+| `meta` | server_id, key_id, policy_etag, licence_expires_at, last_console_contact_at |
+| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, pin_hash (argon2id), recovery_codes_hash |
+| `day_grants` | sid, granted_at, expires_at |
+| `lock_state` | sid, desk_locked, telegram_unlocked_until, failed_pins, failed_codes, lockout_until |
+| `leases` | sid, port, token_hash, pid, started_at, last_seen_at |
+| `telegram_links` | sid, telegram_user_id, linked_at; `telegram_link_codes` (code_hash, sid, expires_at, used_at) |
+| `audit` | ts, sid, category, action, target (may contain path, never leaves the server), result, correlation_id |
+| `usage` | date, sid, input_tokens, output_tokens, turns, tasks_completed |
+| `notices` | id, kind (`update`/`billing`/`admin`), audience, title, body, created_at, ack (per sid in `notice_acks`) |
+| `updates` | version, state (`available`/`downloading`/`staged`/`failed`/`active`), verified_at, error |
+
+## 3. Per-user state (`%LOCALAPPDATA%\OffManual\`)
+
+- `openclaw-state\`: OpenClaw's own state (sessions, memory, plugin data). Format owned by OpenClaw; see OPENCLAW_NOTES.md.
+- `openclaw-state\plugins\guard\review.db`: review queue (proposal id, action, params json, summary, before/after, status, decided_at, result).
+- `desk\settings.json`: hotkey, panel side, lock timeout (≤ firm max), language.
+- `desk\gateway.token`: DPAPI CurrentUser.

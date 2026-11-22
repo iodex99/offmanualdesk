@@ -1,0 +1,21 @@
+# Claude Code local files
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/hooks/.state/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Build output (extend per app in M0)
+node_modules/
+dist/
+build/
+target/
+.next/
+*.log
