@@ -80,6 +80,7 @@ jobs:
           echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          # shellcheck disable=SC2016 # the single-quoted JavaScript uses its own ${...} templates
           node -e '
             const c = require("./release.config.json");
             const out = [
@@ -210,7 +211,8 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             KEY_ID="om-dryrun"
             "$SM" keygen -key-id "$KEY_ID" -out-public "$RUNNER_TEMP/dry.pub" -out-private "$RUNNER_TEMP/dry.seed"
-            export RELEASE_SIGNING_KEY="$(cat "$RUNNER_TEMP/dry.seed")"
+            RELEASE_SIGNING_KEY="$(cat "$RUNNER_TEMP/dry.seed")"
+            export RELEASE_SIGNING_KEY
             pubfile="$RUNNER_TEMP/dry.pub"
             echo "::warning::DRY RUN: signed with a throwaway key. Not for distribution."
           else
@@ -229,7 +231,7 @@ jobs:
           "$SM" sign -manifest out/manifest.json -out out/manifest.sig.json
           "$SM" verify -manifest out/manifest.json -sig out/manifest.sig.json -pubkey-file "$pubfile" -zip "out/offmanual-$VERSION.zip"
           node tools/release/cli.mjs notes "$VERSION" > out/RELEASE_NOTES.md
-          (cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -260,7 +262,7 @@ jobs:
           set -euo pipefail
           gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --title "Off Manual Desk $VERSION" \
             --notes-file out/RELEASE_NOTES.md --prerelease \
-            out/offmanual-$VERSION.zip out/manifest.json out/manifest.sig.json out/SHA256SUMS.txt
+            "out/offmanual-$VERSION.zip" out/manifest.json out/manifest.sig.json out/SHA256SUMS.txt
       - name: Release store (R2/S3)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.RELEASE_STORE_ACCESS_KEY_ID }}
