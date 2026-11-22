@@ -116,9 +116,10 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 ### M8 Updates
 - [x] GitHub Actions release workflow (build, test, scan, sign, manifest, upload, register) — written and actionlint-clean; first run needs repo + signing key (done early at Dwahnil's request)
 - [x] Manifest sign/verify/safe-extract library (`apps/server-agent/pkg/manifest`) + `tools/sign-manifest`
-- [ ] Release store + console `/api/releases` (ADR-016)
-- [ ] Rings + firm pins in console
-- [ ] Server Agent stage + verify + report (embed `keys/*.pub`)
+- [x] Console `POST /api/releases` (bearer `OM_RELEASE_REGISTER_TOKEN`, ring 0) and `GET /api/agent/releases` (firm pin, else newest release promoted to a ring ≥ the firm's ring)
+- [ ] Release store (R2, ADR-016) + presigned URLs; workflow passes `manifestUrl`
+- [x] Rings + firm pins (logic + superadmin `promote`); [ ] UI
+- [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat) [ ] Authenticode check (WinVerifyTrust)
 - [ ] Desk notice + restart-to-update + security deadline (backup → doctor → switch, ADR-025)
 - [ ] Rollback (restore state backup, ADR-025)
 - [ ] MSI (WiX v4) for first installs
@@ -159,6 +160,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 03:00: Update pipeline: console releases + agent staging (M8)
+- Changed: console `lib/releases.ts` (register with constant-time bearer check, promote, assignedRelease), routes `/api/releases`, `/api/agent/releases`; agent `pkg/manifest/trusted.go` (go:embed keys, CompareVersions), `internal/update/stager.go`, store update-state methods, Syncer stages in the background (single flight) and reports `stagedVersion`; `installRoot()` (`OFFMANUAL_INSTALL_ROOT` override).
+- Tests: console 76/76 (registration auth, ring eligibility, pins, promote roles); Go all pass (update 77%: success + idempotent + tampered payload + foreign key + empty keyring + console mismatch + needs newer agent + non-HTTPS + tampered staged copy); golangci-lint both OSes 0.
+- Half-done / next: release store (needs Cloudflare account), `update.status/switch` pipe methods + Desk restart-to-update with state backup + doctor (ADR-025).
 
 ### 2026-11-23 02:15: Billing engine (M9 core)
 - Changed: `apps/console/lib/billing/money.ts` (bigint paise, half-away-from-zero rounding, basis points, Indian amount in words), `engine.ts` (computeInvoice for one month, seatQuantity as exact fractions, seatAmount tiered/volume, recurring schedule, GST split), `ladder.ts` (state by oldest unpaid invoice, override, capabilities, offline grace). ADR-038.

@@ -27,7 +27,9 @@ Trigger: tag `v*.*.*` (normal release), or *Run workflow* with an existing tag, 
 
 ## 3. Staging (Server Agent)
 
-1. Learns of the assigned release via SSE push or 15-min poll.
+Implemented (2026-11-23): `apps/server-agent/internal/update/stager.go`, driven by the 15-minute sync loop (`internal/console/sync.go`); console side `apps/console/lib/releases.ts`. SSE push is not built yet; polling only.
+
+1. Learns of the assigned release via SSE push or 15-min poll (`GET /api/agent/releases`: the firm's pinned version, else the newest release promoted to a ring ≥ the firm's ring).
 2. Downloads payload to `staging\`, verifies manifest signature (embedded public keys by key_id), payload hash, every file hash, Authenticode on binaries. The verification and safe-extraction code already exists in `apps/server-agent/pkg/manifest` (`Verify`, `VerifyFileHash`, `ExtractZip`, `VerifyDir`); M8 wires it into the service and adds `go:embed` of `pkg/manifest/keys/*.pub`.
 3. Unpacks to `versions\<new>\`, reports `staged`. Does **not** move `current` until no employee gateway runs the old version, or for new gateway starts only (decide in M8; record ADR).
 4. Server Agent self-update: staged like everything else, swapped by a small updater that restarts the service.
