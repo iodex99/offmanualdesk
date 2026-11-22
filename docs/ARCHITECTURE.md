@@ -110,7 +110,9 @@ C:\Program Files\OffManual\
 C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM + Administrators only (ADR-033)
   policy.json           served to users via policy.get (not read directly)
   agent.db              SQLite (DATA_MODEL.md §2)
-  staging\  logs\server-agent.log (JSON lines)  backups\  support\
+  staging\  logs\server-agent.log (JSON lines)  support\
+  backups\agent\agent-<YYYYMMDD IST>.db   daily VACUUM INTO copy of agent.db, newest 7 (ADR-060)
+  backups\offboarded\<SID>-<UTC>.zip    switched-off employees' assistant state (ADR-056)
 %LOCALAPPDATA%\OffManual\      (or FSLogix profile)
   openclaw-state\       gateway state dir (sessions, memory, review queue)
   desk\                 settings, DPAPI-protected gateway token

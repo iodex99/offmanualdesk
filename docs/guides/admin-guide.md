@@ -70,6 +70,18 @@ folder rights: give access in Windows (folder Properties → Security, or your u
   packs arrive) waits in the employee's **Review** tab for a person to approve.
 - Government portal steps that need an OTP or a DSC always stay with a person.
 
+## Backups
+
+- **Off Manual's own settings on the server** (who is set up, authenticator links, Telegram links) are copied
+  every day to `C:\ProgramData\OffManual\backups\agent`; the last 7 days are kept. Include
+  `C:\ProgramData\OffManual` in your server backup too.
+- **Each person's assistant (chats, memory, review queue)** is in their Windows profile
+  (`%LOCALAPPDATA%\OffManual`). Your normal profile or FSLogix backup covers it.
+- **To restore** Off Manual's settings: stop the `OffManualAgent` service, run
+  `server-agent.exe restore -from C:\ProgramData\OffManual\backups\agent\agent-YYYYMMDD.db` as
+  Administrator, then start the service. It only works on the same server (Windows protects the secrets
+  inside); on a new server, enrol again and people set up their authenticator again.
+
 ## If the service pauses
 
 If an invoice stays unpaid well past its due date, Desk first shows a notice, then pauses for employees until

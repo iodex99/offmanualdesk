@@ -97,6 +97,7 @@ func Run(ctx context.Context, o Options) error {
 		Profile: offboard.ProfilePath, Log: log,
 		Retention: func(ctx context.Context) int { return console.RetentionDays(ctx, st) }}
 	go arch.Loop(ctx, 15*time.Minute)
+	go backupLoop(ctx, st, agentBackupDir(o.DataDir), log) // daily agent.db backup (ADR-060)
 
 	l, err := listen(o.PipeName)
 	if err != nil {

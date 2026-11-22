@@ -143,7 +143,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 
 ### M11 Pilot hardening
 - [~] Security review first pass (`docs/SECURITY_REVIEW.md`): items 4–7 done, 5 and 8 fixed in the pass; 1–3 and 8 need the lab; one full-history gitleaks scan before the pilot
-- [ ] Backup and restore of per-user agent state
+- [x] Backup and restore (ADR-060): daily `VACUUM INTO` of agent.db (newest 7), `server-agent restore -from FILE` (service must be stopped; checked copy; previous kept); per-user state = the firm's profile backup (admin guide); [ ] restore drill on the pilot server
 - [x] Offboarding archive (F10, ADR-056): state zipped to `backups\offboarded` 15 min after switch-off, removed from the profile, purged after `retentionDays`; cancelled on re-enable; [ ] L11 on the RDS host (FSLogix)
 - [x] Firm-facing docs: `docs/guides/employee-quick-start.md`, `docs/guides/admin-guide.md` (only what exists; review with a pilot firm)
 - [~] Install runbook written (`docs/guides/install-runbook.md`, manual steps where the MSI isn't built); [ ] time-to-live under 2 hours verified on a pilot
@@ -161,6 +161,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 23:50: agent.db backups and restore (M11, ADR-060)
+- Changed: store `Backup` (VACUUM INTO) + `IntegrityCheck`; app `dailyBackup` (IST date name, temp + rename, keeps 7 of ours, ignores other files), `backupLoop` (start + hourly), `Restore` (refuses while the pipe exists, copies the backup, opens/migrates/checks it, keeps the current db and its WAL files as before-restore-<UTC>, swaps); CLI `server-agent restore -from FILE`; admin guide Backups; ARCHITECTURE layout; DATA_MODEL.
+- Tests: once per IST day, IST date across midnight UTC, keeps 7, foreign files untouched, backup opens and passes the integrity check; restore brings back the backed-up employees and keeps the previous db; refused while running, junk and missing files refused without touching agent.db or leaving the temp copy; CLI usage; golangci-lint both OSes 0.
 
 ### 2026-11-23 23:30: Full-history secret scan workflow (security review #9)
 - Changed: `.github/workflows/secrets-full-scan.yml` (workflow_dispatch + Mondays 03:00 IST; checkout fetch-depth 0; gitleaks-action v2, whose source passes no `--log-opts` for these events, so every commit is scanned). CI caught `unwrap()` in the new single-instance tests (clippy -D warnings); allowed on the test module as elsewhere.

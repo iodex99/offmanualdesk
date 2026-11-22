@@ -59,6 +59,8 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 
 ## 2. Server Agent (SQLite, `C:\ProgramData\OffManual\agent.db`)
 
+Backed up daily (IST date) with `VACUUM INTO` to `backups\agent\agent-YYYYMMDD.db`, newest 7 kept; `server-agent restore -from FILE` (service stopped) checks the copy (opens, migrates, integrity check), keeps the current file as `before-restore-<UTC>.db` and swaps it in. DPAPI-protected values only open on the same server (ADR-060).
+
 Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tables, times as Unix seconds UTC, foreign keys on, WAL). Applied versions live in `schema_migrations`; an agent refuses to open a database with a newer schema. `meta` is key/value. `leases.port` is UNIQUE; `audit` is indexed on `ts`; the console-bound audit data is `AuditSummary` (category counts only).
 
 | Table | Key columns |

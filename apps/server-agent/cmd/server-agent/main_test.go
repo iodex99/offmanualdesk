@@ -52,3 +52,13 @@ func TestRunHelp(t *testing.T) {
 		t.Fatalf("help text missing commands: %q", out.String())
 	}
 }
+
+func TestRunRestoreNeedsAFile(t *testing.T) {
+	var out, errOut bytes.Buffer
+	if code := run([]string{"restore"}, &out, &errOut); code != 2 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(errOut.String(), "stop the OffManualAgent service first") {
+		t.Fatalf("stderr %q", errOut.String())
+	}
+}

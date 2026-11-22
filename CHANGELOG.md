@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- The Server Agent backs up its database every day (last 7 kept) and `server-agent restore -from FILE` brings one back.
 - Desk runs once per Windows session; opening it again brings the running one forward. Explorer "Ask Off Manual" (`--ask <path>`) puts the file or folder in the chat box.
 - The weekly partner digest shows how many folder-access requests were sent that week (a count only).
 - Request access: when the assistant is refused a folder, Desk offers a note to the firm's admins, who see and close requests in their own Desk. Folder names stay on the firm's server.
