@@ -42,6 +42,90 @@
       "files": {
         "SKILL.md": "d757f182ae35278b137c33b0c8d85739efd92b72fab647f017d33225dcbe77ab"
       }
+    },
+    {
+      "id": "offmanual/gstr2b-vs-books",
+      "version": "0.1.0",
+      "path": "offmanual/gstr2b-vs-books",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "9d3d75fcf380a9517789160e78cd4c30926e8545d8adbcc5c71b5de195fc24b7"
+      }
+    },
+    {
+      "id": "offmanual/ais-26as-vs-books",
+      "version": "0.1.0",
+      "path": "offmanual/ais-26as-vs-books",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "acdce150bf0262b28fed12150eddf99e36f9b8bf7d3843591d4295fc79a44204"
+      }
+    },
+    {
+      "id": "offmanual/tds-checks",
+      "version": "0.1.0",
+      "path": "offmanual/tds-checks",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "f50e0314ff56dab471846a78c87807fe9a3ff0e07396d5467198a37ca3cc1e30"
+      }
+    },
+    {
+      "id": "offmanual/notice-reply-draft",
+      "version": "0.1.0",
+      "path": "offmanual/notice-reply-draft",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "00ddd1ca306d4baa60b7654a545488179a4c7528323028f4d2886ec93aa92d6b"
+      }
+    },
+    {
+      "id": "offmanual/doc-chaser",
+      "version": "0.1.0",
+      "path": "offmanual/doc-chaser",
+      "packs": ["core"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "56a3d3c2e1a8a8a4eda8ae91b5235cbfb68fa1091f99ffe174a00b84342e4fea"
+      }
+    },
+    {
+      "id": "offmanual/tally-mis",
+      "version": "0.1.0",
+      "path": "offmanual/tally-mis",
+      "packs": ["tally-read"],
+      "review": {
+        "status": "pending",
+        "reviewer": "",
+        "date": ""
+      },
+      "files": {
+        "SKILL.md": "efb9b4ff4146db75f0971d88e9066860eb8a5ab757cfcbbf22e6a2ab2ac55ba5"
+      }
     }
   ]
 }
