@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import { isAgentError, type AgentCall } from "./agent";
+import { Assistant, type StartGateway } from "./Assistant";
 
 interface Hello {
   known: boolean;
@@ -27,7 +28,15 @@ type Screen =
 
 const message = (e: unknown) => (isAgentError(e) ? e.message : "Something went wrong. Try again.");
 
-export function Unlock({ agent, onLock }: { agent: AgentCall; onLock?: () => void }) {
+export function Unlock({
+  agent,
+  onLock,
+  startGateway,
+}: {
+  agent: AgentCall;
+  onLock?: () => void;
+  startGateway?: StartGateway;
+}) {
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
   const [hello, setHello] = useState<Hello | null>(null);
   const [value, setValue] = useState("");
@@ -161,6 +170,7 @@ export function Unlock({ agent, onLock }: { agent: AgentCall; onLock?: () => voi
       return (
         <div>
           <p>You're signed in{screen.name ? `, ${screen.name}` : ""}.</p>
+          <Assistant {...(startGateway ? { start: startGateway } : {})} />
           <button
             onClick={() =>
               void run(async () => {

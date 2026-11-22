@@ -43,7 +43,7 @@ describe("Unlock flow", () => {
         { known: false, locked: true, totpEnrolled: false, pinSet: false, dayUnlocked: false },
       ],
     });
-    render(<Unlock agent={agent} />);
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
     expect(await screen.findByText(/isn't set up for Off Manual yet/)).toBeTruthy();
   });
 
@@ -56,7 +56,7 @@ describe("Unlock flow", () => {
       "auth.totpEnrolStart": [{ secret: "JBSWY3DPEHPK3PXP", uri: "otpauth://totp/x" }],
       "auth.totpEnrolConfirm": [{ enrolled: true }],
     });
-    render(<Unlock agent={agent} />);
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
     expect(await screen.findByAltText(/QR code/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/6-digit code/), { target: { value: "12a3456" } });
     fireEvent.click(screen.getByText("Continue"));
@@ -73,7 +73,7 @@ describe("Unlock flow", () => {
         return { unlocked: true };
       },
     });
-    render(<Unlock agent={agent} />);
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
     const pin = await screen.findByLabelText("PIN");
     fireEvent.change(pin, { target: { value: "0000" } });
     fireEvent.click(screen.getByText("Unlock"));
@@ -95,7 +95,7 @@ describe("Unlock flow", () => {
         };
       },
     });
-    render(<Unlock agent={agent} />);
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
     fireEvent.change(await screen.findByLabelText("PIN"), { target: { value: "1357" } });
     fireEvent.click(screen.getByText("Unlock"));
     expect(await screen.findByText(/Enter today's code from your authenticator app/)).toBeTruthy();
