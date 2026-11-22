@@ -10,6 +10,7 @@ mod gateway_client;
 mod gateway_manager;
 mod idle;
 mod info;
+mod versions;
 
 use std::sync::Arc;
 use tauri::Emitter;
@@ -180,6 +181,28 @@ async fn review_decide(
     .unwrap_or_else(|_| Err(crashed()))
 }
 
+/// Staged release vs. the version this employee runs (UPDATES.md §4).
+#[tauri::command]
+async fn update_status() -> Result<gateway_manager::UpdateStatus, gateway_manager::GatewayError> {
+    tauri::async_runtime::spawn_blocking(|| gateway_manager::update_status(&correlation("desk-up")))
+        .await
+        .unwrap_or_else(|_| Err(crashed()))
+}
+
+/// Restart to update: switch this employee's gateway to `version`, rolling back on failure.
+#[tauri::command]
+async fn update_apply(
+    gw: GwState<'_>,
+    version: String,
+) -> Result<gateway_manager::GatewayStatus, gateway_manager::GatewayError> {
+    let gw = Arc::clone(&gw);
+    tauri::async_runtime::spawn_blocking(move || {
+        gateway_manager::apply_update(&gw, &version, &correlation("desk-up"))
+    })
+    .await
+    .unwrap_or_else(|_| Err(crashed()))
+}
+
 fn main() {
     // Every gateway Desk starts dies with Desk (OPENCLAW_NOTES §2: the gateway doesn't follow its parent).
     if !gateway::job::contain_self() {
@@ -198,7 +221,9 @@ fn main() {
             chat_send,
             chat_abort,
             review_list,
-            review_decide
+            review_decide,
+            update_status,
+            update_apply
         ])
         .run(tauri::generate_context!());
     if let Err(err) = result {

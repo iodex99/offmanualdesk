@@ -267,6 +267,33 @@ pub fn backup_state(state_dir: &Path, backups_dir: &Path, stamp: &str) -> std::i
     Ok(dst)
 }
 
+/// Rollback (ADR-025): the current state moves aside to `openclaw-state.failed-<stamp>`
+/// (one kept, for support) and the snapshot is copied back.
+pub fn restore_backup(state_dir: &Path, backup: &Path, stamp: &str) -> std::io::Result<()> {
+    if !backup.is_dir() {
+        return Err(std::io::Error::other("backup missing"));
+    }
+    let parent = state_dir
+        .parent()
+        .ok_or_else(|| std::io::Error::other("no parent"))?;
+    let base = state_dir
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "openclaw-state".into());
+    for e in std::fs::read_dir(parent)?.filter_map(Result::ok) {
+        if e.file_name()
+            .to_string_lossy()
+            .starts_with(&format!("{base}.failed-"))
+        {
+            let _ = std::fs::remove_dir_all(e.path());
+        }
+    }
+    if state_dir.exists() {
+        std::fs::rename(state_dir, parent.join(format!("{base}.failed-{stamp}")))?;
+    }
+    copy_dir(backup, state_dir)
+}
+
 #[cfg(windows)]
 #[allow(unsafe_code)]
 pub mod job {
@@ -536,6 +563,29 @@ mod tests {
             .join("main")
             .join("s.db");
         assert_eq!(std::fs::read_to_string(copied).unwrap(), "data");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn restore_puts_the_snapshot_back_and_keeps_one_failed_copy() {
+        let root = std::env::temp_dir().join(format!("om-restore-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let state = root.join("openclaw-state");
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::write(state.join("db"), "old").unwrap();
+        let snap = backup_state(&state, &root.join("backups"), "000000000001").unwrap();
+        std::fs::write(state.join("db"), "migrated").unwrap();
+        restore_backup(&state, &snap, "000000000002").unwrap();
+        assert_eq!(std::fs::read_to_string(state.join("db")).unwrap(), "old");
+        assert_eq!(
+            std::fs::read_to_string(root.join("openclaw-state.failed-000000000002").join("db"))
+                .unwrap(),
+            "migrated"
+        );
+        restore_backup(&state, &snap, "000000000003").unwrap();
+        assert!(!root.join("openclaw-state.failed-000000000002").exists());
+        assert!(root.join("openclaw-state.failed-000000000003").exists());
+        assert!(restore_backup(&state, &root.join("nope"), "x").is_err());
         let _ = std::fs::remove_dir_all(&root);
     }
 

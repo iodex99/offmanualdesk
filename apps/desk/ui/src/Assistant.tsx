@@ -7,6 +7,7 @@ import { Chat } from "./Chat";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
 import { Review } from "./Review";
 import { TelegramLink } from "./TelegramLink";
+import { UpdateNotice, type UpdateApi } from "./UpdateNotice";
 
 export interface GatewayStatus {
   running: boolean;
@@ -26,10 +27,12 @@ export function Assistant({
   start = startGateway,
   api = tauriGateway,
   agent = callAgent,
+  updates,
 }: {
   start?: StartGateway;
   api?: GatewayApi;
   agent?: AgentCall;
+  updates?: UpdateApi;
 }) {
   const [state, setState] = useState<State>({ kind: "starting" });
   const [tab, setTab] = useState<"chat" | "review" | "telegram">("chat");
@@ -61,6 +64,7 @@ export function Assistant({
       return (
         <div className="assistant">
           <p className="hint">Your assistant is ready.</p>
+          <UpdateNotice {...(updates ? { api: updates } : {})} />
           <nav className="tabs" role="tablist">
             <button role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>
               Chat

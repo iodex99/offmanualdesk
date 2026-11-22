@@ -92,7 +92,10 @@ func (s *Syncer) maybeStage(ctx context.Context) {
 		}
 		return
 	}
+	deadline, _ := time.Parse(time.RFC3339, rel.DeadlineAt) // zero when absent
 	if st, _ := s.Store.UpdateState(ctx, rel.Version); st == "staged" || st == "active" {
+		// Severity and deadline can change after staging (e.g. a release marked security later).
+		_ = s.Store.SetUpdateMeta(ctx, rel.Version, rel.Severity, deadline)
 		s.staging.Store(false)
 		return
 	}
@@ -103,7 +106,8 @@ func (s *Syncer) maybeStage(ctx context.Context) {
 			s.Log.Error("staging failed", "version", rel.Version, "error", err.Error())
 			return
 		}
-		s.Log.Info("release staged", "version", rel.Version)
+		_ = s.Store.SetUpdateMeta(ctx, rel.Version, rel.Severity, deadline)
+		s.Log.Info("release staged", "version", rel.Version, "severity", rel.Severity)
 	}()
 }
 

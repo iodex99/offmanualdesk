@@ -37,8 +37,8 @@ func TestMigrationsApplyOnceAndReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	v, _ := s.SchemaVersion(ctx)
-	if v != 3 {
-		t.Fatalf("schema version %d, want 3", v)
+	if v != 4 {
+		t.Fatalf("schema version %d, want 4", v)
 	}
 	_ = s.SetMeta(ctx, "server_id", "srv-1")
 	_ = s.Close()
@@ -243,5 +243,31 @@ func TestLeaseTouchAndExpire(t *testing.T) {
 	}
 	if err := s.TouchLease(ctx, "S-Z", 1); !errors.Is(err, ErrNotFound) {
 		t.Fatal("touch on missing lease succeeded")
+	}
+}
+
+func TestStagedReleaseMeta(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx, filepath.Join(t.TempDir(), "agent.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	if r, _ := s.StagedRelease(ctx); r.Version != "" {
+		t.Fatalf("empty store: %+v", r)
+	}
+	_ = s.SetUpdateMeta(ctx, "9.9.9", "security", time.Now()) // unknown version: no-op
+	_ = s.SetUpdateState(ctx, "1.1.0", "staged", "")
+	d := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	if err := s.SetUpdateMeta(ctx, "1.1.0", "security", d); err != nil {
+		t.Fatal(err)
+	}
+	r, err := s.StagedRelease(ctx)
+	if err != nil || r.Version != "1.1.0" || r.Severity != "security" || !r.Deadline.Equal(d) {
+		t.Fatalf("staged: %+v %v", r, err)
+	}
+	_ = s.SetUpdateMeta(ctx, "1.1.0", "normal", time.Time{})
+	if r, _ := s.StagedRelease(ctx); r.Severity != "normal" || !r.Deadline.IsZero() {
+		t.Fatalf("cleared: %+v", r)
 	}
 }

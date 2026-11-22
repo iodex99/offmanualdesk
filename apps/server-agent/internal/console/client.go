@@ -217,6 +217,7 @@ func (c *Client) SendAuditSummary(ctx context.Context, date string, counts []Aud
 type AssignedRelease struct {
 	Version       string `json:"version"`
 	Severity      string `json:"severity"`
+	DeadlineAt    string `json:"deadlineAt"` // RFC 3339; empty unless a security release has one
 	ManifestURL   string `json:"manifestUrl"`
 	PayloadSHA256 string `json:"payloadSha256"`
 	KeyID         string `json:"keyId"`

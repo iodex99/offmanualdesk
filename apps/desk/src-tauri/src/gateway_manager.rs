@@ -3,6 +3,7 @@
 
 use crate::agent_client;
 use crate::gateway::{self, Layout, Startup};
+use crate::versions;
 use serde::Serialize;
 use serde_json::json;
 use std::path::PathBuf;
@@ -54,8 +55,27 @@ fn local_app_data() -> Option<PathBuf> {
     std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
 }
 
+/// A failed start, with the state snapshot Doctor took (if it ran) for rollback.
+struct StartFailure {
+    error: GatewayError,
+    backup: Option<PathBuf>,
+}
+
+impl From<GatewayError> for StartFailure {
+    fn from(error: GatewayError) -> Self {
+        StartFailure {
+            error,
+            backup: None,
+        }
+    }
+}
+
 /// F4: lease → config → spawn → readiness. Idempotent while a gateway is running.
 pub fn start(state: &GatewayState, correlation_id: &str) -> Result<GatewayStatus, GatewayError> {
+    start_inner(state, correlation_id).map_err(|f| f.error)
+}
+
+fn start_inner(state: &GatewayState, correlation_id: &str) -> Result<GatewayStatus, StartFailure> {
     let mut guard = state
         .0
         .lock()
@@ -82,7 +102,9 @@ pub fn start(state: &GatewayState, correlation_id: &str) -> Result<GatewayStatus
 
     let lad =
         local_app_data().ok_or_else(|| err("Your Windows profile folder couldn't be found."))?;
-    let layout = Layout::new(&gateway::install_root(), &lad);
+    // The employee's chosen version (ADR-048), else `current`.
+    let choice = versions::load(&versions::choice_path(&lad));
+    let layout = Layout::new(&versions::root_for(&gateway::install_root(), &choice), &lad);
     if !layout.node.exists() || !layout.openclaw_entry.exists() {
         return Err(err(
             "The assistant isn't installed on this server yet. Please tell your admin.",
@@ -94,27 +116,38 @@ pub fn start(state: &GatewayState, correlation_id: &str) -> Result<GatewayStatus
     let mut child = spawn_gateway(&layout, port, &token)?;
     // The lock stays held until the gateway is ready, so two starts can't race;
     // `status` uses try_lock and reports "not running" meanwhile.
-    let mut doctored = false;
+    let mut backup: Option<PathBuf> = None;
+    let fail = |error: GatewayError, backup: &Option<PathBuf>| {
+        release(correlation_id);
+        StartFailure {
+            error,
+            backup: backup.clone(),
+        }
+    };
     loop {
         match gateway::wait_ready_or_exit(port, &mut child, Duration::from_secs(90)) {
             Startup::Ready => break,
-            Startup::Exited(code) if needs_doctor(code, doctored) => {
-                doctored = true;
-                if let Err(e) = run_doctor(&layout) {
-                    release(correlation_id);
-                    return Err(e);
+            Startup::Exited(code) if needs_doctor(code, backup.is_some()) => {
+                // ADR-025: snapshot first, then Doctor, then one retry.
+                match gateway::backup_state(&layout.state_dir, &layout.backups_dir, &stamp()) {
+                    Ok(b) => backup = Some(b),
+                    Err(_) => return Err(fail(err("Couldn't back up your assistant's data before updating it. Free some disk space or tell your admin."), &None)),
                 }
-                child = spawn_gateway(&layout, port, &token)?;
+                if let Err(e) = run_doctor(&layout) {
+                    return Err(fail(e, &backup));
+                }
+                child = match spawn_gateway(&layout, port, &token) {
+                    Ok(c) => c,
+                    Err(e) => return Err(fail(e, &backup)),
+                };
             }
             Startup::Exited(_) => {
-                release(correlation_id);
-                return Err(err("Your assistant stopped while starting. Try again; if it keeps happening, use Report a problem."));
+                return Err(fail(err("Your assistant stopped while starting. Try again; if it keeps happening, use Report a problem."), &backup));
             }
             Startup::TimedOut => {
                 let _ = child.kill();
                 let _ = child.wait();
-                release(correlation_id);
-                return Err(err("Your assistant didn't start in time. Try again; if it keeps happening, use Report a problem."));
+                return Err(fail(err("Your assistant didn't start in time. Try again; if it keeps happening, use Report a problem."), &backup));
             }
         }
     }
@@ -167,8 +200,6 @@ fn stamp() -> String {
 /// ADR-025: snapshot the state, then `openclaw doctor --fix --yes --non-interactive`
 /// with the gateway stopped (it has exited), at most 5 minutes.
 fn run_doctor(layout: &Layout) -> Result<(), GatewayError> {
-    gateway::backup_state(&layout.state_dir, &layout.backups_dir, &stamp())
-        .map_err(|_| err("Couldn't back up your assistant's data before updating it. Free some disk space or tell your admin."))?;
     let mut cmd = Command::new(&layout.node);
     cmd.args(gateway::doctor_arguments(layout))
         .current_dir(&layout.state_dir)
@@ -201,6 +232,91 @@ fn run_doctor(layout: &Layout) -> Result<(), GatewayError> {
 
 fn release(correlation_id: &str) {
     let _ = agent_client::call("gateway.release", &json!({}), correlation_id);
+}
+
+// ---- restart to update (UPDATES.md §4, ADR-048) ----
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateStatus {
+    /// Version this employee's gateway runs (None when `current` can't be resolved).
+    pub running: Option<String>,
+    /// Staged release, when installed on disk and different from the running one.
+    pub available: Option<String>,
+    pub severity: String,
+    pub deadline_at: Option<String>,
+}
+
+pub fn update_status(correlation_id: &str) -> Result<UpdateStatus, GatewayError> {
+    let r = agent_client::call("update.status", &json!({}), correlation_id)
+        .map_err(|e| err(&e.message))?;
+    let lad =
+        local_app_data().ok_or_else(|| err("Your Windows profile folder couldn't be found."))?;
+    let current = gateway::install_root();
+    let running = versions::version_of(&versions::root_for(
+        &current,
+        &versions::load(&versions::choice_path(&lad)),
+    ));
+    let staged = r["staged"].as_str().unwrap_or_default().to_string();
+    let base = versions::install_base(&current);
+    let available = (versions::installed(&base, &staged)
+        && running.as_deref() != Some(staged.as_str()))
+    .then_some(staged);
+    Ok(UpdateStatus {
+        running,
+        available,
+        severity: r["severity"].as_str().unwrap_or_default().to_string(),
+        deadline_at: r["deadlineAt"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .map(str::to_string),
+    })
+}
+
+/// Switches this employee's gateway to `version`. On failure: restore the state
+/// snapshot Doctor took (if any), go back to the previous choice and start again.
+pub fn apply_update(
+    state: &GatewayState,
+    version: &str,
+    correlation_id: &str,
+) -> Result<GatewayStatus, GatewayError> {
+    if !versions::valid_version(version) {
+        return Err(err("Unknown version."));
+    }
+    let lad =
+        local_app_data().ok_or_else(|| err("Your Windows profile folder couldn't be found."))?;
+    let current = gateway::install_root();
+    if !versions::installed(&versions::install_base(&current), version) {
+        return Err(err(
+            "That update isn't ready on this server yet. Try again later.",
+        ));
+    }
+    let path = versions::choice_path(&lad);
+    let before = versions::load(&path);
+    let old = before
+        .active
+        .clone()
+        .or_else(|| versions::version_of(&versions::root_for(&current, &before)));
+    stop(state, correlation_id);
+    let next = versions::Choice {
+        active: Some(version.to_string()),
+        previous: old,
+    };
+    versions::save(&path, &next).map_err(|_| err("Couldn't save the update choice. Try again."))?;
+    match start_inner(state, correlation_id) {
+        Ok(s) => Ok(s),
+        Err(f) => {
+            let state_dir = Layout::new(&current, &lad).state_dir;
+            if let Some(b) = &f.backup {
+                let _ = gateway::restore_backup(&state_dir, b, &stamp());
+            }
+            let _ = versions::save(&path, &before);
+            Err(match start(state, correlation_id) {
+                Ok(_) => err("The update didn't work, so Off Manual went back to the previous version. Please use Report a problem."),
+                Err(_) => f.error,
+            })
+        }
+    }
 }
 
 /// Stops the gateway and frees the lease.
