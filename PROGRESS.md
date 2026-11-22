@@ -53,7 +53,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] SQLite local store + migrations (DATA_MODEL.md §2; `internal/store`, ADR-032)
 - [x] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL; `internal/rpc`, `internal/pipe`; DACL verified on a real pipe)
 - [x] Method handlers (`internal/agent`): session.hello, auth.totpEnrolStart/Confirm, auth.verifyDaily, auth.pinSet, auth.verifyPin, auth.stepUp, lock.get/set, gateway.lease/release, audit.append, policy.get (defaults until M3)
-- [ ] Enrollment with console (keypair, signed requests), heartbeat
+- [x] Signed-request protocol (ADR-035): Go signer `internal/console/sign.go`, TS verifier `apps/console/lib/agent-auth.ts` (±5 min, nonce replay), shared golden vector
+- [ ] Enrolment + heartbeat client (Go) against console routes (M3)
 - [ ] Policy fetch → `policy.json` (read-only to users)
 - [x] TOTP verification (RFC 6238, ±1 step, replay protection) in `internal/auth` (ADR-030)
 - [x] PIN rules + argon2id hashing/verification, lockout rules (3 PINs → daily code; 5 codes → 15 min + admin alert) in `internal/auth` (ADR-031)
@@ -147,6 +148,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 20:45: Agent ↔ console signed requests
+- Changed: ADR-013 made concrete (ADR-035): canonical string `OM-AGENT-1\nMETHOD\npath?query\nserverId\nts\nnonce\nsha256(body)`, headers X-OM-Server/Timestamp/Nonce/Signature, ed25519. Go `internal/console/sign.go`; TS `apps/console/lib/agent-auth.ts` with clock window, nonce store (signature checked before the nonce is consumed). Golden vector `packages/shared-schema/fixtures/agent-signature.json` (test seed 1..32) verified by both; `.gitleaks.toml` allowlists that one file. Test caught a nonce-purge bug (wall clock vs request time), fixed.
+- Tests: Go console pkg 89.5%; console vitest 12/12.
+- Half-done / next: console DB schema + /api/agent routes (M3).
 
 ### 2026-11-22 20:15: M2 slice 5: preflight, bridge, pipe access fix
 - Changed: CI's new service round trip found that a standard .NET pipe client (GENERIC_READ|GENERIC_WRITE) is refused by the ADR-029 DACL, which is correct (GENERIC_WRITE includes FILE_CREATE_PIPE_INSTANCE) but means every client must request exactly read + write-data. `pipe.Dial` now uses `DialPipeAccess(0x12008B)` at SECURITY_ANONYMOUS; new `pipe.Bridge` + `server-agent bridge` relays stdin/stdout for Node clients (guard) after checking the server is LocalSystem; CI now asserts a GENERIC_WRITE client is refused even for an admin and that bridge works against the real service. `internal/preflight` + `server-agent preflight`. Test pipe names made collision-proof. ADR-034.

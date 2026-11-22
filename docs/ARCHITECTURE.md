@@ -67,7 +67,7 @@ Proposed (ADR-021): Desk implements this client in Rust (no browser `Origin`, wh
 
 ### 3.3 Server Agent ↔ console
 
-HTTPS, signed requests (ADR-013). Endpoints in `apps/console/app/api/agent/*`:
+HTTPS, signed requests (ADR-013, ADR-035): headers `X-OM-Server`, `X-OM-Timestamp` (Unix s), `X-OM-Nonce` (hex), `X-OM-Signature` (base64 ed25519 over `OM-AGENT-1\n<METHOD>\n<path?query>\n<serverId>\n<ts>\n<nonce>\n<hex sha256(body)>`). The console rejects skew > 300 s, unknown/revoked servers, bad signatures, then replayed nonces (in that order). Endpoints in `apps/console/app/api/agent/*`:
 
 | Endpoint | Purpose |
 | --- | --- |

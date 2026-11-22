@@ -26,6 +26,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - TOTP secrets encrypted with Windows DPAPI; data folder restricted to SYSTEM and Administrators.
 - `server-agent preflight`: checks a server is ready (Windows version, memory, disk, Remote Desktop, WebView2, TallyPrime, bundled Node, Clients share, internet access, clock) with a plain fix for each problem.
 - `server-agent bridge`: lets Node-based clients talk to the Server Agent pipe safely.
+- Signed requests between the Server Agent and the console (ed25519, 5-minute window, replay protection), with a test vector both sides must match.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

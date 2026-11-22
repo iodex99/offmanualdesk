@@ -96,7 +96,7 @@ Template:
 
 ## ADR-013: Server Agent ↔ console auth by signed requests
 - Date: 2026-11-22
-- Status: Proposed
+- Status: Accepted (format in ADR-035)
 - Decision: At enrolment the agent generates an ed25519 keypair; the console stores the public key against the server. Every request carries a signature over method, path, timestamp and body hash; console rejects skew > 5 minutes. Avoids mTLS on Vercel.
 
 ## ADR-014: Seat counting mode is per contract
@@ -268,3 +268,10 @@ Template:
 - Options: A relax the DACL to generic read/write for Authenticated Users and rely only on clients checking the server identity (weakens ADR-029; needs a security sign-off) / B keep the DACL; every client opens with exactly 0x12008B; Rust Desk does so natively; Node gets a stdio relay (`server-agent.exe bridge`) that opens the pipe correctly and checks the server is LocalSystem
 - Decision: B. `pipe.Dial` = `winio.DialPipeAccess(name, 0x12008B)` at SECURITY_ANONYMOUS (the server can't impersonate clients). `server-agent bridge` relays NDJSON both ways, waits for outstanding replies on stdin EOF, refuses non-LocalSystem servers. CI asserts a GENERIC_WRITE client is refused even when running as Administrator, and that the bridge works against the real LocalSystem service.
 - Consequences: One small bridge process per running gateway (the guard spawns it once). Desk must use CreateFileW with the exact access mask (M4). Lab L7 still confirms behaviour with two non-admin users on Server 2022.
+
+## ADR-035: Agent request signature format
+- Date: 2026-11-22
+- Status: Accepted (makes ADR-013 concrete; ADR-013 → Accepted)
+- Context: ADR-013 chose ed25519-signed requests but not the exact bytes; Go (agent) and TypeScript (console) must agree byte for byte.
+- Decision: canonical string `OM-AGENT-1\n<METHOD upper>\n<path with query>\n<server id>\n<unix seconds>\n<nonce hex>\n<hex sha256 of raw body>`; headers `X-OM-Server`, `X-OM-Timestamp`, `X-OM-Nonce`, `X-OM-Signature` (base64). Console order of checks: header shape (400) → |skew| ≤ 300 s → key lookup (enrolled, not revoked) → signature → nonce unused within the window (stored until ts+300 s). A golden vector with a fixed TEST seed lives in `packages/shared-schema/fixtures/agent-signature.json`; both test suites must reproduce it exactly.
+- Consequences: Servers need roughly correct clocks (preflight warns at 2 min). Nonce storage needs a Postgres table with expiry in production (M3).
