@@ -65,18 +65,7 @@ func (a *Agent) bindComplete(ctx context.Context, c rpc.Caller, p json.RawMessag
 	if a.bindTries == nil {
 		a.bindTries = map[string][]time.Time{}
 	}
-	now := a.now()
-	recent := a.bindTries[c.SID][:0]
-	for _, t := range a.bindTries[c.SID] {
-		if now.Sub(t) < bindWindow {
-			recent = append(recent, t)
-		}
-	}
-	tooMany := len(recent) >= bindMaxAttempts
-	if !tooMany {
-		recent = append(recent, now)
-	}
-	a.bindTries[c.SID] = recent
+	tooMany := a.limited(a.bindTries, c.SID, bindMaxAttempts, bindWindow)
 	a.mu.Unlock()
 	if tooMany {
 		return nil, &rpc.Error{Code: rpc.CodeLocked, Message: "Too many tries. Wait an hour, or ask your admin for help."}

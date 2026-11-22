@@ -36,6 +36,36 @@ function fakeAgent(replies: Record<string, unknown[] | ((p: Record<string, unkno
   return { agent, calls };
 }
 
+describe("recovery", () => {
+  it("a recovery code resets the authenticator and goes back to enrolment", async () => {
+    const { agent, calls } = fakeAgent({
+      "session.hello": [
+        { ...base, dayUnlocked: false },
+        { ...base, dayUnlocked: false, totpEnrolled: false },
+      ],
+      "auth.recover": (p) => {
+        if (p.code !== "ABCDE-FGHJK")
+          throw { code: -32003, message: "That recovery code isn't right, or it was already used." };
+        return { reset: true, codesLeft: 7 };
+      },
+      "auth.totpEnrolStart": [{ secret: "S", uri: "otpauth://totp/x" }],
+    });
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
+    fireEvent.click(await screen.findByText("Lost your phone?"));
+    const input = screen.getByLabelText(/Recovery code/);
+    fireEvent.change(input, { target: { value: "zzzzz-zzzzz" } });
+    fireEvent.click(screen.getByText("Continue"));
+    expect(await screen.findByText(/isn't right, or it was already used/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Recovery code/), { target: { value: "abcde-fghjk" } });
+    fireEvent.click(screen.getByText("Continue"));
+    expect(await screen.findByAltText(/authenticator app/)).toBeTruthy();
+    expect(calls.filter((c) => c[0] === "auth.recover").map((c) => c[1])).toEqual([
+      { code: "ZZZZZ-ZZZZZ" },
+      { code: "ABCDE-FGHJK" },
+    ]);
+  });
+});
+
 describe("licence", () => {
   it("shows the paused message instead of the assistant and checks again", async () => {
     const start = vi.fn(async () => ({ running: true, port: 18800 }));
@@ -126,12 +156,16 @@ describe("Unlock flow", () => {
         { ...base, pinSet: false },
       ],
       "auth.totpEnrolStart": [{ secret: "JBSWY3DPEHPK3PXP", uri: "otpauth://totp/x" }],
-      "auth.totpEnrolConfirm": [{ enrolled: true }],
+      "auth.totpEnrolConfirm": [{ enrolled: true, recoveryCodes: ["ABCDE-FGHJK", "MNPQR-STUVW"] }],
     });
     render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
     expect(await screen.findByAltText(/QR code/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/6-digit code/), { target: { value: "12a3456" } });
     fireEvent.click(screen.getByText("Continue"));
+    // Recovery codes are shown once before going on.
+    expect(await screen.findByText("ABCDE-FGHJK")).toBeTruthy();
+    expect(screen.getByText("MNPQR-STUVW")).toBeTruthy();
+    fireEvent.click(screen.getByText("I've saved them"));
     expect(await screen.findByText(/Choose a PIN/)).toBeTruthy();
     expect(calls.find((c) => c[0] === "auth.totpEnrolConfirm")?.[1]).toEqual({ code: "123456" });
   });

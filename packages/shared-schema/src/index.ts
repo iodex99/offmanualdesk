@@ -44,6 +44,7 @@ export const PIPE_METHODS = [
   "session.hello",
   "auth.bindStart",
   "auth.bindComplete",
+  "auth.recover",
   "auth.totpEnrolStart",
   "auth.totpEnrolConfirm",
   "auth.pinSet",

@@ -22,6 +22,7 @@ pub const DESK_METHODS: &[&str] = &[
     "session.hello",
     "auth.bindStart",
     "auth.bindComplete",
+    "auth.recover",
     "auth.totpEnrolStart",
     "auth.totpEnrolConfirm",
     "auth.pinSet",

@@ -53,6 +53,8 @@ type Agent struct {
 
 	binder    Binder
 	bindTries map[string][]time.Time // SID → recent bindComplete attempts
+
+	recoverTries map[string][]time.Time // SID → recent auth.recover attempts
 }
 
 type stepUpGrant struct {
@@ -89,6 +91,7 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("telegram.linkStart", a.telegramLinkStart)
 	srv.Handle("auth.bindStart", a.bindStart)
 	srv.Handle("auth.bindComplete", a.bindComplete)
+	srv.Handle("auth.recover", a.authRecover)
 }
 
 // ---- errors in plain words ----

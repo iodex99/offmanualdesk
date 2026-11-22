@@ -27,6 +27,8 @@ type Screen =
   | { kind: "unavailable"; message: string }
   | { kind: "signup"; url?: string; qr?: string }
   | { kind: "enrol"; qr: string; secret: string }
+  | { kind: "codes"; codes: string[] }
+  | { kind: "recover" }
   | { kind: "pin" }
   | { kind: "unlock"; usePin: boolean }
   | { kind: "ready"; name: string; notice?: string }
@@ -169,7 +171,23 @@ export function Unlock({
       );
     case "enrol":
       return (
-        <form onSubmit={submit(() => agent("auth.totpEnrolConfirm", { code }))}>
+        <form
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            setError(null);
+            agent("auth.totpEnrolConfirm", { code })
+              .then((r) => {
+                const codes = (r as { recoveryCodes?: unknown }).recoveryCodes;
+                // F2 step 4: recovery codes are shown once, before anything else.
+                if (Array.isArray(codes) && codes.every((c) => typeof c === "string")) {
+                  setScreen({ kind: "codes", codes: codes as string[] });
+                } else {
+                  void refresh();
+                }
+              })
+              .catch((e: unknown) => setError(message(e)));
+          }}
+        >
           <p>
             Scan this with your authenticator app (Google or Microsoft Authenticator), then enter the code.
           </p>
@@ -177,6 +195,47 @@ export function Unlock({
           <p className="hint">Can't scan? Key: {screen.secret}</p>
           <CodeInput value={code} onChange={(v) => setCode(sixDigits(v))} />
           <button type="submit">Continue</button>
+          {error && <p role="alert">{error}</p>}
+        </form>
+      );
+    case "codes":
+      return (
+        <div>
+          <p>
+            Write these recovery codes down and keep them somewhere safe (not on this computer). If you lose
+            your phone, one code lets you set up a new one. Each code works once. They won't be shown again.
+          </p>
+          <ol className="codes">
+            {screen.codes.map((c) => (
+              <li key={c}>
+                <code>{c}</code>
+              </li>
+            ))}
+          </ol>
+          <button onClick={() => void refresh()}>I've saved them</button>
+        </div>
+      );
+    case "recover":
+      return (
+        <form onSubmit={submit(() => agent("auth.recover", { code: value.trim() }))}>
+          <p>
+            Lost your phone? Enter one of your recovery codes. You'll then set up your authenticator again.
+          </p>
+          <label>
+            Recovery code{" "}
+            <input
+              autoComplete="off"
+              maxLength={11}
+              value={value}
+              onChange={(e) => setValue(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
+            />
+          </label>
+          <button type="submit" disabled={value.replace(/-/g, "").length !== 10}>
+            Continue
+          </button>
+          <button type="button" onClick={() => void refresh()}>
+            Back
+          </button>
           {error && <p role="alert">{error}</p>}
         </form>
       );
@@ -228,6 +287,16 @@ export function Unlock({
           <p>Enter today's code from your authenticator app.</p>
           <CodeInput value={code} onChange={(v) => setCode(sixDigits(v))} />
           <button type="submit">Unlock</button>
+          <button
+            type="button"
+            onClick={() => {
+              setValue("");
+              setError(null);
+              setScreen({ kind: "recover" });
+            }}
+          >
+            Lost your phone?
+          </button>
           {error && <p role="alert">{error}</p>}
         </form>
       );

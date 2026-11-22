@@ -117,8 +117,16 @@ func (a *Agent) totpEnrolConfirm(ctx context.Context, c rpc.Caller, p json.RawMe
 	if err := a.store.AdvanceTOTPCounter(ctx, e.SID, counter); err != nil {
 		return nil, err
 	}
+	codes, hashes, err := newRecoveryCodes()
+	if err != nil {
+		return nil, err
+	}
+	if err := a.store.SetRecoveryCodes(ctx, e.SID, hashes); err != nil {
+		return nil, err
+	}
 	a.audit(ctx, e.SID, "auth", "totp_enrol_confirm", "ok")
-	return map[string]bool{"enrolled": true}, nil
+	// Shown once (F2 step 4); only hashes are kept.
+	return map[string]any{"enrolled": true, "recoveryCodes": codes}, nil
 }
 
 // ---- daily unlock, PIN, step-up ----
