@@ -7,7 +7,7 @@ metadata: { "openclaw": { "os": ["win32"] } }
 
 # Document chaser
 
-Produces `Missing_Documents_<Period>.xlsx` in the firm's reports folder (from the client directory). It lists
+Produces `MissingDocs_<period>.xlsx` (period like `2026-11`, `Q3-FY2026-27` or `FY2026-27`) in the firm's reports folder (from the client directory). It lists
 what is missing; it never contacts clients.
 
 ## Inputs

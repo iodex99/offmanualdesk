@@ -7,7 +7,7 @@ metadata: { "openclaw": { "os": ["win32"] } }
 
 # Tally MIS
 
-Produces `MIS_<Client>_<Month-Year>.xlsx` in the client's folder, filled from the firm's template. It reads
+Produces `MIS_<Client>_<YYYY-MM>.xlsx` in the client's folder, filled from the firm's template. It reads
 Tally; it never posts or alters vouchers.
 
 ## Inputs

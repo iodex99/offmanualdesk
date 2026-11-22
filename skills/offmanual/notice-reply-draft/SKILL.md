@@ -7,7 +7,7 @@ metadata: { "openclaw": { "os": ["win32"] } }
 
 # Notice reply draft
 
-Produces `Notice_Reply_Draft_<Client>_<NoticeRef>.docx` in the client's folder, next to the notice. It is a
+Produces `NoticeReply_<Client>_<DD-MM-YYYY>.docx` (the notice's date) in the client's folder, next to the notice. It is a
 starting draft for the CA. It never uploads, files, emails or submits anything.
 
 ## Inputs

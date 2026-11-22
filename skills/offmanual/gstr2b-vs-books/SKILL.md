@@ -7,7 +7,7 @@ metadata: { "openclaw": { "os": ["win32"] } }
 
 # GSTR-2B vs books
 
-Produces `GSTR2B_Recon_<Client>_<Period>.xlsx` (Period like `Nov-2026`) in the client's folder. It compares;
+Produces `GSTR2B_vs_Books_<Client>_<YYYY-MM>.xlsx` (for a quarter, the quarter's last month) in the client's folder. It compares;
 it never changes the books and never touches the GST portal.
 
 ## Inputs

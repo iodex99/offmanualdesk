@@ -7,7 +7,7 @@ metadata: { "openclaw": { "os": ["win32"] } }
 
 # AIS / 26AS vs books
 
-Produces `AIS26AS_Recon_<Client>_<FY>.xlsx` (FY like `FY2025-26`) in the client's folder. It compares; it never
+Produces `TDS_Credit_Reco_<Client>_<FY>.xlsx` (FY like `FY2025-26`) in the client's folder. It compares; it never
 changes the books and never logs in to the income-tax portal.
 
 ## Inputs
