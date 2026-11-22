@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Half-done / next: …
 -->
 
+### 2026-11-23 23:30: Full-history secret scan workflow (security review #9)
+- Changed: `.github/workflows/secrets-full-scan.yml` (workflow_dispatch + Mondays 03:00 IST; checkout fetch-depth 0; gitleaks-action v2, whose source passes no `--log-opts` for these events, so every commit is scanned). CI caught `unwrap()` in the new single-instance tests (clippy -D warnings); allowed on the test module as elsewhere.
+- Tests: actionlint clean.
+
 ### 2026-11-23 23:10: One Desk per session + Explorer "Ask Off Manual" (M4, ADR-059)
 - Changed: Rust `instance.rs` (mutex `Local\OffManualDesk`, inbox in `%LOCALAPPDATA%\OffManual\desk\inbox` with temp + rename, auto-reset wake event, drain with size/count/path checks; fourth audited unsafe module; CreateMutexW/CreateEventW/OpenEventW/SetEvent/WaitForSingleObject verified in windows-sys 0.61.2; Tauri `get_webview_window`/`unminimize`/`show`/`set_focus`/`try_state`/`setup` verified in tauri 2.12.7), `main.rs` (second launch forwards and exits; first queues asks, `inbox_take`, `om-inbox` signal); UI `inbox.ts`, Chat `prefill`, Assistant takes asks now and on each signal. ARCHITECTURE F12; runbook `reg add` for the verb; employee quick start.
 - Tests: desk 65/65 (newest ask, prompt, Assistant end to end incl. a later signal while on another tab); Rust (command line, path rules incl. device paths and length, post + drain with junk/oversize/relative files, second claim refused and released, a second launch wakes the first via the real event) run in CI; cargo fmt. CI for Request access + digest green; `main` at a955653.
