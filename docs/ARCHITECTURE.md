@@ -129,7 +129,7 @@ C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM
 1. Desk starts at logon, `session.hello` → unknown SID → "Sign in to get started".
 2. Desk `auth.bindStart` → console `/bind` URL (shown with a QR code for a phone) → employee signs in with Google/Microsoft (verified email) → console finds the one non-disabled employee with that email → shows a one-time code (10 min).
 3. Employee types the code into Desk → `auth.bindComplete({code})` → Server Agent sends `POST /api/agent/bind {code, sid}` with the caller SID from the pipe token (rule 4) → console binds it (refuses a different SID already on the employee, or a SID bound to someone else) and returns name + packs → agent records the employee. Implemented (ADR-044).
-4. TOTP enrolment (QR + confirm) → recovery codes shown once → PIN set.
+4. TOTP enrolment (QR + confirm) → 8 recovery codes shown once (only hashes kept) → PIN set. Lost phone: "Lost your phone?" → `auth.recover(code)` (5 tries/hour) → authenticator reset, day grant revoked → enrol the new phone (ADR-046).
 5. Optional Telegram link (F7). First-run tour shows 3 task buttons for their role.
 
 ### F3 Daily unlock, idle lock, step-up

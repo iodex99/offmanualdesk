@@ -76,7 +76,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M4 Desk core
 - [ ] Tauri shell, autostart at logon, single instance per session
 - [x] Pipe client in Rust (`src-tauri/src/agent_client.rs`: CreateFileW with 0x12008B, SQOS anonymous, server must be LocalSystem, NDJSON, Desk method allowlist) + `agent_call` command
-- [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`)
+- [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`); recovery codes shown once after enrolment and "Lost your phone?" → `auth.recover` → re-enrol (ADR-046)
 - [x] Sign-in + SID binding: Desk signup screen (console URL + QR from `auth.bindStart`, code → `auth.bindComplete` with the OS-derived SID; 10 tries/hour)
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
 - [x] Idle lock: session idle from `GetLastInputInfo` (Rust `idle.rs`, per RDS session) polled every 30 s, firm `lockTimeoutMax` from policy.get (default 15), fallback to in-window activity, `lock.set` then back to the unlock screen; [ ] step-up prompt
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 10:50: Recovery codes (F2 step 4)
+- Changed: store `recovery.go` (SetRecoveryCodes, RecoveryCodesLeft, UseRecoveryCode: atomic, resets TOTP secret/enrolment/counter), agent `recovery.go` (8 codes XXXXX-XXXXX from the no-look-alike alphabet, salted sha256 hashes only, `auth.recover` with 5 tries/hour per SID, day grant revoked, audit), totpEnrolConfirm returns the codes once, shared `limited()` helper (bind uses it too); shared IPC schema + Desk Rust allowlist add `auth.recover`; Desk codes screen and recovery screen. ADR-046.
+- Tests: Go recovery (format, uniqueness, hashes only, wrong code, case/dash-insensitive, reset → re-enrol with fresh codes, single use, rate limit + window, unknown caller); the schema test caught the missing IPC entry; desk 30/30; golangci-lint both OSes 0; CI run for the Doctor retry green (real `cmd /C exit 78`).
+- Half-done / next: admin reset of an employee's authenticator (console → policy flag); step-up prompt.
 
 ### 2026-11-23 10:20: Gateway Doctor retry (M4, F4)
 - Changed: `gateway.rs` (EXIT_NEEDS_DOCTOR, doctor_arguments/environment, Startup + wait_ready_or_exit, backup_state with recursive copy and pruning, `backups_dir` in Layout; probe-only `wait_ready` now test-only), `gateway_manager.rs` (start loop with one Doctor retry, spawn/run_doctor/release helpers, try_lock in status).
