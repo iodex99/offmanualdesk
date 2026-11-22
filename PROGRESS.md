@@ -20,7 +20,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Proposed product ADRs accepted on Dwahnil's "do everything" instruction (016, 019, 023, 025, 026, 027, 028); overturn any by saying so. Lab-dependent ADRs (020, 021, 022, 024) stay Proposed until L1–L3.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
-- [ ] **Review and approve skills** (`skills/offmanual/*`, status `pending` in `skills/registry.lock.json`): read each SKILL.md (ideally with your CA for the tax dates/limits), then set `review` to `{ "status": "approved", "reviewer": "Dwahnil", "date": "YYYY-MM-DD" }`. Only approved skills ship.
+- [ ] **Review and approve skills** (9 in `skills/offmanual/*`, status `pending` in `skills/registry.lock.json`): read each SKILL.md (ideally with your CA for the tax dates/limits), then set `review` to `{ "status": "approved", "reviewer": "Dwahnil", "date": "YYYY-MM-DD" }`. Only approved skills ship.
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
 - [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
@@ -111,7 +111,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [ ] Starter pack imported and reviewed (SKILLS.md §3)
 - [x] Client directory skill (pending review); [ ] admin scan task button
 - [ ] Task buttons v1 (SKILLS.md §5)
-- [~] India pack v0: `compliance-calendar`, `ledger-scrutiny` written (pending CA review); remaining: gstr2b-vs-books, ais-26as-vs-books, tds-checks, notice-reply-draft, doc-chaser, tally-mis
+- [x] India pack v1 written (all `pending` CA review, never shipped until approved): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
 
 ### M8 Updates
 - [x] GitHub Actions release workflow (build, test, scan, sign, manifest, upload, register) — written and actionlint-clean; first run needs repo + signing key (done early at Dwahnil's request)
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 16:05: India pack skills (M7)
+- Changed: six skills `skills/offmanual/{gstr2b-vs-books,ais-26as-vs-books,tds-checks,notice-reply-draft,doc-chaser,tally-mis}/SKILL.md` (instruction-only, read-only, outputs in the client's folder with the naming rule, ₹ Indian grouping and DD-MM-YYYY, stop on Access Denied, never touch portals or contact anyone; tax rates and limits come from the firm's own reviewed tables, not from the model's memory); lock entries `pending`.
+- Tests: skill-vet check — no blocking findings for any; `verify-skills` OK (9 skills, 0 approved).
+- Half-done / next: Dwahnil + CA review each SKILL.md; task buttons that start these skills.
 
 ### 2026-11-23 15:45: Report a problem (F11)
 - Changed: agent `support.go` (bundle preview, submit with description ≤ 500 UTF-16 units, desk info flat and small, plain errors, audit), app `support.go` (pre-flight bounded to 20 s and to the console's limits, last 200 log lines, rune-safe cuts, empty array instead of null), console client `SubmitSupport`; IPC schema + Desk allowlist `support.submit`; console migration 0005 (`support_tickets.ref`, `description`, `bundle`), `lib/support.ts` (strict zod schema, daily cap, unique ref, employee linked only within the firm), route, `/support` page; Desk `ReportProblem.tsx` tab. ADR-050.

@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- India pack drafts (waiting for review): GSTR-2B vs books, AIS/26AS vs books, TDS checks, notice reply draft, document chaser, Tally MIS.
 - Report a problem: Desk shows exactly what will be sent (versions, server checks, the Server Agent's own log lines; never files or chats), adds the employee's short description and returns a reference number.
 - Firm admins can reset an employee's authenticator from the console when the phone and recovery codes are both lost; the employee sets it up again in Desk.
 - Desk stops an unused assistant after the firm's idle hours to save server memory, starts it again on the next message, and restarts it if it crashes.
