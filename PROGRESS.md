@@ -97,7 +97,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Skill packs → tool allowlist (ADR-043): `skills/packs.json` ships in the signed release; guard `before_tool_call` allows only tools of the employee's granted packs (policy.get, cached 30 s, fail closed), Telegram = core + firm-allowed packs; release tooling validates packs.json and skills' pack names; Desk passes `packsPath`. [ ] AD-group grants resolved on the server (needs lab: group names from the caller token), per-pack skill visibility in the gateway config (ADR-069: lease carries packs, Desk sets `agents.defaults.skills` from the shipped lock; fail closed)
 - [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
 - [x] Desk side: Request access (ADR-058): card after a reply for each folder refused since it was sent, note to the firm's admins (local only), Access tab (own requests; admins close them); no `chat.abort` needed (guard blocks further tools)
-- [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; [ ] Desk Review tab (needs the Rust gateway client), step-up on approve, Tally/email actions
+- [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; Desk Review tab (`Review.tsx`) and step-up on approve (ADR-047) done; [ ] Tally and email proposal actions (need the Tally-post / email packs)
 - [x] Audit events to Server Agent (access denials)
 - [x] Telegram policy enforcement (off / text / files) in the Server Agent router; replies stripped of encoded dumps and local links (security review #5)
 
@@ -111,7 +111,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 ### M7 Skills
 - [x] Registry tooling: `tools/skill-vet` (static checks: binaries, install scripts, git deps block; network/shell/eval/blobs/absolute paths/credentials warn; review checklist; `lock` emits pending entries) + `verify-skills` with `pending` status; release ships approved only (ADR-039)
 - [ ] Starter pack imported and reviewed (SKILLS.md §3)
-- [x] Client directory skill (pending review); [ ] admin scan task button
+- [x] Client directory skill (pending review); scan started from the Desk task "Build client list" (ADR-054)
 - [x] Task buttons v1 (SKILLS.md §5): Desk Tasks tab (`tasks.ts`, `TaskButtons.tsx`) with client/month/FY/period/file inputs; each sends one request naming the skill and the §5 output file through the chat; role defaults (ADR-061: console task role per employee → policy → `session.hello` → role's buttons first, others under More tasks); [ ] Purchase bills to vouchers (needs the Tally-post pack)
 - [x] India pack v1 written (all `pending` CA review, never shipped until approved): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
 
