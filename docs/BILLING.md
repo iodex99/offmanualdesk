@@ -29,7 +29,7 @@ Admins' seats can be marked free via an `adjustment` line.
 - Draft → reviewed by superadmin (first 3 months per firm) → issued → email + Desk banner to firm admins.
 - Mid-month contract changes: lines prorated by days under each version.
 
-Implemented (ADR-045): `lib/billing/run.ts`. A draft per firm and month is created or refreshed in place by `runMonth`; issued, paid and void invoices are never recomputed. Seats per day come from employee records (from binding or `enabled_from` until the day before `disabled_at`); "active" means at least one turn that day in `usage_daily`. Issuing needs `OFFMANUAL_GSTIN`; the number comes from a per-FY counter in the same transaction; due date = issue date + contract payment terms; one-time lines are marked billed. `refreshFirmStatus` applies §6 to issued invoices and writes `firms.status`.
+Implemented (ADR-045): `lib/billing/run.ts`. A draft per firm and month is created or refreshed in place by `runMonth`; issued, paid and void invoices are never recomputed. Seats per day come from employee records (from binding or `enabled_from` until the day before `disabled_at`); "active" means at least one turn that day in `usage_daily`. Issuing needs `OFFMANUAL_GSTIN`; the number comes from a per-FY counter in the same transaction; due date = issue date + contract payment terms; one-time lines are marked billed. `refreshFirmStatus` applies §6 to issued invoices and writes `firms.status`. Schedule: Vercel Cron calls `GET /api/cron/billing` daily at 01:00 IST (`apps/console/vercel.json`, bearer `CRON_SECRET`): statuses every day, last month's drafts on the 1st.
 
 ## 4. Payments
 

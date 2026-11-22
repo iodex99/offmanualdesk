@@ -130,11 +130,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Billing engine (pure, `apps/console/lib/billing/`): all 5 line types, both seat modes, tiered/volume bands with fractional seats, mid-month proration, versioned per-seat lines, adjustments, usage with quota + markup (ADR-038)
 - [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; [ ] admin UI pages
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
-- [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); [ ] scheduler (Vercel cron), PDF
+- [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); [ ] PDF
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
 - [ ] Notification engine + Desk banners
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
-- [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); [ ] override UI, daily scheduler
+- [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; [ ] override UI
 
 ### M10 Admin and ease
 - [ ] Admin agent tools
@@ -166,7 +166,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 ### 2026-11-23 09:50: Billing tables, invoice run, issue, payments, ladder → firm status (M9)
 - Changed: console schema + migration 0003, `lib/billing/run.ts` (parseLineSpec with strict zod, seatDaysFor, generateDraft, runMonth, issueInvoice, recordPayment, refreshFirmStatus, billingConfigFromEnv), `lib/billing/admin.ts` (superadmin actions, firm-scoped invoice list with money as strings), routes `/api/admin/billing`, `/api/admin/firms/[firmId]/invoices`. ADR-045.
 - Tests: console 96/96 (11 new, figures by hand: setup + AMC + 1.5 prorated seats with CGST/SGST; IGST; draft refreshed in place; mid-month version proration; usage only on Off Manual's key; FY numbering 0001/0002; one-time billed once; partial then full payment; ladder active → overdue → restricted → suspended, override with reason and expiry, payment restores, closed untouched; roles: staff/firm admin/anonymous refused, drafts hidden from firm admins, cross-firm refused); `next build` lists both routes. CI run for idle lock + binding all green.
-- Half-done / next: scheduler (cron route with a secret), invoice PDF, Razorpay (needs keys), billing UI.
+- Then: `/api/cron/billing` + `apps/console/vercel.json` cron (19:30 UTC = 01:00 IST); tests 13/13 in billing-run (secret required, 1st-of-month drafts, year wrap).
+- Half-done / next: invoice PDF, Razorpay (needs keys), billing UI.
 
 ### 2026-11-23 09:10: Desk idle lock (M4, F3)
 - Changed: Rust `idle.rs` (GetLastInputInfo + GetTickCount with wrap-safe elapsed; third audited unsafe module) and command `idle_seconds`; windows-sys features SystemInformation + KeyboardAndMouse (verified in 0.61.2 source); UI `idleLock.ts` hook wired into Unlock's ready state.
