@@ -67,7 +67,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M3 Console core
 - [x] Auth for superadmin / staff / firm admin with mandatory TOTP (OIDC Google/Microsoft via openid-client, server-side sessions, encrypted TOTP secrets, role + firm scoping; ADR-037). Live sign-in needs Dwahnil's OAuth apps
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
-- [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; invite email on add (Resend, `lib/email.ts`; invites.sent_at; failure never undoes the add) + "Send invite again"; [ ] WhatsApp invites (v2), billing actions UI for superadmin
+- [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; invite email on add (Resend, `lib/email.ts`; invites.sent_at; failure never undoes the add) + "Send invite again"; superadmin `/billing` page (make drafts, issue with confirm, record payments in rupees, override with reason and date, refresh statuses); [ ] WhatsApp invites (v2)
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
 - [x] Agent API: bind (`POST /api/agent/bind`, ADR-044); [ ] usage, support bundle, notices
 - [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
@@ -126,7 +126,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 
 ### M9 Billing
 - [x] Billing engine (pure, `apps/console/lib/billing/`): all 5 line types, both seat modes, tiered/volume bands with fractional seats, mid-month proration, versioned per-seat lines, adjustments, usage with quota + markup (ADR-038)
-- [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; invoice list on the firm page; [ ] superadmin billing actions UI
+- [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; invoice list on the firm page; superadmin `/billing` page
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
 - [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); [ ] PDF
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 13:40: Superadmin billing page (M9)
+- Changed: `billingBoard` (superadmin; invoices across firms with names, money as strings), `app/billing/page.tsx` + `forms.tsx` (run month, issue, payment with strict rupee → paise conversion, override, refresh), link from `/firms`.
+- Tests: console 107/107 (board roles, string money; rupee conversion incl. 0, 3 decimals, negative, commas); `next build` lists `/billing`.
+- Half-done / next: invoice PDF; Razorpay (keys).
 
 ### 2026-11-23 13:10: Invite emails (M3)
 - Changed: `lib/email.ts` (Mailer interface, Resend sender verified against resend.com docs: POST /emails, Bearer key, from/to/subject/text, Idempotency-Key; status-only errors; `mailerFromEnv` off until `RESEND_API_KEY` + `OM_EMAIL_FROM`; invite text with the `/bind` link, names only), `addEmployee` sends and records `sent_at` and returns `inviteSent`, `resendInvite` + route `POST .../employees/[employeeId]/invite` (firm-scoped, only for people not yet signed in), UI message + button.
