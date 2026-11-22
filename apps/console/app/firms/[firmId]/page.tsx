@@ -173,6 +173,14 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                   <td>{i.status}</td>
                   <td>
                     <a href={`/api/admin/firms/${firmId}/invoices/${i.id}/pdf`}>PDF</a>
+                    {i.paymentLinkUrl && (
+                      <>
+                        {" · "}
+                        <a href={i.paymentLinkUrl} target="_blank" rel="noopener noreferrer">
+                          Pay online
+                        </a>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

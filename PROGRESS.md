@@ -4,12 +4,12 @@
 
 ## Current focus
 
-Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green run). Built and unit/CI-tested: Server Agent (M2), console core, admin pages, billing (M3/M9), Desk core incl. chat, review, tasks, Request access, single instance, hotkey (M4), guard (M5), Telegram (M6), skills tooling + India pack pending review (M7), release staging, `current` switch, releases page (M8), setup, digest, support, fleet (M10), security review, backups, offboarding archive (M11). Lab-dependent items wait for M1. In progress: Razorpay payment links + webhook (M9).
+Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green run). Built and unit/CI-tested: Server Agent (M2), console core, admin pages, billing (M3/M9), Desk core incl. chat, review, tasks, Request access, single instance, hotkey (M4), guard (M5), Telegram (M6), skills tooling + India pack pending review (M7), release staging, `current` switch, releases page (M8), setup, digest, support, fleet (M10), security review, backups, offboarding archive (M11). Lab-dependent items wait for M1. Razorpay payment links + webhook built (M9); live check needs keys.
 
 ## Next step
 
 1. `main` = `m4-desk` at 2d97076; watch CI by commit (`gh run list --commit <sha>`) and fast-forward after each green run.
-2. Now: Razorpay payment links on issue + `payment_link.paid` webhook (schema prepared in console migration 0011; API facts being verified from Razorpay docs before coding; keys later). Then: MSI once the WiX decision is made; Desk settings (hotkey, side); UPI AutoPay / e-mandate.
+2. Next: Desk settings (hotkey, side, shorter lock); UPI AutoPay / e-mandate; MSI once the WiX decision is made; live Razorpay check once test keys exist.
 3. When lab output arrives: `/lab-result L<n>` for each; promote/supersede the lab-dependent ADRs (020, 021, 022, 024, 040 session key, 041 tool registration, 043 tool list); flip [A] markers in ARCHITECTURE.md.
 
 ## Waiting on Dwahnil
@@ -26,7 +26,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [ ] Later (M6): Telegram bot token for the lab firm
 - [ ] **MSI tool licence (M8)**: WiX v4 is out of support; v7 (current) requires accepting the Open Source Maintenance Fee EULA, and organisations with annual revenue ≥ US$10,000 must sponsor `wixtoolset` on GitHub (fee is "not a license fee"; non-payment can suspend access to the binaries; building WiX from its MS-RL source avoids the EULA). Decide: (a) accept the EULA and sponsor if over the threshold, (b) build WiX from source in CI, or (c) another installer. Until then the MSI isn't built and the install runbook's manual steps apply.
 - [ ] Later (M8): Azure Trusted Signing account (or code-signing certificate) as GitHub secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`; release store (ADR-016) secrets `RELEASE_STORE_*`
-- [ ] Later (M9): Razorpay test keys; Off Manual GSTIN, state, SAC code confirmed with the CA
+- [ ] Later (M9): Razorpay test keys (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` in Vercel), a webhook in the Razorpay dashboard to `<console>/api/razorpay/webhook` for `payment_link.paid` with its secret as `RAZORPAY_WEBHOOK_SECRET`; Off Manual GSTIN, state, SAC code confirmed with the CA
 
 ## Milestones
 
@@ -130,7 +130,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; invoice list on the firm page; superadmin `/billing` page
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
 - [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); invoice PDF (`lib/billing/pdf.ts`, pdf-lib 1.17.1: both GSTINs, place of supply, SAC, CGST/SGST or IGST, total in words; drafts marked; route `GET .../invoices/[invoiceId]/pdf`, drafts staff-only)
-- [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
+- [x] Razorpay payment links + webhook (ADR-065): link on issue (and daily retry), *Pay online* for firm admins, `payment_link.paid` recorded once per payment, notices end, firm status refreshed; [ ] UPI AutoPay / e-mandate (BILLING §4), [ ] live check with test keys
 - [x] Notification engine + Desk banners (ADR-052): billing notices for firm admins (issued, due in 7 days, due today, overdue; once each; end when paid), staff/firm-admin notices from the console; email copies of billing notices to the firm's active admins (ADR-053)
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
 - [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; override UI on the superadmin `/billing` page (state, reason, until)
@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 02:40: Razorpay payment links and webhook (M9, ADR-065)
+- Changed: console `lib/billing/razorpay.ts` (client with Basic auth and the verified request shape; RazorpayError with status + code only; `ensurePaymentLinks` for issued invoices without one; `signatureOk` constant-time hex HMAC; `razorpayWebhook`), issue action and daily cron create links (cron JSON gains `paymentLinks`), route `POST /api/razorpay/webhook`, firm page *Pay online*, invoice list `paymentLinkUrl` (issued only), `.env.example` keys. API facts verified in Razorpay docs and razorpay-node v2.9.8 (research agent).
+- Tests: console 143/143 (request shape and Basic header, error carries code not key, unexpected response, amount/reference bounds before calling, env gating; links issued invoices once, drafts/paid never, failure retried, not configured; signature: missing/wrong secret/bad header/changed body/no secret; paid → recorded once with payment id, method and event time, invoice paid; duplicate delivery; other events, unknown link, not captured, bad id ignored; bad JSON 400); `next build` lists the route. CI for the hotkey commit green (first compile of `hotkey.rs`/`dock.rs`); `main` at 60aa498.
 
 ### 2026-11-24 02:05: Razorpay slice started (M9)
 - Changed: console schema only: `invoices.payment_link_id` (unique) + `payment_link_url`, unique index `payments(provider, provider_ref)`; migration 0011. No code uses them yet; the Razorpay client and webhook follow once the API is verified.

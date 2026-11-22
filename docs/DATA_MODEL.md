@@ -48,7 +48,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 | --- | --- |
 | `contracts` | firm_id, version (unique per firm), starts_on, ends_on, payment_terms_days (15), grace_days (15), suspend_after_days (45), seat_count_mode, bands_mode, status (`draft`/`active`/`superseded`/`ended`), notes (migration 0003) |
 | `contract_lines` | contract_id, spec (jsonb: the billing engine's ContractLine with paise as decimal strings, validated strictly by `parseLineSpec`), billed_invoice_id (one-time lines, set on issue) |
-| `invoices` | firm_id, number (unique, set on issue), period_start (unique per firm), period_end, issued_on, due_on, taxable_paise, cgst_paise, sgst_paise, igst_paise, total_paise, status (`draft`/`issued`/`paid`/`void`; overdue is derived by the ladder), pdf_url, payment_link_id (unique), payment_link_url (Razorpay link made on issue; migration 0011, in progress) |
+| `invoices` | firm_id, number (unique, set on issue), period_start (unique per firm), period_end, issued_on, due_on, taxable_paise, cgst_paise, sgst_paise, igst_paise, total_paise, status (`draft`/`issued`/`paid`/`void`; overdue is derived by the ladder), pdf_url, payment_link_id (unique), payment_link_url (Razorpay link made on issue or by the daily cron; migration 0011, ADR-065) |
 | `invoice_lines` | invoice_id, contract_line_id, description, sac, quantity (text, e.g. "1.50 seats"), amount_paise |
 | `payments` | invoice_id, provider (`razorpay`/`manual`), provider_ref, amount_paise, paid_at, method, recorded_by; unique (provider, provider_ref) so a provider's payment is recorded once however often its webhook arrives (migration 0011) |
 | `invoice_counters` | fy (`FY2026-27`), last_seq; incremented inside the issuing transaction |

@@ -7,6 +7,7 @@ import { emailBillingNotices } from "../admin-mail";
 import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
 import { renderInvoicePdf } from "./pdf";
+import { ensurePaymentLinks, type PaymentLinks } from "./razorpay";
 import { InputError } from "../admin";
 import { requireConsole, requireFirmAccess, type SessionState } from "../auth";
 import { uuidv7 } from "../ids";
@@ -55,7 +56,7 @@ const actionSchema = z.discriminatedUnion("action", [
 
 /** POST /api/admin/billing */
 export async function billingAction(
-  deps: BillingDeps & { mailer?: Mailer | null },
+  deps: BillingDeps & { mailer?: Mailer | null; links?: PaymentLinks | null },
   cfg: BillingConfig,
   s: SessionState | null,
   body: unknown,
@@ -70,6 +71,8 @@ export async function billingAction(
         return await runMonth(deps, cfg, a.year, a.month);
       case "issue": {
         const number = await issueInvoice(deps, cfg, a.invoiceId);
+        // Payment link before the notice and email, so they can carry it (ADR-065).
+        await ensurePaymentLinks(deps, deps.links ?? null, a.invoiceId);
         const since = deps.now();
         await billingNotices(deps); // "invoice issued" notice for the firm's admins (ADR-052)
         await emailBillingNotices(deps, since); // and its email copy (ADR-053)
@@ -135,6 +138,8 @@ export async function listInvoices(deps: BillingDeps, s: SessionState | null, fi
       taxablePaise: i.taxablePaise.toString(),
       gstPaise: (i.cgstPaise + i.sgstPaise + i.igstPaise).toString(),
       totalPaise: i.totalPaise.toString(),
+      // Firm admins pay online here (ADR-065); null until Razorpay is configured.
+      paymentLinkUrl: i.status === "issued" ? i.paymentLinkUrl : null,
     })),
   };
 }

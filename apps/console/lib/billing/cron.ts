@@ -7,6 +7,7 @@ import { firms } from "@/db/schema";
 import { emailBillingNotices, weeklyDigests } from "../admin-mail";
 import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
+import { ensurePaymentLinks, type PaymentLinks } from "./razorpay";
 import { istDate, refreshFirmStatus, runMonth, type BillingConfig, type BillingDeps } from "./run";
 
 export function bearerOk(header: string | null, secret: string | undefined): boolean {
@@ -23,7 +24,7 @@ export function previousMonth(today: string): { year: number; month: number } {
 }
 
 export async function dailyBilling(
-  deps: BillingDeps & { mailer?: Mailer | null },
+  deps: BillingDeps & { mailer?: Mailer | null; links?: PaymentLinks | null },
   cfg: BillingConfig,
   secret: string | undefined,
   req: Request,
@@ -40,6 +41,8 @@ export async function dailyBilling(
     const { year, month } = previousMonth(today);
     drafts = (await runMonth(deps, cfg, year, month)).drafts;
   }
+  // Issued invoices still without a payment link (Razorpay was down, or just configured).
+  const paymentLinks = await ensurePaymentLinks(deps, deps.links ?? null);
   const since = deps.now();
   const noticesCreated = await billingNotices(deps); // due soon / due today / overdue (ADR-052)
   const emailsSent = await emailBillingNotices(deps, since); // copies to firm admins (ADR-053)
@@ -56,5 +59,6 @@ export async function dailyBilling(
     noticesCreated,
     emailsSent,
     digests,
+    paymentLinks,
   });
 }
