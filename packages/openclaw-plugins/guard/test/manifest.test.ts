@@ -21,7 +21,10 @@ describe("guard plugin packaging", () => {
   });
 
   it("declares the tool-result middleware contract needed for access-denied handling (ADR-022)", () => {
-    expect(manifest.contracts).toEqual({ agentToolResultMiddleware: ["openclaw"] });
+    expect(manifest.contracts).toEqual({
+      agentToolResultMiddleware: ["openclaw"],
+      tools: ["offmanual_delete_files"],
+    });
   });
 
   it("package.json points OpenClaw at the built entry and pins the host version", () => {

@@ -6,7 +6,8 @@
     "onStartup": true
   },
   "contracts": {
-    "agentToolResultMiddleware": ["openclaw"]
+    "agentToolResultMiddleware": ["openclaw"],
+    "tools": ["offmanual_delete_files"]
   },
   "configSchema": {
     "type": "object",
