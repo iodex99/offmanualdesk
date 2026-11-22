@@ -253,3 +253,10 @@ Template:
 - Options: SQLite: A modernc.org/sqlite (pure Go, transpiled SQLite) / B mattn/go-sqlite3 (cgo; needs gcc in CI and release). Pipes: A github.com/Microsoft/go-winio (overlapped I/O, deadlines, SDDL, FILE_CREATE first instance, always FILE_PIPE_REJECT_REMOTE_CLIENTS; used by Docker and containerd) / B own CreateNamedPipe code with synchronous handles (cancellation and shutdown are fragile)
 - Decision: A and A. Caller identity uses x/sys/windows `GetNamedPipeClientProcessId` → `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` → `OpenProcessToken(TOKEN_QUERY)` → `GetTokenUser`, plus `ProcessIdToSessionId`, on the accepted connection's handle (`Fd()`).
 - Consequences: `CGO_ENABLED=0` builds keep working; the race detector runs only on Linux CI. Dependencies: golang.org/x/crypto, golang.org/x/sys, modernc.org/sqlite (+ runtime), go-winio, all tracked by dependabot.
+
+## ADR-033: Server Agent data folder, secret storage and unlock windows
+- Date: 2026-11-22
+- Status: Accepted
+- Context: M2 handlers need concrete rules for where secrets live, how long a daily unlock lasts and how step-up grants are kept. Lab L10 shows LocalMachine DPAPI blobs are decryptable by any local account that can read them.
+- Decision: (1) `C:\ProgramData\OffManual` gets DACL `D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)` at install (and on every start when running as SYSTEM); users never read it directly, only through pipe methods. (2) TOTP secrets: DPAPI LocalMachine + app entropy `offmanual-server-agent/secrets/v1`; empty secrets refused. (3) Daily unlock lasts until the next 22:00 IST (firm setting `working_day_hours` replaces this in M3). (4) Step-up grants are in-memory, 10 minutes, bound to SID + action class; a service restart clears them (fail closed). (5) Gateway tokens are 256-bit, returned once, stored as SHA-256. (6) TOTP enrolment is two-step: an unconfirmed secret can never unlock (`totp_enrolled_at`).
+- Consequences: Admins on the server can read agent.db (they can anyway); ordinary users cannot. Revisit the 22:00 default with the pilot firm.

@@ -29,7 +29,7 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Agent installs a skill/plugin or edits its own config | Layered lockdown: `OPENCLAW_CONFIG_READONLY=1`, guard `before_install` block, `security.installPolicy`, tool denies, skill roots wiped before start (ADR-024) |
 | Employee tampers with their own gateway (it runs as them) | Out of scope for the guard; config read-only to the user, Server Agent checks plugin inventory, LLM key proxy considered (ADR-027). Windows rights still bound what files they reach |
 | Agent keeps going after Access Denied | Tool-result middleware rewrites the denial, every later tool call in the run is blocked, Desk aborts the run (ADR-022; L3) |
-| Machine-scope DPAPI secret read by any local user who copies the blob | LocalMachine DPAPI is decryptable by any local account with the blob (+ entropy): machine secrets also need SYSTEM-only file ACLs (L10) |
+| Machine-scope DPAPI secret read by any local user who copies the blob (implemented: `C:\ProgramData\OffManual` is SYSTEM + Administrators only, set by `server-agent install`; ADR-033) | LocalMachine DPAPI is decryptable by any local account with the blob (+ entropy): machine secrets also need SYSTEM-only file ACLs (L10) |
 
 ## 3. Unbreakable rules
 

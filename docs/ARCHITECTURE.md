@@ -104,10 +104,10 @@ C:\Program Files\OffManual\
     plugins\guard\      openclaw.plugin.json, package.json, dist\ (channel-relay not shipped while ADR-023 is open)
     skills\             signed skill pack
     manifest.json       signed release manifest
-C:\ProgramData\OffManual\
-  policy.json           read-only for users
+C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM + Administrators only (ADR-033)
+  policy.json           served to users via policy.get (not read directly)
   agent.db              SQLite (DATA_MODEL.md §2)
-  staging\  logs\  backups\  support\
+  staging\  logs\server-agent.log (JSON lines)  backups\  support\
 %LOCALAPPDATA%\OffManual\      (or FSLogix profile)
   openclaw-state\       gateway state dir (sessions, memory, review queue)
   desk\                 settings, DPAPI-protected gateway token

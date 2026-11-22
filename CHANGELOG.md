@@ -21,6 +21,9 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Server Agent TOTP verification (RFC 6238; one-step clock tolerance; each code usable once).
 - Server Agent local database (SQLite, embedded migrations) with employees, day grants, lock state, audit and stable port leases.
 - Server Agent JSON-RPC over the named pipe: caller identity from the Windows process token, strict parsing, plain error messages with correlation IDs, no request content in logs.
+- Server Agent pipe methods: sign-in state, authenticator enrolment, daily code, PIN, step-up, lock, gateway port/token leases, audit, policy.
+- Server Agent runs as a Windows service (install/uninstall commands, automatic restart on failure) or in the foreground; JSON logs.
+- TOTP secrets encrypted with Windows DPAPI; data folder restricted to SYSTEM and Administrators.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

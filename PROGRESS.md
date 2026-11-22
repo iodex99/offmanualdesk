@@ -49,17 +49,17 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Product ADRs decided (016, 019, 023, 025–028); lab-dependent ones wait for results
 
 ### M2 Server Agent core
-- [ ] Windows service install/uninstall/start/stop, structured logs
+- [x] Windows service install/uninstall/start/stop (SCM recovery: restart 5 s/30 s/2 min), `run` foreground mode, JSON logs to `logs\server-agent.log` (CI round trip on windows-latest)
 - [x] SQLite local store + migrations (DATA_MODEL.md §2; `internal/store`, ADR-032)
 - [x] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL; `internal/rpc`, `internal/pipe`; DACL verified on a real pipe)
-- [ ] Method handlers wired to store/auth (session.hello, lock.*, auth.*, gateway.*, audit.append, policy.get)
+- [x] Method handlers (`internal/agent`): session.hello, auth.totpEnrolStart/Confirm, auth.verifyDaily, auth.pinSet, auth.verifyPin, auth.stepUp, lock.get/set, gateway.lease/release, audit.append, policy.get (defaults until M3)
 - [ ] Enrollment with console (keypair, signed requests), heartbeat
 - [ ] Policy fetch → `policy.json` (read-only to users)
 - [x] TOTP verification (RFC 6238, ±1 step, replay protection) in `internal/auth` (ADR-030)
 - [x] PIN rules + argon2id hashing/verification, lockout rules (3 PINs → daily code; 5 codes → 15 min + admin alert) in `internal/auth` (ADR-031)
-- [ ] Persist lock state / attempts in agent.db (needs the store)
+- [x] Lock state / attempts persisted in agent.db
 - [x] Port lease storage: stable per employee, lowest free port, expiry (`store/leases.go`)
-- [ ] Token generation + gateway.lease handler (ADR-020 listener check is Desk's job)
+- [x] 256-bit gateway tokens, only SHA-256 stored; returned once to the caller
 - [ ] Audit log append + summary upload
 - [ ] Pre-flight check command
 
@@ -146,6 +146,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 19:30: M2 slice 4: handlers, DPAPI, service
+- Changed: `internal/secrets` (DPAPI machine scope + app entropy; in-memory AES-GCM fake for tests), `internal/agent` (13 pipe methods with plain-language errors, lockout, replay protection, day grant to 22:00 IST, step-up grants 10 min, leases), migration 0002 (`totp_enrolled_at`), `internal/app` (wiring, data dir + SYSTEM/Admins ACL, JSON logs), `cmd/server-agent` run/install/uninstall/service; CI job installs the service as LocalSystem on windows-latest, calls it over the real pipe and uninstalls. ADR-033.
+- Tests: all Go → pass (agent 75.7%, app 76.1%, secrets 85.7%, store 85.7%); real DPAPI + real pipe + data-dir ACL on this box; golangci-lint windows + linux → 0 issues. Installing the service on Dwahnil's laptop was (rightly) blocked: CI covers it.
+- Half-done / next: console (M3) for enrolment/heartbeat; preflight; Desk (M4) client.
 
 ### 2026-11-22 18:45: M2 slice 3: store, JSON-RPC, named pipe
 - Changed: `internal/store` (SQLite via modernc.org/sqlite, embedded migration 0001, employees/day grants/lock state/audit summary/leases), `internal/rpc` (strict NDJSON JSON-RPC, caller from transport, plain errors + correlation IDs, no params in logs, 64 KiB cap, panic recovery), `internal/pipe` (go-winio listener with ADR-029 DACL, caller SID/session/PID from the client process token, ServerSID for clients, Dial); accepted product ADRs on Dwahnil's "do everything"; ADR-032.
