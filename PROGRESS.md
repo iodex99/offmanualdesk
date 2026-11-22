@@ -161,6 +161,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Half-done / next: …
 -->
 
+### 2026-11-23 18:30: Fix: enrolment pre-flight bounded
+- Changed: `server-agent enroll` now cuts the pre-flight report to the console's enrolment limits (40 results; title 80, detail 200, fix 300). Before, one long detail (e.g. a share error) would have made the console refuse the whole enrolment. Shared `boundReport(report, limits)` for support and enrolment.
+- Tests: app limits test for both sets; golangci-lint both OSes 0.
+
 ### 2026-11-23 18:20: Emails to firm admins: billing copies and weekly digest (ADR-053)
 - Changed: console `lib/admin-mail.ts` (emailBillingNotices with the notice's dedupe key as idempotency key; lastWeek in IST; digestFacts counts only; digestText; weeklyDigests claims the week first), `digest_runs` table (migration 0007), daily cron emails new billing notices and sends digests on Mondays, issuing emails the issued notice; notices take `created_at` from the app clock so "created since" matches.
 - Tests: console 125 (once per notice per admin, disabled admins skipped, a bounce doesn't stop others, no mailer → nothing; week boundaries in IST; digest once per week, counts, ₹ and DD-MM-YYYY, closed firms skipped); `next build` ok.

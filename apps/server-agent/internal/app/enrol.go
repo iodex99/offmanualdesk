@@ -44,7 +44,7 @@ func Enrol(ctx context.Context, dataDir, consoleURL, code string, out io.Writer)
 	if id, err := st.Meta(ctx, console.MetaServerID); err == nil && id != "" {
 		return fmt.Errorf("this server is already enrolled as %s", id)
 	}
-	report := preflight.Run(ctx, preflight.Standard(preflight.DefaultOptions()))
+	report := boundReport(preflight.Run(ctx, preflight.Standard(preflight.DefaultOptions())), enrolLimits)
 	pf, err := json.Marshal(report)
 	if err != nil {
 		return err

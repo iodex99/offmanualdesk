@@ -48,7 +48,7 @@ func supportSource(dataDir string) agent.SupportSource {
 	return func(ctx context.Context) (map[string]any, error) {
 		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		defer cancel()
-		report := boundReport(preflight.Run(ctx, preflight.Standard(preflight.DefaultOptions())))
+		report := boundReport(preflight.Run(ctx, preflight.Standard(preflight.DefaultOptions())), supportLimits)
 		lines, err := tailLines(filepath.Join(dataDir, "logs", "server-agent.log"), LogTailLines)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			lines = []string{"(log unreadable)"}
@@ -89,16 +89,26 @@ func cut(s string, n int) string {
 	return s[:n]
 }
 
-// boundReport keeps the report within the console's limits (ADR-050: ids/titles 200,
-// details 500, at most 50 results).
-func boundReport(r preflight.Report) preflight.Report {
-	if len(r.Results) > 50 {
-		r.Results = r.Results[:50]
+// reportLimits are the console's size limits for a pre-flight report.
+type reportLimits struct{ results, id, title, detail, fix int }
+
+var (
+	// supportLimits match lib/support.ts (ADR-050).
+	supportLimits = reportLimits{results: 50, id: 200, title: 200, detail: 500, fix: 500}
+	// enrolLimits match the enrolment schema in lib/agent-api.ts.
+	enrolLimits = reportLimits{results: 40, id: 32, title: 80, detail: 200, fix: 300}
+)
+
+// boundReport keeps a report within the console's limits so a long message can never
+// make the console refuse the whole request.
+func boundReport(r preflight.Report, l reportLimits) preflight.Report {
+	if len(r.Results) > l.results {
+		r.Results = r.Results[:l.results]
 	}
 	out := make([]preflight.Result, len(r.Results))
 	for i, x := range r.Results {
-		out[i] = preflight.Result{ID: cut(x.ID, 200), Title: cut(x.Title, 200), Status: x.Status,
-			Detail: cut(x.Detail, 500), Fix: cut(x.Fix, 500)}
+		out[i] = preflight.Result{ID: cut(x.ID, l.id), Title: cut(x.Title, l.title), Status: x.Status,
+			Detail: cut(x.Detail, l.detail), Fix: cut(x.Fix, l.fix)}
 	}
 	r.Results = out
 	return r

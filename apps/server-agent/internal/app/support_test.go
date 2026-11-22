@@ -53,9 +53,17 @@ func TestSupportSourceShapeMatchesTheConsole(t *testing.T) {
 			t.Fatalf("unbounded result %v", res)
 		}
 	}
-	long := boundReport(preflight.Report{Results: []preflight.Result{{ID: "x", Title: "t", Status: preflight.Warn, Detail: strings.Repeat("d", 900)}}})
+	long := boundReport(preflight.Report{Results: []preflight.Result{{ID: "x", Title: "t", Status: preflight.Warn, Detail: strings.Repeat("d", 900)}}}, supportLimits)
 	if len(long.Results[0].Detail) != 500 {
 		t.Fatal("detail not cut")
+	}
+	many := make([]preflight.Result, 45)
+	for i := range many {
+		many[i] = preflight.Result{ID: "check", Title: strings.Repeat("t", 100), Status: preflight.Pass, Detail: strings.Repeat("d", 300), Fix: strings.Repeat("f", 400)}
+	}
+	e := boundReport(preflight.Report{Results: many}, enrolLimits)
+	if len(e.Results) != 40 || len(e.Results[0].Title) != 80 || len(e.Results[0].Detail) != 200 || len(e.Results[0].Fix) != 300 {
+		t.Fatalf("enrolment limits not applied: %d results", len(e.Results))
 	}
 }
 
