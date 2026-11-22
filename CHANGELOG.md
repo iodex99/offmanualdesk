@@ -30,6 +30,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Console database schema (firms, servers, employees, invites, skill packs, policies, releases, usage/audit counts, support) with migrations.
 - Console agent API: server enrolment with one-time codes, heartbeat, firm policy (cached with ETag), daily audit counts.
 - `server-agent enroll`: registers a server with the console; the agent then reports every 15 minutes and keeps its employee list in step with the console (removed employees are switched off).
+- Console sign-in with Google or Microsoft, followed by a mandatory authenticator code (QR set-up on first sign-in); sessions end after 12 hours or when the user is disabled.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

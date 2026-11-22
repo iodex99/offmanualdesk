@@ -9,9 +9,10 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 ### Identity and tenancy
 | Table | Key columns |
 | --- | --- |
-| `console_users` | email, name, role (`superadmin` / `staff`), totp_secret_enc, totp_enrolled_at, disabled_at |
+| `console_users` | email, name, role (`superadmin` / `staff`), totp_secret_enc (AES-256-GCM, AAD = column name), totp_enrolled_at, totp_last_counter, disabled_at |
+| `sessions` | token_hash (sha256 of the cookie token) PK, kind (`console`/`firm_admin`), user_id, mfa_at (null until TOTP passed), expires_at (pre-MFA 10 min, full 12 h) |
 | `firms` | name, legal_name, gstin, state_code, billing_email, billing_phone, status (`trial`/`active`/`overdue`/`restricted`/`suspended`/`closed`), rollout_ring, version_pin, data_note_signed_at, llm_key_mode (`firm`/`offmanual`) |
-| `firm_admins` | firm_id, email, name, totp_secret_enc, role (`owner`/`admin`), disabled_at |
+| `firm_admins` | firm_id, email (unique per firm), name, totp_secret_enc, totp_enrolled_at, totp_last_counter, role (`owner`/`admin`), disabled_at |
 | `servers` | firm_id, hostname, public_key (unique, base64 ed25519), enrolled_at, revoked_at, last_heartbeat_at, agent_version, openclaw_version, desk_version, staged_version, health (`green`/`amber`/`red`), active_seats, preflight_json |
 | `enrolment_codes` | firm_id, server_name, code_hash (sha256 of the upper-cased code; unique), expires_at, used_at, server_id |
 | `agent_nonces` | (server_id, nonce) PK, expires_at: replay protection for signed agent requests (ADR-035) |

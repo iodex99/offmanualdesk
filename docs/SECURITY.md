@@ -17,6 +17,8 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Client data leaks to Off Manual | Console receives counts/versions/health only; audit summaries without paths |
 | Client data leaks via Telegram | Text-only default; files only if firm enables; Server Agent enforces |
 | Stolen employee password | OAuth bound to SID + TOTP; daily code; lockouts |
+| Stolen console/firm-admin Google or Microsoft account | Console requires TOTP after OIDC (no bypass; pre-MFA sessions can do nothing and expire in 10 min); codes single-use; session tokens stored hashed; disabling a user ends sessions at once (ADR-037) |
+| Firm admin reads another firm's data | Every firm-scoped handler calls `requireFirmAccess(session, firmIdFromUrl)`; an admin email listed for two firms can't sign in (ambiguous) |
 | Shoulder access to unlocked desk | Idle lock, PIN, step-up for sensitive actions |
 | Tampered update | Authenticode on binaries + ed25519-signed manifest with SHA-256 of payload; agent verifies both before staging |
 | Stolen release key | Key only in GitHub Actions secrets / HSM-backed signing; rotation procedure; manifest carries key ID |

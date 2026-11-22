@@ -66,7 +66,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] `server-agent bridge` for Node clients (ADR-034)
 
 ### M3 Console core
-- [ ] Auth for superadmin / staff / firm admin with mandatory TOTP
+- [x] Auth for superadmin / staff / firm admin with mandatory TOTP (OIDC Google/Microsoft via openid-client, server-side sessions, encrypted TOTP secrets, role + firm scoping; ADR-037). Live sign-in needs Dwahnil's OAuth apps
 - [ ] Firms, servers, employees, invites, skill packs, AD group mappings, policies
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
 - [ ] Agent API: usage, releases, support bundle, notices, auth/bind
@@ -149,6 +149,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 22:30: Console sign-in with mandatory TOTP
+- Changed: `lib/totp.ts` (RFC 6238, same params as agent), `lib/secretbox.ts` (AES-256-GCM, column-bound AAD, key `OM_DATA_KEY`), `lib/auth.ts` (principals by verified email, sessions with hashed tokens: pre-MFA 10 min / full 12 h, TOTP enrol/verify with replay counter, `requireConsole`, `requireFirmAccess`), `lib/oidc.ts` (Google/Entra via openid-client PKCE+state+nonce; email must be verified), `lib/auth-routes.ts` + routes `/auth/login/[provider]`, `/auth/callback/[provider]`, `/api/auth/totp`, `/auth/logout`; pages `/sign-in`, `/sign-in/totp` (QR enrolment). Migration 0001 (`sessions`, `totp_last_counter`). ADR-037. Vitest timeouts raised to 30 s (PGlite boot per test).
+- Tests: console vitest 38/38 (stable over 4 runs); typecheck, lint, format, `next build` clean.
+- Half-done / next: firm/server/employee management + enrolment-code UI, employee bind endpoint, fleet board.
 
 ### 2026-11-22 21:45: Console schema + agent API; agent enrolment and sync
 - Changed: console: Drizzle schema for identity/tenancy/capabilities/releases/usage/audit/support + `agent_nonces` (migration `db/migrations/0000_*.sql`), uuidv7 + `srv_<hex>` public IDs, `lib/agent-api.ts` (enroll with proof of possession and single-use hashed codes, heartbeat, policy with ETag/304, audit-summary upsert), routes under `app/api/agent/*`, `scripts/migrate.mjs`, PGlite test harness. Agent: `internal/console` client + Syncer, `app.Enrol` + `server-agent enroll`, sync loop started by `Run` when enrolled, `policy.get` uses synced firm policy (unknown Telegram mode → off), store `EmployeeSIDs`/`DisableEmployee`/`ActiveLeases`. ADR-036.
