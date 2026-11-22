@@ -143,9 +143,17 @@ pub fn http_status(port: u16, path: &str, timeout: Duration) -> std::io::Result<
         s,
         "GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
     )?;
-    let mut buf = [0u8; 64];
-    let n = s.read(&mut buf)?;
-    let head = String::from_utf8_lossy(&buf[..n]);
+    // TCP may deliver the status line in pieces: read until its CRLF (or EOF / 512 bytes).
+    let mut head_bytes = Vec::with_capacity(64);
+    let mut chunk = [0u8; 64];
+    while !head_bytes.windows(2).any(|w| w == b"\r\n") && head_bytes.len() < 512 {
+        let n = s.read(&mut chunk)?;
+        if n == 0 {
+            break;
+        }
+        head_bytes.extend_from_slice(&chunk[..n]);
+    }
+    let head = String::from_utf8_lossy(&head_bytes);
     head.split_whitespace()
         .nth(1)
         .and_then(|c| c.parse().ok())
