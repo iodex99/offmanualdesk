@@ -2,7 +2,7 @@
 //! memory; the UI only ever sees status.
 
 use crate::agent_client;
-use crate::gateway::{self, Layout};
+use crate::gateway::{self, Layout, Startup};
 use serde::Serialize;
 use serde_json::json;
 use std::path::PathBuf;
@@ -91,35 +91,116 @@ pub fn start(state: &GatewayState, correlation_id: &str) -> Result<GatewayStatus
     gateway::write_config(&layout, port)
         .map_err(|_| err("Couldn't prepare your assistant's settings."))?;
 
-    let mut cmd = Command::new(&layout.node);
-    cmd.args(gateway::arguments(&layout, port))
-        .current_dir(&layout.state_dir) // controlled CWD: a .env in CWD would be read (OPENCLAW_NOTES §2)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    for (k, v) in gateway::environment(&layout, &token) {
-        cmd.env(k, v);
+    let mut child = spawn_gateway(&layout, port, &token)?;
+    // The lock stays held until the gateway is ready, so two starts can't race;
+    // `status` uses try_lock and reports "not running" meanwhile.
+    let mut doctored = false;
+    loop {
+        match gateway::wait_ready_or_exit(port, &mut child, Duration::from_secs(90)) {
+            Startup::Ready => break,
+            Startup::Exited(code) if needs_doctor(code, doctored) => {
+                doctored = true;
+                if let Err(e) = run_doctor(&layout) {
+                    release(correlation_id);
+                    return Err(e);
+                }
+                child = spawn_gateway(&layout, port, &token)?;
+            }
+            Startup::Exited(_) => {
+                release(correlation_id);
+                return Err(err("Your assistant stopped while starting. Try again; if it keeps happening, use Report a problem."));
+            }
+            Startup::TimedOut => {
+                let _ = child.kill();
+                let _ = child.wait();
+                release(correlation_id);
+                return Err(err("Your assistant didn't start in time. Try again; if it keeps happening, use Report a problem."));
+            }
+        }
     }
+    *guard = Some(Running { port, token, child });
+    Ok(GatewayStatus {
+        running: true,
+        port: Some(port),
+    })
+}
+
+/// Exit code 78 → Doctor once; anything else (or a second 78) is a failure.
+pub fn needs_doctor(code: Option<i32>, already_doctored: bool) -> bool {
+    code == Some(gateway::EXIT_NEEDS_DOCTOR) && !already_doctored
+}
+
+fn no_window(cmd: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    let child = cmd
-        .spawn()
-        .map_err(|_| err("Couldn't start your assistant. Please tell your admin."))?;
-    *guard = Some(Running { port, token, child });
-    drop(guard);
+    #[cfg(not(windows))]
+    let _ = cmd;
+}
 
-    if !gateway::wait_ready(port, Duration::from_secs(90)) {
-        stop(state, correlation_id);
-        return Err(err("Your assistant didn't start in time. Try again; if it keeps happening, use Report a problem."));
+fn spawn_gateway(layout: &Layout, port: u16, token: &str) -> Result<Child, GatewayError> {
+    let mut cmd = Command::new(&layout.node);
+    cmd.args(gateway::arguments(layout, port))
+        .current_dir(&layout.state_dir) // controlled CWD: a .env in CWD would be read (OPENCLAW_NOTES §2)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    for (k, v) in gateway::environment(layout, token) {
+        cmd.env(k, v);
     }
-    Ok(GatewayStatus {
-        running: true,
-        port: Some(port),
-    })
+    no_window(&mut cmd);
+    cmd.spawn()
+        .map_err(|_| err("Couldn't start your assistant. Please tell your admin."))
+}
+
+fn stamp() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format!("{secs:012}") // zero-padded seconds sort by time
+}
+
+/// ADR-025: snapshot the state, then `openclaw doctor --fix --yes --non-interactive`
+/// with the gateway stopped (it has exited), at most 5 minutes.
+fn run_doctor(layout: &Layout) -> Result<(), GatewayError> {
+    gateway::backup_state(&layout.state_dir, &layout.backups_dir, &stamp())
+        .map_err(|_| err("Couldn't back up your assistant's data before updating it. Free some disk space or tell your admin."))?;
+    let mut cmd = Command::new(&layout.node);
+    cmd.args(gateway::doctor_arguments(layout))
+        .current_dir(&layout.state_dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    for (k, v) in gateway::doctor_environment(layout) {
+        cmd.env(k, v);
+    }
+    no_window(&mut cmd);
+    let mut child = cmd
+        .spawn()
+        .map_err(|_| err("Couldn't update your assistant's data. Please tell your admin."))?;
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(st)) if st.success() => return Ok(()),
+            Ok(Some(_)) | Err(_) => {
+                return Err(err("Your assistant's data needs a repair Off Manual couldn't do. Use Report a problem."))
+            }
+            Ok(None) if start.elapsed() > Duration::from_secs(300) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(err("Updating your assistant's data took too long. Try again later."));
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(500)),
+        }
+    }
+}
+
+fn release(correlation_id: &str) {
+    let _ = agent_client::call("gateway.release", &json!({}), correlation_id);
 }
 
 /// Stops the gateway and frees the lease.
@@ -138,7 +219,8 @@ pub fn status(state: &GatewayState) -> GatewayStatus {
         running: false,
         port: None,
     };
-    let Ok(mut guard) = state.0.lock() else {
+    // try_lock: a start in progress holds the lock for up to a few minutes.
+    let Ok(mut guard) = state.0.try_lock() else {
         return stopped;
     };
     if let Some(r) = guard.as_mut() {
@@ -156,6 +238,14 @@ pub fn status(state: &GatewayState) -> GatewayStatus {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn doctor_only_once_and_only_for_78() {
+        assert!(needs_doctor(Some(78), false));
+        assert!(!needs_doctor(Some(78), true));
+        assert!(!needs_doctor(Some(1), false));
+        assert!(!needs_doctor(None, false));
+    }
 
     #[test]
     fn status_of_a_fresh_state_is_stopped() {

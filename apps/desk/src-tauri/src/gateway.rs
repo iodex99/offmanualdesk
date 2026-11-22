@@ -31,6 +31,8 @@ pub struct Layout {
     pub skills_dir: PathBuf,
     pub bridge: PathBuf,
     pub state_dir: PathBuf,
+    /// State snapshots taken before Doctor runs (ADR-025).
+    pub backups_dir: PathBuf,
 }
 
 impl Layout {
@@ -46,6 +48,7 @@ impl Layout {
             skills_dir: root.join("skills"),
             bridge: root.join("server-agent.exe"),
             state_dir: local_app_data.join("OffManual").join("openclaw-state"),
+            backups_dir: local_app_data.join("OffManual").join("backups"),
         }
     }
 
@@ -164,6 +167,8 @@ pub fn http_status(port: u16, path: &str, timeout: Duration) -> std::io::Result<
 }
 
 /// Polls `/readyz` until 200 or the deadline (OPENCLAW_NOTES.md §3 "HTTP checks").
+/// Production uses `wait_ready_or_exit`; this probe-only form stays for the tests.
+#[cfg(test)]
 pub fn wait_ready(port: u16, deadline: Duration) -> bool {
     let start = Instant::now();
     while start.elapsed() < deadline {
@@ -173,6 +178,93 @@ pub fn wait_ready(port: u16, deadline: Duration) -> bool {
         std::thread::sleep(Duration::from_millis(250));
     }
     false
+}
+
+/// Exit code with which the gateway asks for migrations: run Doctor, retry once
+/// (OPENCLAW_NOTES.md §8, `docs:gateway/embedding`).
+pub const EXIT_NEEDS_DOCTOR: i32 = 78;
+/// State snapshots kept per user.
+pub const KEEP_BACKUPS: usize = 3;
+
+/// `openclaw doctor --fix --yes --non-interactive` (OPENCLAW_NOTES.md §8). Run with the
+/// gateway stopped; with OPENCLAW_CONFIG_READONLY=1 config repairs are only printed.
+pub fn doctor_arguments(layout: &Layout) -> Vec<String> {
+    vec![
+        layout.openclaw_entry.to_string_lossy().to_string(),
+        "doctor".into(),
+        "--fix".into(),
+        "--yes".into(),
+        "--non-interactive".into(),
+    ]
+}
+
+/// Doctor needs the state and config locations, not the gateway token.
+pub fn doctor_environment(layout: &Layout) -> Vec<(String, String)> {
+    environment(layout, "")
+        .into_iter()
+        .filter(|(k, _)| k != "OPENCLAW_GATEWAY_TOKEN")
+        .collect()
+}
+
+/// How a starting gateway ended up.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Startup {
+    Ready,
+    Exited(Option<i32>),
+    TimedOut,
+}
+
+/// Polls `/readyz` like `wait_ready`, but also notices the process exiting early.
+pub fn wait_ready_or_exit(
+    port: u16,
+    child: &mut std::process::Child,
+    deadline: Duration,
+) -> Startup {
+    let start = Instant::now();
+    while start.elapsed() < deadline {
+        if let Ok(Some(status)) = child.try_wait() {
+            return Startup::Exited(status.code());
+        }
+        if let Ok(200) = http_status(port, "/readyz", Duration::from_secs(2)) {
+            return Startup::Ready;
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    Startup::TimedOut
+}
+
+fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let to = dst.join(entry.file_name());
+        let kind = entry.file_type()?;
+        if kind.is_dir() {
+            copy_dir(&entry.path(), &to)?;
+        } else if kind.is_file() {
+            std::fs::copy(entry.path(), &to)?;
+        }
+        // Links are skipped: the state dir has none, and following them could copy outside it.
+    }
+    Ok(())
+}
+
+/// Snapshots the user's state before Doctor (ADR-025) into `backups\state-<stamp>` and
+/// keeps the newest KEEP_BACKUPS. `stamp` must sort by time (e.g. 20261123T091500).
+pub fn backup_state(state_dir: &Path, backups_dir: &Path, stamp: &str) -> std::io::Result<PathBuf> {
+    let dst = backups_dir.join(format!("state-{stamp}"));
+    copy_dir(state_dir, &dst)?;
+    let mut old: Vec<PathBuf> = std::fs::read_dir(backups_dir)?
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name().to_string_lossy().starts_with("state-"))
+        .map(|e| e.path())
+        .collect();
+    old.sort();
+    while old.len() > KEEP_BACKUPS {
+        let oldest = old.remove(0);
+        let _ = std::fs::remove_dir_all(oldest);
+    }
+    Ok(dst)
 }
 
 #[cfg(windows)]
@@ -347,6 +439,104 @@ mod tests {
         let port = listener.local_addr().unwrap().port();
         drop(listener);
         assert!(!wait_ready(port, Duration::from_millis(600)));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn startup_notices_an_early_exit_code() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let mut child = std::process::Command::new("cmd")
+            .args(["/C", "exit", "78"])
+            .spawn()
+            .unwrap();
+        assert_eq!(
+            wait_ready_or_exit(port, &mut child, Duration::from_secs(20)),
+            Startup::Exited(Some(EXIT_NEEDS_DOCTOR))
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn startup_ready_while_the_process_runs() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let mut s = stream.unwrap();
+                let mut buf = [0u8; 256];
+                let _ = s.read(&mut buf);
+                let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+            }
+        });
+        // A process that keeps running for a while (ping waits ~1 s per echo).
+        let mut child = std::process::Command::new("ping")
+            .args(["-n", "30", "127.0.0.1"])
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        assert_eq!(
+            wait_ready_or_exit(port, &mut child, Duration::from_secs(10)),
+            Startup::Ready
+        );
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+
+    #[test]
+    fn doctor_command_and_environment() {
+        let l = layout();
+        let args = doctor_arguments(&l);
+        assert_eq!(
+            &args[1..],
+            ["doctor", "--fix", "--yes", "--non-interactive"]
+        );
+        let env = doctor_environment(&l);
+        assert!(env.iter().all(|(k, _)| k != "OPENCLAW_GATEWAY_TOKEN"));
+        assert!(env.iter().any(|(k, _)| k == "OPENCLAW_STATE_DIR"));
+        assert!(env
+            .iter()
+            .any(|(k, v)| k == "OPENCLAW_CONFIG_READONLY" && v == "1"));
+    }
+
+    #[test]
+    fn backup_copies_state_and_keeps_the_newest() {
+        let root = std::env::temp_dir().join(format!("om-backup-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let state = root.join("openclaw-state");
+        std::fs::create_dir_all(state.join("agents").join("main")).unwrap();
+        std::fs::write(state.join("openclaw.json"), "{}").unwrap();
+        std::fs::write(state.join("agents").join("main").join("s.db"), "data").unwrap();
+        let backups = root.join("backups");
+        for stamp in [
+            "000000000001",
+            "000000000002",
+            "000000000003",
+            "000000000004",
+        ] {
+            backup_state(&state, &backups, stamp).unwrap();
+        }
+        let mut kept: Vec<String> = std::fs::read_dir(&backups)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+        kept.sort();
+        assert_eq!(
+            kept,
+            [
+                "state-000000000002",
+                "state-000000000003",
+                "state-000000000004"
+            ]
+        );
+        let copied = backups
+            .join("state-000000000004")
+            .join("agents")
+            .join("main")
+            .join("s.db");
+        assert_eq!(std::fs::read_to_string(copied).unwrap(), "data");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
