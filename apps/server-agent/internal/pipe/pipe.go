@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"offmanual/desk/server-agent/internal/rpc"
 )
@@ -65,4 +66,31 @@ func Serve(ctx context.Context, a Acceptor, srv *rpc.Server, log *slog.Logger) e
 			}
 		}()
 	}
+}
+
+// lineCounter counts newline-terminated lines that contain something other than
+// whitespace. The server ignores blank lines and sends no reply for them, so the
+// bridge must not wait for one (CI: PowerShell appends a trailing blank line).
+type lineCounter struct {
+	mu      sync.Mutex
+	content bool
+	n       atomic.Int64
+}
+
+func (c *lineCounter) Write(p []byte) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, b := range p {
+		switch b {
+		case '\n':
+			if c.content {
+				c.n.Add(1)
+			}
+			c.content = false
+		case ' ', '\t', '\r':
+		default:
+			c.content = true
+		}
+	}
+	return len(p), nil
 }

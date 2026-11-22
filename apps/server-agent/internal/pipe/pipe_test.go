@@ -96,3 +96,13 @@ func TestSDDL(t *testing.T) {
 		t.Fatal("UserAccess includes FILE_CREATE_PIPE_INSTANCE")
 	}
 }
+
+func TestLineCounterIgnoresBlankLines(t *testing.T) {
+	var c lineCounter
+	for _, chunk := range []string{`{"a":1}`, "\n", "\r\n", "   \n", `{"b"`, `:2}` + "\r\n", "\n\n", `{"c":3}`} {
+		_, _ = c.Write([]byte(chunk))
+	}
+	if got := c.n.Load(); got != 2 {
+		t.Fatalf("counted %d lines, want 2 (the unterminated third doesn't count yet)", got)
+	}
+}

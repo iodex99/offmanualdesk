@@ -3,13 +3,11 @@
 package pipe
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
-	"sync/atomic"
 	"time"
 
 	"github.com/Microsoft/go-winio"
@@ -194,12 +192,6 @@ func currentUserSID() (string, error) {
 	return u.User.Sid.String(), nil
 }
 
-type lineCounter struct{ n atomic.Int64 }
-
-func (c *lineCounter) Write(p []byte) (int, error) {
-	c.n.Add(int64(bytes.Count(p, []byte{'\n'})))
-	return len(p), nil
-}
 
 func quiet(err error) error {
 	if err == nil || errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
