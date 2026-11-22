@@ -120,8 +120,8 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [ ] Release store (R2, ADR-016) + presigned URLs; workflow passes `manifestUrl`
 - [x] Rings + firm pins (logic + superadmin `promote`); [ ] UI
 - [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat) [ ] Authenticode check (WinVerifyTrust)
-- [ ] Desk notice + restart-to-update + security deadline (backup → doctor → switch, ADR-025)
-- [ ] Rollback (restore state backup, ADR-025)
+- [x] Desk notice + restart-to-update + security deadline (ADR-048): `update.status` (staged version, severity, deadline; migration 0004), per-employee `desk\version.json`, gateway starts from `versions\<v>`, exit 78 → backup → Doctor → retry; failure restores the snapshot and the previous version; security releases install themselves after the deadline
+- [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); [ ] console-driven rollback = firm pin to the previous version (logic exists), [ ] `current` junction move + Desk/Server Agent binary self-update
 - [ ] MSI (WiX v4) for first installs
 
 ### M9 Billing
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 12:00: Restart to update (M8)
+- Changed: agent migration 0004 (`updates.severity`, `deadline_at`), store `SetUpdateMeta`/`StagedRelease`, Syncer records severity + deadline (console already sends `deadlineAt`), pipe `update.status`; Desk Rust `versions.rs` (strict version strings, install base, installed check, root_for, version_of via the `current` junction, choice load/save atomically), `gateway_manager` (start from the chosen version; StartFailure carries the Doctor snapshot; `apply_update` with rollback; `update_status`), `gateway::restore_backup` (failed state kept once), commands `update_status`/`update_apply`; UI `UpdateNotice.tsx` in the Assistant. Fixed a stray control character in ARCHITECTURE F4. ADR-048.
+- Tests: Go store meta + update.status (normal/security/unknown severity, unknown caller), schema version 4; desk 37/37 (notice, restart, security date, auto-install after deadline, rollback message, quiet on errors, single check with the default clock — caught a re-render loop before shipping); Rust versions (strict versions, root choice, bad files) and restore (CI); golangci-lint both OSes 0.
+- Half-done / next: `current` junction move when every employee has switched; Desk and Server Agent self-update; admin view of who is on which version.
 
 ### 2026-11-23 11:20: Step-up for review approvals (F3/F6)
 - Changed: agent `auth.stepUpCheck` (grant checked for the OS caller; shared IPC schema), guard bridge allows it, guard `review-api.ts` (decide validation + firm `stepUpActions` contains `review.approve` → `{stepUpRequired}` until a live grant is sent; unreadable policy blocks approval, reject never needs step-up), Rust `decide_params` carries a 32-hex `stepUpGrant`, Desk Review tab asks for today's code (`auth.stepUp`) and retries. ADR-047.

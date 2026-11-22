@@ -40,6 +40,8 @@ Implemented (2026-11-23): `apps/server-agent/internal/update/stager.go`, driven 
 - Restart to update: stop the employee's gateway → run `openclaw doctor` (state migration; verify exact command in OPENCLAW_NOTES.md §8) → start from new version → health check → on failure, roll back that user to the previous version and report.
 - Security release: after `deadline_at`, Desk switches automatically at the next lock or idle period.
 
+Implemented (ADR-048): the Server Agent records the staged release's severity and deadline and answers `update.status`. Desk keeps each employee's choice in `%LOCALAPPDATA%\OffManual\desk\version.json` (`active`, `previous`) and starts the gateway from `versions\<active>` (else `current`). Restart to update: stop the gateway (lease released) → record the new choice → start; exit code 78 → snapshot → `openclaw doctor --fix --yes --non-interactive` → retry once. Any failure → restore the snapshot (the failed state is kept once as `openclaw-state.failed-<stamp>`), restore the previous choice, start again, and tell the employee. Security releases past `deadlineAt` are applied automatically when Desk opens the assistant. Desk and the Server Agent binaries themselves still update with the `current` switch (to build).
+
 ## 5. Rollback
 
 Last two versions stay on disk. Superadmin rolls a firm back from the console (pin to previous); Desks follow the same notice-and-restart flow.
