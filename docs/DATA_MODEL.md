@@ -4,7 +4,7 @@ Keep this file in step with `apps/console/db/schema.ts` and `apps/server-agent/i
 
 ## 1. Console (Postgres, Drizzle)
 
-IDs are UUIDv7. All tables have `created_at`, `updated_at`. Money in paise as `bigint`. Secrets encrypted at rest (envelope encryption, key in Vercel env).
+IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `updated_at`. Money in paise as `bigint`. Secrets encrypted at rest (envelope encryption, key in Vercel env). Source of truth: `apps/console/db/schema.ts`; migrations in `apps/console/db/migrations/` (drizzle-kit); applied by `pnpm --filter @offmanual/console db:migrate`. Implemented so far: every table below except the Billing section (M9). Servers are addressed on the wire as `srv_<uuid hex>`.
 
 ### Identity and tenancy
 | Table | Key columns |
@@ -12,8 +12,9 @@ IDs are UUIDv7. All tables have `created_at`, `updated_at`. Money in paise as `b
 | `console_users` | email, name, role (`superadmin` / `staff`), totp_secret_enc, totp_enrolled_at, disabled_at |
 | `firms` | name, legal_name, gstin, state_code, billing_email, billing_phone, status (`trial`/`active`/`overdue`/`restricted`/`suspended`/`closed`), rollout_ring, version_pin, data_note_signed_at, llm_key_mode (`firm`/`offmanual`) |
 | `firm_admins` | firm_id, email, name, totp_secret_enc, role (`owner`/`admin`), disabled_at |
-| `servers` | firm_id, hostname, public_key, enrolled_at, last_heartbeat_at, agent_version, openclaw_version, desk_version, health (`green`/`amber`/`red`), preflight_json, staged_version |
-| `enrolment_codes` | firm_id, server_name, code_hash, expires_at, used_at |
+| `servers` | firm_id, hostname, public_key (unique, base64 ed25519), enrolled_at, revoked_at, last_heartbeat_at, agent_version, openclaw_version, desk_version, staged_version, health (`green`/`amber`/`red`), active_seats, preflight_json |
+| `enrolment_codes` | firm_id, server_name, code_hash (sha256 of the upper-cased code; unique), expires_at, used_at, server_id |
+| `agent_nonces` | (server_id, nonce) PK, expires_at: replay protection for signed agent requests (ADR-035) |
 | `employees` | firm_id, name, email, windows_sid, windows_username, role_label, oauth_provider, oauth_subject, bound_at, totp_secret_enc, totp_enrolled_at, telegram_linked (bool only), status (`invited`/`active`/`disabled`), enabled_from, disabled_at |
 | `invites` | employee_id, channel (`email`/`whatsapp`), sent_at, accepted_at |
 
@@ -22,7 +23,7 @@ IDs are UUIDv7. All tables have `created_at`, `updated_at`. Money in paise as `b
 | --- | --- |
 | `skill_packs` | key (`core`, `tally-read`, `tally-post`, `email-send`, `portals`, `admin`), name, skills (jsonb list of skill IDs), actions (jsonb allowlist), review_required (jsonb) |
 | `pack_grants` | firm_id, pack_key, ad_group (nullable), employee_id (nullable) |
-| `firm_policies` | firm_id, lock_timeout_max_min, working_day_hours, telegram_mode (`off`/`text`/`files`), telegram_unlock_max_min, telegram_allowed_packs, step_up_actions, gateway_idle_stop_hours, retention_days |
+| `firm_policies` | firm_id, lock_timeout_max_min, day_end_hour_ist (replaces working_day_hours; ADR-033), telegram_mode (`off`/`text`/`files`), telegram_unlock_max_min, telegram_allowed_packs, step_up_actions, gateway_idle_stop_hours, retention_days, version (bumped on change; agent ETag) |
 
 ### Releases
 | Table | Key columns |
@@ -57,7 +58,8 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 | Table | Key columns |
 | --- | --- |
 | `meta` | server_id, key_id, policy_etag, licence_expires_at, last_console_contact_at |
-| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, totp_last_counter (highest accepted TOTP step; replay protection, ADR-030), pin_hash (argon2id), recovery_codes_hash |
+| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, totp_last_counter (highest accepted TOTP step; replay protection, ADR-030), totp_enrolled_at (migration 0002), pin_hash (argon2id), recovery_codes_hash. Rows come from console policy sync; employees missing from the policy are set `disabled` with their day grant and lease removed |
+| `meta` keys | server_id, server_key_dpapi, console_url, policy_etag, policy_json, firm_status, last_console_contact_at, audit_summary_sent_through |
 | `day_grants` | sid, granted_at, expires_at |
 | `lock_state` | sid, desk_locked, telegram_unlocked_until, failed_pins, failed_codes, lockout_until |
 | `leases` | sid, port, token_hash, pid, started_at, last_seen_at |

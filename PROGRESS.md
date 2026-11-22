@@ -4,11 +4,11 @@
 
 ## Current focus
 
-M0 done (CI green, merged to `main`). M2 Server Agent core in progress on `m2-server-agent` (TOTP, PIN, lockout done). M1 waits on Dwahnil's lab run and decisions on Proposed ADRs.
+M0 done. M2 Server Agent core complete on `m2-server-agent` (CI green incl. real LocalSystem service round trip); M3 console started on the same branch (schema + agent API). M1 waits on Dwahnil's lab run and decisions on Proposed ADRs.
 
 ## Next step
 
-1. M2 on branch `m2-server-agent`: SQLite store + migrations (DATA_MODEL §2), port/token lease allocator (ADR-020), JSON-RPC framing over a fake pipe. `gh` is logged in (`C:\Program Files\GitHub CLI\gh.exe`): watch CI with `gh run watch`.
+1. M3 next slices on `m2-server-agent` (merge to `main` once CI is green): console auth (superadmin/staff/firm admin, mandatory TOTP; OAuth needs Dwahnil's Google/Microsoft apps, so build with an injectable provider and test with fakes), firm/server/employee/invite management + enrolment-code creation, employee OAuth → SID binding endpoint, fleet board v0. `gh` is logged in (`C:\Program Files\GitHub CLI\gh.exe`).
 2. When lab output arrives: `/lab-result L<n>` for each; promote/supersede ADR-019…029 accordingly; flip [A] markers in ARCHITECTURE.md.
 3. Unblocked meanwhile (M2, recorded exception below): Server Agent SQLite store + migrations, JSON-RPC framing over a fake pipe, TOTP/PIN verification, port-lease allocator, all with fakes for Windows-only parts.
 
@@ -54,21 +54,22 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL; `internal/rpc`, `internal/pipe`; DACL verified on a real pipe)
 - [x] Method handlers (`internal/agent`): session.hello, auth.totpEnrolStart/Confirm, auth.verifyDaily, auth.pinSet, auth.verifyPin, auth.stepUp, lock.get/set, gateway.lease/release, audit.append, policy.get (defaults until M3)
 - [x] Signed-request protocol (ADR-035): Go signer `internal/console/sign.go`, TS verifier `apps/console/lib/agent-auth.ts` (±5 min, nonce replay), shared golden vector
-- [ ] Enrolment + heartbeat client (Go) against console routes (M3)
-- [ ] Policy fetch → `policy.json` (read-only to users)
+- [x] Enrolment (`server-agent enroll -console URL CODE`: preflight + proof-of-possession, key DPAPI-protected in meta) and 15-min sync loop: heartbeat, policy (ETag) into agent.db, offboarding of employees the console no longer lists, daily audit counts upload (`internal/console`)
+- [x] Policy fetch → stored in agent.db meta (`policy_json`), served via `policy.get` (users never read files; ADR-033)
 - [x] TOTP verification (RFC 6238, ±1 step, replay protection) in `internal/auth` (ADR-030)
 - [x] PIN rules + argon2id hashing/verification, lockout rules (3 PINs → daily code; 5 codes → 15 min + admin alert) in `internal/auth` (ADR-031)
 - [x] Lock state / attempts persisted in agent.db
 - [x] Port lease storage: stable per employee, lowest free port, expiry (`store/leases.go`)
 - [x] 256-bit gateway tokens, only SHA-256 stored; returned once to the caller
-- [ ] Audit log append + summary upload
+- [x] Audit log append + summary upload (category counts only)
 - [x] Pre-flight check command (`server-agent preflight [-share] [-json]`: Windows version, RAM, disk, Remote Desktop, WebView2, TallyPrime, bundled Node, Clients share, outbound HTTPS + clock skew)
 - [x] `server-agent bridge` for Node clients (ADR-034)
 
 ### M3 Console core
 - [ ] Auth for superadmin / staff / firm admin with mandatory TOTP
 - [ ] Firms, servers, employees, invites, skill packs, AD group mappings, policies
-- [ ] Agent API (enroll, heartbeat, policy, usage, audit summary, releases, support bundle)
+- [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
+- [ ] Agent API: usage, releases, support bundle, notices, auth/bind
 - [ ] Employee OAuth sign-in (Google, Microsoft) + SID binding endpoint
 - [ ] Fleet board v0
 
@@ -148,6 +149,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 21:45: Console schema + agent API; agent enrolment and sync
+- Changed: console: Drizzle schema for identity/tenancy/capabilities/releases/usage/audit/support + `agent_nonces` (migration `db/migrations/0000_*.sql`), uuidv7 + `srv_<hex>` public IDs, `lib/agent-api.ts` (enroll with proof of possession and single-use hashed codes, heartbeat, policy with ETag/304, audit-summary upsert), routes under `app/api/agent/*`, `scripts/migrate.mjs`, PGlite test harness. Agent: `internal/console` client + Syncer, `app.Enrol` + `server-agent enroll`, sync loop started by `Run` when enrolled, `policy.get` uses synced firm policy (unknown Telegram mode → off), store `EmployeeSIDs`/`DisableEmployee`/`ActiveLeases`. ADR-036.
+- Tests: console vitest 20/20 on PGlite (signature, replay, skew, revoked, imposter key, cross-firm isolation in policy, unknown fields/client content refused); `next build` lists the 4 agent routes; Go all pass (console 77%, agent 76.6%); golangci-lint both OSes 0.
+- Half-done / next: console auth + management UI.
 
 ### 2026-11-22 21:00: CI service round trip fixes
 - Changed: CI on the real LocalSystem service confirmed GENERIC_WRITE clients are refused; the bridge timed out because PowerShell appends a blank line and the server sends no reply for blank lines. `lineCounter` (now in portable `pipe.go`, unit-tested) counts only non-blank request lines.
