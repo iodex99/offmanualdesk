@@ -1,0 +1,28 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - gosec
+    - errorlint
+    - misspell
+    - unconvert
+    - bodyclose
+  settings:
+    gosec:
+      excludes:
+        # File paths come from our own manifest/CLI flags and are validated by
+        # manifest.SafePath before use; reading them is the point.
+        - G304
+        # Payload files and manifests are meant to be world-readable on the server;
+        # secrets are protected with DPAPI/ACLs, never by file mode bits.
+        - G301
+        - G302
+        - G306
+        # Taint analysis flags operator-supplied CLI output paths (tools/sign-manifest).
+        # Untrusted paths (zip entries, manifest files) go through manifest.SafePath.
+        - G703
+
+formatters:
+  enable:
+    - gofmt

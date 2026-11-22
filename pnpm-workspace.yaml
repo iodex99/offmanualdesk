@@ -1,0 +1,14 @@
+packages:
+  - apps/console
+  - apps/desk
+  - packages/shared-schema
+  - packages/openclaw-plugins/*
+
+# Install scripts are off unless listed true here. openclaw is a types-only devDependency
+# of the guard plugin (ADR-019); none of its or its dependencies' scripts are needed to
+# type-check or test, so nothing runs on dev machines or CI.
+allowBuilds:
+  "@google/genai": false
+  esbuild: false
+  openclaw: false
+  protobufjs: false

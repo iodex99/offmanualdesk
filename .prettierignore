@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+target
+coverage
+pnpm-lock.yaml
+apps/desk/src-tauri/gen
+apps/desk/src-tauri/icons
+skills/vendored
+# Markdown memory files are hand-formatted; tables would be reflowed.
+*.md
+release/openclaw/package-lock.json
