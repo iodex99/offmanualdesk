@@ -71,6 +71,7 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 | `audit` | ts, sid, category, action, target (may contain path, never leaves the server), result, correlation_id |
 | `usage` | date, sid, input_tokens, output_tokens, turns, tasks_completed |
 | `notices` | id, kind (`update`/`billing`/`admin`), audience, title, body, created_at, ack (per sid in `notice_acks`) |
+| `usage_daily` | sid, date (IST), turns, input_tokens, output_tokens (migration 0006; from the guard's `usage.add`; uploaded once per complete day, ADR-051) |
 | `updates` | version, state (`available`/`downloading`/`staged`/`failed`/`active`), verified_at, error, severity (`normal`/`security`), deadline_at (migration 0004) |
 
 ## 3. Per-user state (`%LOCALAPPDATA%\OffManual\`)

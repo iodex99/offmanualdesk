@@ -386,3 +386,10 @@ Template:
 - Context: F11 planned a bundle plus an optional screenshot. Rule 10 forbids client data reaching Off Manual's cloud; a screenshot of a CA's desktop almost always shows client names or numbers, and free text can too.
 - Decision: The bundle is built by the Server Agent (agent and staged versions, licence state, policy ETag, pre-flight results bounded to the console's limits, last 200 lines of its own log, which never contains client content) plus a small flat map of Desk facts (versions, gateway state). Desk shows the whole bundle before sending. The only free text is the employee's description (≤ 500, with a visible warning). The Server Agent rebuilds the server part at submit time (Desk can't change it). The console accepts only this exact shape (strict schema), caps reports at 20 per server per day, and returns a short reference. No screenshots in v1.
 - Consequences: Some problems will need a phone call to understand. If screenshots are added later they need on-device redaction and an explicit per-report consent.
+
+## ADR-051: Usage is counted by the guard and uploaded as complete-day totals
+- Date: 2026-11-23
+- Status: Accepted (hook firing per provider confirmed in lab L-guard)
+- Context: Billing's `peak_active` seat mode and the usage line need per-employee activity and tokens; rule 10 allows counts, never text.
+- Decision: The guard counts a turn on `agent_end` and adds `usage.input`/`usage.output` from `llm_output` (cache tokens are not billed separately in v1). It flushes counts every 60 s and on stop through the guard-only pipe method `usage.add`; a failed flush keeps the counts. The Server Agent adds them to `usage_daily` per SID and IST day, and the sync loop uploads complete days (yesterday and earlier, up to a week of backlog) once. The console stores a day's totals per employee of the calling firm, replacing earlier totals for the same day so retries never double-count.
+- Consequences: Usage for today appears in the console tomorrow. Counts made while the Server Agent was down are kept by the guard until the next successful flush, but are lost if the gateway also stops first.

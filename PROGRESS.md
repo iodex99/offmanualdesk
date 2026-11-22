@@ -69,7 +69,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
 - [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; invite email on add (Resend, `lib/email.ts`; invites.sent_at; failure never undoes the add) + "Send invite again"; superadmin `/billing` page (make drafts, issue with confirm, record payments in rupees, override with reason and date, refresh statuses); [ ] WhatsApp invites (v2)
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
-- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044), support (`POST /api/agent/support`, ADR-050); [ ] usage, notices
+- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044), support (`POST /api/agent/support`, ADR-050), usage (`POST /api/agent/usage`, ADR-051); [ ] notices
 - [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
 - [x] Fleet board v0 (`/fleet`: firm, server, health with 1 h staleness → red, last seen, version, seats)
 
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 17:10: Usage counts (ADR-051)
+- Changed: guard `usage.ts` (UsageMeter: turns from `agent_end`, input/output tokens from `llm_output` usage, verified in the 2026.11.6 hook types; flush every 60 s and on stop; failed sends kept), guard bridge allows `usage.add`; agent migration 0006 (`usage_daily`), `usage.add` (bounds, caller SID), Syncer uploads complete IST days once (`usage_sent_through`, a week of backlog), console client `SendUsage`; console `POST /api/agent/usage` (strict, complete days only, other firms' employees ignored, a day's totals replace on retry). Billing's seat activity (`peak_active`) and the usage line now have a real source.
+- Tests: guard 73/73 (junk ignored, failed flush kept); Go usage.add (accumulates per day, bounds, missing fields, unknown caller), upload (yesterday sent, today not, never twice), schema version 6; console 116/116 (store, retry replaces, cross-firm ignored, today refused, unknown field, negative); golangci-lint both OSes 0.
+- Half-done / next: confirm in the lab that `llm_output` fires with usage for the firm's model provider.
 
 ### 2026-11-23 16:35: Task buttons (M7) + CI flake fix
 - Changed: Desk `tasks.ts` (9 tasks, file-safe client names, FY list, plain missing-input message), `TaskButtons.tsx`, Chat `queued` prop (a task's request is sent once as if typed), Tasks tab; skills' output names aligned with SKILLS.md §5 (hashes refreshed); Desk Rust test servers read the full request head before replying (a Windows reset made `readiness_poll_against_a_local_server` flaky in CI run 45036423222).
