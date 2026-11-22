@@ -357,3 +357,26 @@ func TestNoticesSyncAndAdminFlag(t *testing.T) {
 		t.Fatalf("no longer an admin but still sees %+v", list)
 	}
 }
+
+func TestPolicyDisabledEmployeeIsCleanedUp(t *testing.T) {
+	_, _, st := setup(t)
+	ctx := context.Background()
+	sid := "S-1-5-21-1-2-3-1101"
+	p := Policy{PolicyVersion: 1, Employees: []PolicyEmployee{{EmployeeID: "e1", SID: sid, Name: "Asha", Status: "active"}}}
+	_ = ApplyPolicy(ctx, st, p, `"a"`)
+	_, _ = st.AcquireLease(ctx, sid, 18800, 18900, "h")
+	_ = st.CreateLinkCode(ctx, sid, "ABCD2345", 10*time.Minute)
+	if _, err := st.ConsumeLinkCode(ctx, "ABCD2345", 777); err != nil {
+		t.Fatal(err)
+	}
+	p.Employees[0].Status = "disabled" // switched off in the console, still listed
+	if err := ApplyPolicy(ctx, st, p, `"b"`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.LeaseFor(ctx, sid); !errors.Is(err, store.ErrNotFound) {
+		t.Fatal("lease kept for a disabled employee")
+	}
+	if got, _ := st.SIDForTelegramUser(ctx, 777); got != "" {
+		t.Fatal("Telegram link kept for a disabled employee")
+	}
+}

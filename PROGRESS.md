@@ -161,6 +161,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Half-done / next: …
 -->
 
+### 2026-11-23 21:00: Fix: employees switched off in the console fully cleaned up (F10)
+- Changed: `console.ApplyPolicy` calls `DisableEmployee` for listed employees with status `disabled`, so their day grant, lease (token hash + DPAPI copy) and Telegram link go on the next sync, not only when the console stops listing them.
+- Tests: `TestPolicyDisabledEmployeeIsCleanedUp`; all Go pass; golangci-lint both OSes 0.
+
 ### 2026-11-23 20:45: Authenticode check on staged releases (M8, ADR-055)
 - Changed: manifest field `authenticode` (Go struct, shared JSON Schema, `sign-manifest build -authenticode`, release workflow passes whether the Azure signing step ran), `internal/update` VerifyAuthenticode (WinVerifyTrustEx, verify then close, pattern from x/sys v0.50.0; non-Windows refuses), Stager checks every .exe/.dll when the flag is set and removes an untrusted staging copy.
 - Tests: stager (unsigned binary refused with its path and nothing left in versions; signed passes, only binaries checked; unflagged release never checked); real WinVerifyTrust on this machine accepted a signed git.exe and refused a one-byte-tampered copy; sign-manifest flag; shared-schema 39/39; golangci-lint (errorlint %w, gosec G103 audited) 0; actionlint clean. CI run for the security pass green.

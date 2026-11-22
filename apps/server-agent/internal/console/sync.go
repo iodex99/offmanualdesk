@@ -142,6 +142,13 @@ func ApplyPolicy(ctx context.Context, st *store.Store, p Policy, etag string) er
 		if err := st.SetEmployeeAdmin(ctx, e.SID, e.Admin); err != nil {
 			return err
 		}
+		// Switched off in the console: same clean-up as removal (day grant, lease and
+		// its tokens, Telegram link), not only the status (F10).
+		if e.Status == "disabled" {
+			if err := st.DisableEmployee(ctx, e.SID); err != nil {
+				return err
+			}
+		}
 		if t, err := time.Parse(time.RFC3339, e.TOTPResetAt); err == nil {
 			if _, err := st.ApplyTOTPReset(ctx, e.SID, t); err != nil {
 				return err

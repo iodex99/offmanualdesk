@@ -81,6 +81,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - CI: shellcheck findings in the release workflow; secret scan no longer fails when artifact storage is full.
 
 ### Security
+- Employees switched off in the console now lose their lease, day grant and Telegram link on the next sync, not only their status.
 - Releases signed with Authenticode are only staged when every program file's signature checks out with Windows.
 - Telegram replies can no longer carry encoded file dumps or links to files on the server.
 - When an employee is switched off, Desk stops their assistant within a minute.
