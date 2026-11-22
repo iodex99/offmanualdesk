@@ -38,6 +38,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Desk starts the employee's own assistant after unlock (on a leased port with a private token, locked-down settings) and stops it when Desk closes.
 - Billing engine: monthly invoice amounts for setup, AMC, per-seat (prorated or peak, with price bands), AI usage and discounts; GST split by state; totals in words; the overdue → restricted → suspended ladder with manual override.
 - Updates: the release workflow can register releases with the console; firms receive releases by rollout ring (or a pinned version); the Server Agent downloads, verifies the signature and every file, and unpacks the new version alongside the running one.
+- Skill vetting tool and the first Off Manual skills (client directory, compliance calendar, ledger scrutiny), held back from releases until reviewed.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

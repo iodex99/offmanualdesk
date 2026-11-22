@@ -22,6 +22,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Proposed product ADRs accepted on Dwahnil's "do everything" instruction (016, 019, 023, 025, 026, 027, 028); overturn any by saying so. Lab-dependent ADRs (020, 021, 022, 024) stay Proposed until L1–L3.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
+- [ ] **Review and approve skills** (`skills/offmanual/*`, status `pending` in `skills/registry.lock.json`): read each SKILL.md (ideally with your CA for the tax dates/limits), then set `review` to `{ "status": "approved", "reviewer": "Dwahnil", "date": "YYYY-MM-DD" }`. Only approved skills ship.
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
 - [ ] Later (M3+): Postgres database URL, Vercel project, Google OAuth client, Microsoft Entra app registration, Resend API key
 - [ ] Later (M6): Telegram bot token for the lab firm
@@ -107,11 +108,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] ~~Wake stopped gateway on message~~ out of v1 if ADR-026 is accepted
 
 ### M7 Skills
-- [ ] Registry tooling: vendor, lock, scan, sign, build pack (`verify-skills` exists)
+- [x] Registry tooling: `tools/skill-vet` (static checks: binaries, install scripts, git deps block; network/shell/eval/blobs/absolute paths/credentials warn; review checklist; `lock` emits pending entries) + `verify-skills` with `pending` status; release ships approved only (ADR-039)
 - [ ] Starter pack imported and reviewed (SKILLS.md §3)
-- [ ] Client directory skill + admin scan
+- [x] Client directory skill (pending review); [ ] admin scan task button
 - [ ] Task buttons v1 (SKILLS.md §5)
-- [ ] India pack v0 (SKILLS.md §4)
+- [~] India pack v0: `compliance-calendar`, `ledger-scrutiny` written (pending CA review); remaining: gstr2b-vs-books, ais-26as-vs-books, tds-checks, notice-reply-draft, doc-chaser, tally-mis
 
 ### M8 Updates
 - [x] GitHub Actions release workflow (build, test, scan, sign, manifest, upload, register) — written and actionlint-clean; first run needs repo + signing key (done early at Dwahnil's request)
@@ -160,6 +161,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 03:45: Skill vetting + first India-pack skills (M7)
+- Changed: `tools/skill-vet/vet.mjs` (check/lock CLI, rules, checklist); `verifySkillsLock` accepts `pending` (hash-checked, never shipped) and reports approved count; release workflow copies and locks only approved skills; skills `offmanual/client-directory`, `compliance-calendar`, `ledger-scrutiny` (instruction-only, no scripts; pending review); `test:tools` runs every tool's tests. ADR-039.
+- Tests: tools 17/17 (vet rules incl. a fixed gap: `C:\\` double-backslash paths); verify-skills OK (3 pending); actionlint clean.
+- Half-done / next: remaining India-pack skills, task buttons, starter-pack vendoring (needs ClawHub downloads + human review).
 
 ### 2026-11-23 03:00: Update pipeline: console releases + agent staging (M8)
 - Changed: console `lib/releases.ts` (register with constant-time bearer check, promote, assignedRelease), routes `/api/releases`, `/api/agent/releases`; agent `pkg/manifest/trusted.go` (go:embed keys, CompareVersions), `internal/update/stager.go`, store update-state methods, Syncer stages in the background (single flight) and reports `stagedVersion`; `installRoot()` (`OFFMANUAL_INSTALL_ROOT` override).
