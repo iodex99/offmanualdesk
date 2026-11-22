@@ -81,6 +81,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - CI: shellcheck findings in the release workflow; secret scan no longer fails when artifact storage is full.
 
 ### Security
+- Releases signed with Authenticode are only staged when every program file's signature checks out with Windows.
 - Telegram replies can no longer carry encoded file dumps or links to files on the server.
 - When an employee is switched off, Desk stops their assistant within a minute.
 - Server Agent pipe ACL tightened to explicit rights plus first-instance flag and server identity check, after the lab self-test showed generic write allows pipe squatting (ADR-029).

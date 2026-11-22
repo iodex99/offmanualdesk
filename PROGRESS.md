@@ -119,7 +119,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Console `POST /api/releases` (bearer `OM_RELEASE_REGISTER_TOKEN`, ring 0) and `GET /api/agent/releases` (firm pin, else newest release promoted to a ring ≥ the firm's ring)
 - [ ] Release store (R2, ADR-016) + presigned URLs; workflow passes `manifestUrl`
 - [x] Rings + firm pins (logic + superadmin `promote`); [ ] UI
-- [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat) [ ] Authenticode check (WinVerifyTrust)
+- [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat); Authenticode check (ADR-055: manifest `authenticode` flag set by the release workflow when it signed; then every .exe/.dll must pass WinVerifyTrust with whole-chain revocation)
 - [x] Desk notice + restart-to-update + security deadline (ADR-048): `update.status` (staged version, severity, deadline; migration 0004), per-employee `desk\version.json`, gateway starts from `versions\<v>`, exit 78 → backup → Doctor → retry; failure restores the snapshot and the previous version; security releases install themselves after the deadline
 - [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); [ ] console-driven rollback = firm pin to the previous version (logic exists), [ ] `current` junction move + Desk/Server Agent binary self-update
 - [ ] MSI (WiX v4) for first installs
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 20:45: Authenticode check on staged releases (M8, ADR-055)
+- Changed: manifest field `authenticode` (Go struct, shared JSON Schema, `sign-manifest build -authenticode`, release workflow passes whether the Azure signing step ran), `internal/update` VerifyAuthenticode (WinVerifyTrustEx, verify then close, pattern from x/sys v0.50.0; non-Windows refuses), Stager checks every .exe/.dll when the flag is set and removes an untrusted staging copy.
+- Tests: stager (unsigned binary refused with its path and nothing left in versions; signed passes, only binaries checked; unflagged release never checked); real WinVerifyTrust on this machine accepted a signed git.exe and refused a one-byte-tampered copy; sign-manifest flag; shared-schema 39/39; golangci-lint (errorlint %w, gosec G103 audited) 0; actionlint clean. CI run for the security pass green.
+- Half-done / next: pin the publisher (certificate subject) once the Azure signing account exists.
 
 ### 2026-11-23 20:10: Security review first pass (M11)
 - Changed: `docs/SECURITY_REVIEW.md` (all 9 checklist items with evidence and what remains); Telegram replies sanitized (`internal/telegram/sanitize.go`: 200+ char encoded runs, file:// and localhost/127.0.0.1 links removed, audited); Desk checks `session.hello` every minute while unlocked and stops the gateway with a plain message when the employee is switched off (`Unlock.tsx`, `stopGateway` prop).

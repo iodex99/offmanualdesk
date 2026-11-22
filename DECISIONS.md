@@ -414,3 +414,10 @@ Template:
 - Context: M10's setup wizard (pre-flight → import users → invites → client scan). Importing from an AD group needs the Server Agent to read group membership on the domain (lab-dependent); the steps are also useful after setup.
 - Decision: The firm page carries every step: servers with their pre-flight problems and fixes (from the enrolment report), "add many people" by pasting "Name, email" lines (each line goes through the normal add so validation, duplicates and invite emails behave the same; problems are reported per line), and the client list is built from Desk with the client-directory task. AD-group import comes after lab L-AD confirms how to read groups.
 - Consequences: No separate wizard state to maintain; admins see the same page during and after setup.
+
+## ADR-055: Authenticode is required when the signed manifest says the release was signed
+- Date: 2026-11-23
+- Status: Accepted
+- Context: UPDATES §3 lists Authenticode on binaries. Releases are only Authenticode-signed once the Azure Trusted Signing account exists; until then dry runs and ring-0 builds are unsigned, and requiring signatures always would block every release.
+- Decision: The release workflow records `authenticode: true` in the manifest exactly when its signing step ran. The manifest is ed25519-signed, so the flag can't be removed. When it is true, the stager runs WinVerifyTrust (generic verify v2, whole-chain revocation) on every .exe and .dll after the hash checks and refuses the release (removing the staging copy) if any fails. Off Windows the check always fails.
+- Consequences: Unsigned releases still stage (hash- and ed25519-verified); the console should only promote signed releases beyond ring 0 (to enforce when the signing account exists). Publisher pinning (the certificate subject) comes with the real certificate.
