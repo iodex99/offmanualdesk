@@ -177,7 +177,8 @@ pub mod job {
     };
     use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
-    struct Job(HANDLE);
+    // Held only to keep the job alive for the life of the process (never read).
+    struct Job(#[allow(dead_code)] HANDLE);
     // SAFETY: a job handle can be used from any thread; we never close it (it must live
     // as long as Desk, and the OS closes it at exit, which kills the job's processes).
     unsafe impl Send for Job {}
