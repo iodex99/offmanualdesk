@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://offmanual.local/schemas/manifest.schema.json",
+  "title": "ReleaseManifest",
+  "description": "Body of manifest.json for a release (docs/UPDATES.md §1). Signed as exact bytes; see manifest-signature.schema.json. Go source of truth: apps/server-agent/pkg/manifest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "commit",
+    "createdAt",
+    "severity",
+    "minAgentVersion",
+    "openclawVersion",
+    "nodeVersion",
+    "keyId",
+    "payload",
+    "files"
+  ],
+  "properties": {
+    "schema": { "const": 1 },
+    "version": { "$ref": "#/$defs/semver" },
+    "commit": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "severity": { "enum": ["normal", "security"] },
+    "deadlineAt": { "type": "string", "format": "date-time" },
+    "minAgentVersion": { "$ref": "#/$defs/semver" },
+    "openclawVersion": { "type": "string", "minLength": 1 },
+    "nodeVersion": { "type": "string", "minLength": 1 },
+    "keyId": { "$ref": "#/$defs/keyId" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256", "size"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[^/\\\\:]+$" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[^/\\\\:*?\"<>|][^\\\\:*?\"<>|]*$"
+          },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "size": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  },
+  "if": { "properties": { "severity": { "const": "security" } }, "required": ["severity"] },
+  "then": { "properties": { "deadlineAt": true }, "required": ["deadlineAt"] },
+  "else": { "not": { "properties": { "deadlineAt": true }, "required": ["deadlineAt"] } },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "keyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" }
+  }
+}

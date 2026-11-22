@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://offmanual.local/schemas/manifest-signature.schema.json",
+  "title": "ReleaseManifestSignature",
+  "description": "Body of manifest.sig.json: ed25519 signature over 'offmanual-release-manifest-v1\\n' || exact bytes of manifest.json (ADR-015).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "alg", "keyId", "sig"],
+  "properties": {
+    "schema": { "const": 1 },
+    "alg": { "const": "ed25519" },
+    "keyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+    "sig": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
+  }
+}

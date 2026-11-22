@@ -1,0 +1,20 @@
+{
+  "name": "@offmanual/shared-schema",
+  "version": "0.0.0",
+  "private": true,
+  "description": "JSON Schemas and browser-safe helpers shared by console, desk, plugins and the Go Server Agent (IPC, policy, release manifest, Indian formatting)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./format": "./src/format.ts",
+    "./schemas/*": "./schemas/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

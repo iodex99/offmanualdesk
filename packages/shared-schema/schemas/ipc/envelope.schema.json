@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://offmanual.local/schemas/ipc/envelope.schema.json",
+  "title": "PipeMessage",
+  "description": "One newline-delimited JSON-RPC 2.0 message on \\\\.\\pipe\\offmanual-agent (docs/ARCHITECTURE.md §3.1). Caller identity comes ONLY from the pipe client's OS token; params must never be trusted for identity. Per-method params schemas are added in M2.",
+  "oneOf": [{ "$ref": "#/$defs/request" }, { "$ref": "#/$defs/success" }, { "$ref": "#/$defs/error" }],
+  "$defs": {
+    "id": { "oneOf": [{ "type": "string", "maxLength": 64 }, { "type": "integer" }] },
+    "method": {
+      "enum": [
+        "session.hello",
+        "auth.bindStart",
+        "auth.bindComplete",
+        "auth.totpEnrolStart",
+        "auth.totpEnrolConfirm",
+        "auth.pinSet",
+        "auth.verifyDaily",
+        "auth.verifyPin",
+        "auth.stepUp",
+        "lock.get",
+        "lock.set",
+        "gateway.lease",
+        "gateway.release",
+        "policy.get",
+        "audit.append",
+        "review.notify",
+        "telegram.linkStart",
+        "telegram.subscribe",
+        "telegram.send",
+        "access.request",
+        "notices.list",
+        "notices.ack",
+        "update.status",
+        "update.switch",
+        "support.bundle"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "id", "method"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/id" },
+        "method": { "$ref": "#/$defs/method" },
+        "params": { "type": "object" },
+        "correlationId": { "type": "string", "pattern": "^[A-Za-z0-9-]{8,64}$" }
+      }
+    },
+    "success": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "id", "result"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/id" },
+        "result": {}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "id", "error"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "integer" },
+            "message": { "type": "string", "maxLength": 500 },
+            "data": { "type": "object" }
+          }
+        }
+      }
+    }
+  }
+}

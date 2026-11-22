@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "version": "1.2.3",
+  "commit": "6c23871",
+  "createdAt": "2026-11-22T10:00:00Z",
+  "severity": "security",
+  "deadlineAt": "2026-11-29T10:00:00Z",
+  "minAgentVersion": "1.0.0",
+  "openclawVersion": "2026.11.1",
+  "nodeVersion": "22.11.0",
+  "keyId": "om-rel-2026a",
+  "payload": {
+    "name": "offmanual-1.2.3.zip",
+    "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    "size": 1024
+  },
+  "files": [
+    {
+      "path": "desk/offmanual-desk.exe",
+      "sha256": "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+      "size": 3
+    },
+    {
+      "path": "server-agent.exe",
+      "sha256": "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+      "size": 3
+    }
+  ]
+}
