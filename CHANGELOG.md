@@ -24,6 +24,8 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Server Agent pipe methods: sign-in state, authenticator enrolment, daily code, PIN, step-up, lock, gateway port/token leases, audit, policy.
 - Server Agent runs as a Windows service (install/uninstall commands, automatic restart on failure) or in the foreground; JSON logs.
 - TOTP secrets encrypted with Windows DPAPI; data folder restricted to SYSTEM and Administrators.
+- `server-agent preflight`: checks a server is ready (Windows version, memory, disk, Remote Desktop, WebView2, TallyPrime, bundled Node, Clients share, internet access, clock) with a plain fix for each problem.
+- `server-agent bridge`: lets Node-based clients talk to the Server Agent pipe safely.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

@@ -61,7 +61,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Port lease storage: stable per employee, lowest free port, expiry (`store/leases.go`)
 - [x] 256-bit gateway tokens, only SHA-256 stored; returned once to the caller
 - [ ] Audit log append + summary upload
-- [ ] Pre-flight check command
+- [x] Pre-flight check command (`server-agent preflight [-share] [-json]`: Windows version, RAM, disk, Remote Desktop, WebView2, TallyPrime, bundled Node, Clients share, outbound HTTPS + clock skew)
+- [x] `server-agent bridge` for Node clients (ADR-034)
 
 ### M3 Console core
 - [ ] Auth for superadmin / staff / firm admin with mandatory TOTP
@@ -146,6 +147,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 20:15: M2 slice 5: preflight, bridge, pipe access fix
+- Changed: CI's new service round trip found that a standard .NET pipe client (GENERIC_READ|GENERIC_WRITE) is refused by the ADR-029 DACL, which is correct (GENERIC_WRITE includes FILE_CREATE_PIPE_INSTANCE) but means every client must request exactly read + write-data. `pipe.Dial` now uses `DialPipeAccess(0x12008B)` at SECURITY_ANONYMOUS; new `pipe.Bridge` + `server-agent bridge` relays stdin/stdout for Node clients (guard) after checking the server is LocalSystem; CI now asserts a GENERIC_WRITE client is refused even for an admin and that bridge works against the real service. `internal/preflight` + `server-agent preflight`. Test pipe names made collision-proof. ADR-034.
+- Tests: all Go → pass (preflight 81.8%); preflight run on this laptop reports correctly; golangci-lint windows + linux → 0 issues; actionlint clean.
+- Half-done / next: confirm CI round trip green; M3 console.
 
 ### 2026-11-22 19:30: M2 slice 4: handlers, DPAPI, service
 - Changed: `internal/secrets` (DPAPI machine scope + app entropy; in-memory AES-GCM fake for tests), `internal/agent` (13 pipe methods with plain-language errors, lockout, replay protection, day grant to 22:00 IST, step-up grants 10 min, leases), migration 0002 (`totp_enrolled_at`), `internal/app` (wiring, data dir + SYSTEM/Admins ACL, JSON logs), `cmd/server-agent` run/install/uninstall/service; CI job installs the service as LocalSystem on windows-latest, calls it over the real pipe and uninstalls. ADR-033.

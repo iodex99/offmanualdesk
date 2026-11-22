@@ -23,7 +23,7 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Lost LLM key | Firm-owned key DPAPI machine scope; rotate via console |
 | Tally posting errors | Read-only default; review queue; read-back check |
 | Departed employee | Console disable → gateway stop, Telegram unlink, token revoke |
-| Another user squats the Server Agent pipe (creates an instance and reads PINs/codes) | Pipe DACL gives users `FILE_GENERIC_READ \| FILE_WRITE_DATA` only (no `FILE_CREATE_PIPE_INSTANCE`), `FILE_FLAG_FIRST_PIPE_INSTANCE`, `PIPE_REJECT_REMOTE_CLIENTS`; clients verify the server process is LocalSystem (ADR-029; L7) |
+| Another user squats the Server Agent pipe (creates an instance and reads PINs/codes). Verified in CI: a standard GENERIC_WRITE client is refused even as Administrator; clients use read + write-data only (ADR-034) | Pipe DACL gives users `FILE_GENERIC_READ \| FILE_WRITE_DATA` only (no `FILE_CREATE_PIPE_INSTANCE`), `FILE_FLAG_FIRST_PIPE_INSTANCE`, `PIPE_REJECT_REMOTE_CLIENTS`; clients verify the server process is LocalSystem (ADR-029; L7) |
 | Brute-forcing a gateway token from another RDS session (all sessions are "loopback") | 256-bit tokens; `gateway.auth.rateLimit.exemptLoopback: false` (OpenClaw's default exempts loopback); device-auth handshake (ADR-021; L2 measures it) |
 | Gateway opens extra listeners (browser control/CDP, MCP Apps) other sessions can reach | `browser` plugin denied, MCP Apps off, Desk refuses to run a gateway whose process tree listens on anything but its leased port (ADR-020; L1) |
 | Agent installs a skill/plugin or edits its own config | Layered lockdown: `OPENCLAW_CONFIG_READONLY=1`, guard `before_install` block, `security.installPolicy`, tool denies, skill roots wiped before start (ADR-024) |
