@@ -4,6 +4,7 @@ go 1.27
 
 require (
 	github.com/Microsoft/go-winio v0.6.4
+	github.com/coder/websocket v1.8.15
 	golang.org/x/crypto v0.59.0
 	golang.org/x/sys v0.50.0
 	modernc.org/sqlite v1.62.0
