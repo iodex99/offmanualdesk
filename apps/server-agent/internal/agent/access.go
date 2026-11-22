@@ -125,6 +125,6 @@ func (a *Agent) accessResolve(ctx context.Context, c rpc.Caller, p json.RawMessa
 	} else if err != nil {
 		return nil, err
 	}
-	a.audit(ctx, e.SID, "access_request", in.Outcome, "ok")
+	a.audit(ctx, e.SID, "access_resolved", in.Outcome, "ok") // separate category: the digest counts requests only
 	return map[string]bool{"ok": true}, nil
 }

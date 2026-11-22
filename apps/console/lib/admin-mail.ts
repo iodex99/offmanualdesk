@@ -3,6 +3,7 @@
 import { and, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { formatDate, formatINR } from "@offmanual/shared-schema/format";
 import {
+  auditSummaries,
   digestRuns,
   employees,
   firmAdmins,
@@ -86,6 +87,8 @@ export interface DigestFacts {
   serversHealthy: number;
   serversTotal: number;
   openInvoices: { number: string; totalPaise: bigint; dueOn: string }[];
+  /** Requests for folder access sent from Desk (ADR-058; a count, never the folders). */
+  accessRequests: number;
 }
 
 export function digestText(f: DigestFacts): { subject: string; text: string } {
@@ -96,6 +99,9 @@ export function digestText(f: DigestFacts): { subject: string; text: string } {
     `Questions and tasks handled: ${f.turns}`,
     `Servers healthy: ${f.serversHealthy} of ${f.serversTotal}`,
   ];
+  if (f.accessRequests > 0) {
+    lines.push(`Requests for folder access: ${f.accessRequests} (see the Access tab in your Desk)`);
+  }
   if (f.openInvoices.length > 0) {
     lines.push("", "Invoices to pay:");
     for (const i of f.openInvoices) {
@@ -129,6 +135,19 @@ export async function digestFacts(
       .where(and(eq(employees.firmId, firmId), eq(employees.status, "active")))
   )[0]!.n;
   const srv = await db.select({ health: servers.health }).from(servers).where(eq(servers.firmId, firmId));
+  const access = (
+    await db
+      .select({ n: sql<number>`coalesce(sum(${auditSummaries.count}), 0)::int` })
+      .from(auditSummaries)
+      .where(
+        and(
+          eq(auditSummaries.firmId, firmId),
+          eq(auditSummaries.category, "access_request"),
+          gte(auditSummaries.date, week.start),
+          lte(auditSummaries.date, week.end),
+        ),
+      )
+  )[0]!.n;
   const open = await db
     .select({ number: invoices.number, totalPaise: invoices.totalPaise, dueOn: invoices.dueOn })
     .from(invoices)
@@ -145,6 +164,7 @@ export async function digestFacts(
     openInvoices: open
       .filter((i): i is { number: string; totalPaise: bigint; dueOn: string } => Boolean(i.number && i.dueOn))
       .map((i) => ({ number: i.number, totalPaise: i.totalPaise, dueOn: i.dueOn })),
+    accessRequests: access,
   };
 }
 

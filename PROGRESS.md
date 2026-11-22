@@ -137,7 +137,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M10 Admin and ease
 - [ ] Admin agent tools
 - [x] Setup (ADR-054): firm page shows each server's pre-flight problems (must fix / check, with the fix), bulk import "Name, email" per line (header/blank lines ignored, per-line reasons, invites sent), Desk "Build client list" task (client-directory skill); [ ] import from an AD group (needs the lab)
-- [x] Weekly partner digest (ADR-053): Mondays (IST) from the daily cron, last week's counts per firm (people using Off Manual, turns, servers healthy, invoices to pay) to the firm's active admins, once per firm and week (`digest_runs`)
+- [x] Weekly partner digest (ADR-053): Mondays (IST) from the daily cron, last week's counts per firm (people using Off Manual, turns, servers healthy, invoices to pay, folder-access requests) to the firm's active admins, once per firm and week (`digest_runs`)
 - [x] Report a problem → support queue (ADR-050): Desk tab with preview of exactly what is sent, `support.bundle`/`support.submit` (agent rebuilds the server part; pre-flight + log tail, bounded), `POST /api/agent/support` (strict schema, 20/server/day, ticket ref OM-XXXXXX), staff `/support` page
 - [x] Fleet board v1: firm (link) and firm status, health with 1 h staleness, last seen, agent/OpenClaw/Desk/staged versions, seats, problem reports in the last 7 days, count of unhealthy servers, links to firms/billing/reports
 
@@ -165,7 +165,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### 2026-11-23 22:40: Request access (M5, ADR-058)
 - Changed: agent migration 0009 (`access_requests`), store (RecentDenials from the guard's local audit rows, CreateAccessRequest copies the path from the caller's own row, ≤ 20 open, AccessRequests, Resolve, IsAdmin), pipe methods `access.denials|request|list|resolve` (shared IPC schema, Desk allowlist), `session.hello` carries `admin`; Desk `AccessRequests.tsx` (DenialCards after each reply, Access tab), Chat `onRunEnd`.
 - Tests: Go (own denials only, someone else's denial refused, note bounds, extra `target` field refused, single request per denial, admin sees all and closes, non-admin can't, closed twice, week/day windows, 20-open cap, hello admin flag); desk 62/62 (cards only for new unrequested denials, only id + note sent, plain error, admin close, employee view, Assistant end to end); `pnpm run check` green; golangci-lint both OSes 0; cargo fmt. CI for the releases page green; `main` at 65f20ff.
-- Half-done / next: count of access requests in the weekly digest (audit category counts already uploaded).
+- Then: weekly digest adds "Requests for folder access: N" from the uploaded `access_request` audit counts (resolutions audited as `access_resolved` so they aren't counted); console admin-mail 5/5.
 
 ### 2026-11-23 22:10: Releases page and the signing rule (M8, ADR-057)
 - Changed: console `releases.authenticode` (migration 0008, from the signed manifest at registration), `promote` refuses unsigned releases beyond ring 0 unless `OM_ALLOW_UNSIGNED_RELEASES=true`, `setFirmRollout` (ring 0–2 + pin; unsigned pins only for lab firms), `releaseAction` (strict schema), `releasesBoard` (rings, servers running/staged per version, firms), route `POST /api/admin/releases`, page `/releases` + links.

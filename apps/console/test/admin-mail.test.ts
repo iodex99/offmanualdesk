@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { employees, firmAdmins, firms, invoices, servers, usageDaily } from "@/db/schema";
+import { auditSummaries, employees, firmAdmins, firms, invoices, servers, usageDaily } from "@/db/schema";
 import { digestText, emailBillingNotices, lastWeek, weeklyDigests } from "@/lib/admin-mail";
 import type { DB } from "@/lib/db";
 import type { Email, Mailer } from "@/lib/email";
@@ -113,9 +113,16 @@ describe("weekly digest", () => {
       { firmId, employeeId: asha, date: "2026-12-02", turns: 12, inputTokens: 1, outputTokens: 1 },
       { firmId, employeeId: ravi, date: "2026-11-20", turns: 50, inputTokens: 1, outputTokens: 1 }, // not last week
     ]);
+    const srv = uuidv7();
     await db
       .insert(servers)
-      .values({ id: uuidv7(), firmId, hostname: "RDS01", publicKey: "k", health: "green", enrolledAt: now });
+      .values({ id: srv, firmId, hostname: "RDS01", publicKey: "k", health: "green", enrolledAt: now });
+    await db.insert(auditSummaries).values([
+      { firmId, serverId: srv, date: "2026-12-01", category: "access_request", count: 2 },
+      { firmId, serverId: srv, date: "2026-12-03", category: "access_request", count: 1 },
+      { firmId, serverId: srv, date: "2026-12-03", category: "access_denied", count: 9 },
+      { firmId, serverId: srv, date: "2026-11-20", category: "access_request", count: 5 }, // not last week
+    ]);
     await issued("2026-12-16");
     const closed = uuidv7();
     await db.insert(firms).values({
@@ -138,6 +145,7 @@ describe("weekly digest", () => {
     expect(body).toContain("People using Off Manual: 1 of 2");
     expect(body).toContain("Questions and tasks handled: 42");
     expect(body).toContain("Servers healthy: 1 of 1");
+    expect(body).toContain("Requests for folder access: 3 (see the Access tab in your Desk)");
     expect(body).toContain("OM/FY2026-27/0001: ₹2,360.00 due on 16-12-2026");
     expect(sent.some((m) => m.to === "old@old.in")).toBe(false);
   });
@@ -153,7 +161,9 @@ describe("weekly digest", () => {
       serversHealthy: 0,
       serversTotal: 1,
       openInvoices: [],
+      accessRequests: 0,
     });
     expect(t.text).not.toContain("Invoices to pay");
+    expect(t.text).not.toContain("folder access");
   });
 });
