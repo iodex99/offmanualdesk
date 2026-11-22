@@ -81,7 +81,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
 - [x] Idle lock: session idle from `GetLastInputInfo` (Rust `idle.rs`, per RDS session) polled every 30 s, firm `lockTimeoutMax` from policy.get (default 15), fallback to in-window activity, `lock.set` then back to the unlock screen; step-up prompt on Review approvals when the firm lists `review.approve` (ADR-047)
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
-- [x] Gateway: early exit detected during startup; exit code 78 → state snapshot (ADR-025, newest 3 kept) → `doctor --fix --yes --non-interactive` without the token (≤ 5 min) → retry once; lease released on failure; start holds the lock (no double start), status non-blocking; [ ] listener check (ADR-020, lab), idle stop, restart after a crash
+- [x] Gateway: early exit detected during startup; exit code 78 → state snapshot (ADR-025, newest 3 kept) → `doctor --fix --yes --non-interactive` without the token (≤ 5 min) → retry once; lease released on failure; start holds the lock (no double start), status non-blocking; idle stop after the firm's `gatewayIdleStopHours` + start on the next message/review action + crash restart (≤ 3/hour) in `ui/src/keeper.ts`; [ ] listener check (ADR-020, lab)
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
 - [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 14:35: Gateway keeper: idle stop, start on use, crash restart (M4, F4 step 5)
+- Changed: Desk UI `keeper.ts` (GatewayKeeper with injectable start/stop/status and clock; `keptGateway` wraps chat/review calls so a resting or crashed gateway starts first; one shared start for concurrent uses), Assistant ticks it every 30 s, reads `gatewayIdleStopHours` from policy.get, shows resting/starting/stopped notes.
+- Tests: desk 44/44 (rest after idle, activity postpones, start on send, crash restarts capped at 3/hour then still startable by a message, failed start message, shared start, policy bounds; Assistant end to end with fake timers).
+- Half-done / next: lab confirms the gateway's memory footprint per user (sizing the default 4 h).
 
 ### 2026-11-23 14:10: Invoice PDF (M9)
 - Changed: dependency pdf-lib 1.17.1 (pure JS, no install scripts; API checked in its .d.ts), `lib/billing/pdf.ts` (pure `invoiceLayout` + `renderInvoicePdf`; WinAnsi-safe text, "Rs." amounts), `invoicePdf` loader (firm-scoped; firm admins only issued/paid), PDF route, links on the firm and billing pages, seller name/address config (`OFFMANUAL_LEGAL_NAME`, `OFFMANUAL_ADDRESS`).
