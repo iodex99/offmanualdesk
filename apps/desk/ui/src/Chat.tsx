@@ -10,7 +10,12 @@ interface Line {
 
 export const MSG_FAILED = "Your assistant hit a problem with that. Try again, or ask in a different way.";
 
-export function Chat({ api }: { api: GatewayApi }) {
+export interface QueuedMessage {
+  id: number;
+  text: string;
+}
+
+export function Chat({ api, queued }: { api: GatewayApi; queued?: QueuedMessage | null }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState("");
   const [runId, setRunId] = useState<string | null>(null);
@@ -67,14 +72,14 @@ export function Chat({ api }: { api: GatewayApi }) {
     };
   }, [api]);
 
-  const send = async () => {
-    const text = draft.trim();
+  const send = async (override?: string) => {
+    const text = (override ?? draft).trim();
     if (!text || busy) return;
     setError("");
     setBusy(true);
     early.current = [];
     setLines((prev) => [...prev, { who: "you", text }]);
-    setDraft("");
+    if (override === undefined) setDraft("");
     try {
       const id = await api.send(text);
       runRef.current = id;
@@ -87,6 +92,16 @@ export function Chat({ api }: { api: GatewayApi }) {
       setError(messageOf(e, "Your message couldn't be sent. Try again."));
     }
   };
+
+  // A task button's request (Tasks tab) is sent once, as if typed.
+  const sentQueued = useRef<number | null>(null);
+  useEffect(() => {
+    if (queued && sentQueued.current !== queued.id) {
+      sentQueued.current = queued.id;
+      void send(queued.text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- send must run once per queued id
+  }, [queued]);
 
   return (
     <section className="chat" aria-label="Chat">

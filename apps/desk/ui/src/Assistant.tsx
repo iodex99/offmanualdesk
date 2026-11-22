@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { callAgent, type AgentCall } from "./agent";
-import { Chat } from "./Chat";
+import { Chat, type QueuedMessage } from "./Chat";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
 import { ReportProblem } from "./ReportProblem";
+import { TaskButtons } from "./TaskButtons";
 import { Review } from "./Review";
 import { TelegramLink } from "./TelegramLink";
 import { UpdateNotice, type UpdateApi } from "./UpdateNotice";
@@ -55,6 +56,7 @@ export function Assistant({
 }) {
   const [state, setState] = useState<State>({ kind: "starting" });
   const [keeperState, setKeeperState] = useState<KeeperState>("running");
+  const [queued, setQueued] = useState<QueuedMessage | null>(null);
   // Idle stop, start-on-use and crash restart (F4 step 5).
   const keeper = useMemo(
     () =>
@@ -67,7 +69,7 @@ export function Assistant({
     [start, control],
   );
   const kept = useMemo(() => keptGateway(api, keeper), [api, keeper]);
-  const [tab, setTab] = useState<"chat" | "review" | "telegram" | "help">("chat");
+  const [tab, setTab] = useState<"chat" | "tasks" | "review" | "telegram" | "help">("chat");
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -121,6 +123,9 @@ export function Assistant({
             <button role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>
               Chat
             </button>
+            <button role="tab" aria-selected={tab === "tasks"} onClick={() => setTab("tasks")}>
+              Tasks
+            </button>
             <button role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>
               Review
             </button>
@@ -131,7 +136,15 @@ export function Assistant({
               Report a problem
             </button>
           </nav>
-          {tab === "chat" && <Chat api={kept} />}
+          {tab === "chat" && <Chat api={kept} queued={queued} />}
+          {tab === "tasks" && (
+            <TaskButtons
+              onRun={(text) => {
+                setQueued((q) => ({ id: (q?.id ?? 0) + 1, text }));
+                setTab("chat");
+              }}
+            />
+          )}
           {tab === "review" && <Review api={kept} agent={agent} />}
           {tab === "telegram" && <TelegramLink agent={agent} />}
           {tab === "help" && <ReportProblem agent={agent} />}
