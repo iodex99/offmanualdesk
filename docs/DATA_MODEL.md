@@ -60,10 +60,10 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 | --- | --- |
 | `meta` | server_id, key_id, policy_etag, licence_expires_at, last_console_contact_at |
 | `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, totp_last_counter (highest accepted TOTP step; replay protection, ADR-030), totp_enrolled_at (migration 0002), pin_hash (argon2id), recovery_codes_hash. Rows come from console policy sync; employees missing from the policy are set `disabled` with their day grant and lease removed |
-| `meta` keys | server_id, server_key_dpapi, console_url, policy_etag, policy_json, firm_status, last_console_contact_at, audit_summary_sent_through |
+| `meta` keys | server_id, server_key_dpapi, console_url, policy_etag, policy_json, firm_status, last_console_contact_at, audit_summary_sent_through, telegram_bot_username, telegram_bot_token_dpapi, telegram_offset, relay_device_key_dpapi |
 | `day_grants` | sid, granted_at, expires_at |
 | `lock_state` | sid, desk_locked, telegram_unlocked_until, failed_pins, failed_codes, lockout_until |
-| `leases` | sid, port, token_hash, pid, started_at, last_seen_at |
+| `leases` | sid, port (unique), token_hash, token_dpapi (migration 0003; for the Telegram relay, ADR-040), pid, started_at, last_seen_at |
 | `telegram_links` | sid, telegram_user_id, linked_at; `telegram_link_codes` (code_hash, sid, expires_at, used_at) |
 | `audit` | ts, sid, category, action, target (may contain path, never leaves the server), result, correlation_id |
 | `usage` | date, sid, input_tokens, output_tokens, turns, tasks_completed |

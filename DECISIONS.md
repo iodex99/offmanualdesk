@@ -304,3 +304,10 @@ Template:
 - Context: SKILLS.md requires a human approval for every skill. Claude can write and vet skills but must not record an approval on Dwahnil's behalf; CI still has to hash-check what is in the repo.
 - Decision: `registry.lock.json` review status is `pending` or `approved`. Pending skills are hash-checked like any other (unlisted or changed files fail CI) but the release workflow copies only approved skills and writes a payload lock containing only them. Approval = Dwahnil (with the firm's CA for tax content) sets status, reviewer and date. `tools/skill-vet lock` always emits `pending`.
 - Consequences: Skills can be developed and reviewed in the repo without risk of shipping unreviewed instructions.
+
+## ADR-040: Telegram relay details
+- Date: 2026-11-23
+- Status: Accepted (session key format pending lab L2)
+- Context: ADR-023 chose the Server Agent as a gateway client for Telegram. It needs the gateway token (only a hash was stored), a device identity for the v4 handshake, and a session to run Telegram turns in.
+- Decision: (1) `gateway.lease` also stores the token DPAPI-protected (`leases.token_dpapi`). (2) The Server Agent has one persistent relay device key (DPAPI, meta `relay_device_key_dpapi`); `client.id` `gateway-client`, mode `backend`. (3) Telegram turns use session key `agent:main:telegram`; the guard treats any session key containing `:telegram` as the Telegram channel. (4) The relay only connects to a gateway with a lease seen in the last 12 hours (Desk started it); otherwise it replies "Open Off Manual Desk…" (ADR-026). (5) Replies are sent as plain text (no parse mode), split at 4096 characters; incoming files are refused without download unless the firm mode is `files`. (6) The bot token is entered on the server (`server-agent telegram-setup`, read from stdin) and never sent to the console.
+- Consequences: One relay identity per server needs pairing approval once per gateway (auto-approved for local connections per OpenClaw defaults; confirm in lab L2).

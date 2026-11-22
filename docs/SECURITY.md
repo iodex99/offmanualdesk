@@ -15,7 +15,8 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Agent works around Access Denied | Guard stops the turn on access errors; no alternate path, no copy; audit |
 | Prompt injection from a document or email makes the agent act | Review queue for irreversible/external actions; skill packs limit tools; Telegram text-only; no portal submission |
 | Client data leaks to Off Manual | Console receives counts/versions/health only; audit summaries without paths |
-| Client data leaks via Telegram | Text-only default; files only if firm enables; Server Agent enforces |
+| Client data leaks via Telegram | Text-only default; files only if firm enables; Server Agent enforces (incoming files refused without downloading; replies are plain text, no parse mode) |
+| Server Agent holds every employee's gateway token (relay) | It runs as SYSTEM, which already controls the host; tokens are DPAPI machine-scope in the SYSTEM/Admins-only agent.db, used only to relay a linked employee's own Telegram messages to their own gateway (ADR-040) |
 | Stolen employee password | OAuth bound to SID + TOTP; daily code; lockouts |
 | Stolen console/firm-admin Google or Microsoft account | Console requires TOTP after OIDC (no bypass; pre-MFA sessions can do nothing and expire in 10 min); codes single-use; session tokens stored hashed; disabling a user ends sessions at once (ADR-037) |
 | Firm admin reads another firm's data | Every firm-scoped handler calls `requireFirmAccess(session, firmIdFromUrl)`; an admin email listed for two firms can't sign in (ambiguous) |

@@ -102,10 +102,10 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Telegram policy enforcement (off / text / files)
 
 ### M6 Telegram
-- [ ] Server Agent long-polls firm bot, routes by linked Telegram user ID
-- [ ] Relay: Server Agent as gateway client (ADR-023) or channel-relay plugin
-- [ ] Link via deep link one-time code
-- [ ] Unlock via Telegram (button + `/unlock <code>`)
+- [x] Server Agent long-polls the firm bot (Bot API getUpdates/sendMessage), routes by linked Telegram user ID, persists the offset, ignores groups/bots, text-only by default, 4096-char chunking (`internal/telegram`)
+- [x] Relay: Server Agent as gateway client (ADR-023/040) through `internal/gateway`; only to a gateway Desk started (fresh lease), else "Open Desk" (ADR-026)
+- [x] Link via deep link one-time code (`telegram.linkStart`, hashed, 10 min, single use; offboarding unlinks)
+- [x] `/unlock <code>` opens a Telegram-only window (firm `telegram_unlock_max_min`, default 60); [ ] inline Approve button for Desk unlock
 - [ ] ~~Wake stopped gateway on message~~ out of v1 if ADR-026 is accepted
 
 ### M7 Skills
@@ -162,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 05:00: Telegram router + relay (M6)
+- Changed: migration 0003 (`leases.token_dpapi`), store Telegram methods (link codes, links, protected lease token; DisableEmployee also unlinks), `internal/telegram` (Bot client, Router with plain replies, Run with backoff), agent `telegram.linkStart`, `TelegramUnlock`, mode/active hooks, `UserMessage` error type, lease stores the protected token; app relay (`gateway.Dial` + `Chat` on session `agent:main:telegram`, persistent relay device key), router start when configured, `server-agent telegram-setup` (token from stdin). ADR-040.
+- Tests: telegram 88.3% (linking, expiry, reuse, unlinked/offboarded, off mode, files refused, relay + chunking + not running + error, /unlock, groups/bots ignored, offset persistence, Bot client errors never contain the token); agent 76.7% (link start, unlock window, protected token); golangci-lint both OSes 0.
+- Half-done / next: Desk "Link Telegram" button + Telegram approve-unlock button; lab L2 confirms the session key format.
 
 ### 2026-11-23 04:15: Gateway client protocol (Go)
 - Changed: `internal/gateway/client.go` (Device with sha256 id + base64url key/signature, PayloadV3, Dial with connect.challenge → connect → hello-ok, Chat accumulating deltas with replace, Abort), dependency github.com/coder/websocket v1.8.15. OPENCLAW_NOTES: device-auth and chat-event facts verified in source.
