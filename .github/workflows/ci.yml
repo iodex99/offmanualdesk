@@ -1,0 +1,159 @@
+name: CI
+
+# Runs on every push and PR; release.yml calls it before building a release.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_call' }}
+
+jobs:
+  node:
+    name: TS (console, desk UI, plugins, schemas, tools, hooks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format
+        run: pnpm run format:check
+      - name: Lint
+        run: pnpm run lint
+      - name: Type-check
+        run: pnpm run typecheck
+      - name: Unit tests (workspaces)
+        run: pnpm -r --if-present run test
+      - name: Hook tests
+        run: pnpm run test:hooks
+      - name: Release tooling tests
+        run: pnpm run test:tools
+      - name: Skills lock matches disk
+        run: node tools/release/cli.mjs verify-skills
+      - name: Build console
+        run: pnpm --filter @offmanual/console run build
+      - name: Build desk UI
+        run: pnpm --filter @offmanual/desk run build:ui
+
+  go:
+    name: Go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/server-agent/go.mod
+          cache-dependency-path: |
+            apps/server-agent/go.sum
+            tools/sign-manifest/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l apps/server-agent tools/sign-manifest)" || { gofmt -l apps/server-agent tools/sign-manifest; exit 1; }
+      - name: go vet
+        run: go vet ./apps/server-agent/... ./tools/sign-manifest/...
+      - name: go test
+        run: go test -count=1 -cover ./apps/server-agent/... ./tools/sign-manifest/...
+      - name: go test -race (linux)
+        if: runner.os == 'Linux'
+        run: go test -race -count=1 ./apps/server-agent/... ./tools/sign-manifest/...
+      - name: golangci-lint
+        if: runner.os == 'Linux'
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          working-directory: apps/server-agent
+      - name: golangci-lint (sign-manifest)
+        if: runner.os == 'Linux'
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          working-directory: tools/sign-manifest
+      - name: actionlint (workflows)
+        if: runner.os == 'Linux'
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color
+      - name: Build server-agent.exe
+        if: runner.os == 'Windows'
+        run: go build -trimpath -o dist/server-agent.exe ./apps/server-agent/cmd/server-agent && ./dist/server-agent.exe version
+
+  desk:
+    name: Desk (Rust, windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desk/src-tauri
+      - run: pnpm install --frozen-lockfile
+      - name: Build UI (tauri needs ../dist at compile time)
+        run: pnpm --filter @offmanual/desk run build:ui
+      - name: cargo fmt
+        working-directory: apps/desk/src-tauri
+        run: cargo fmt --check
+      - name: cargo clippy
+        working-directory: apps/desk/src-tauri
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: cargo test
+        working-directory: apps/desk/src-tauri
+        run: cargo test --locked
+
+  lab:
+    name: Lab scripts parse (PowerShell 5.1)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Parse every lab script with Windows PowerShell 5.1 and run PSScriptAnalyzer
+        shell: powershell
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $failed = $false
+          Get-ChildItem lab -Recurse -Filter *.ps1 | ForEach-Object {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs) { $failed = $true; $errs | ForEach-Object { Write-Host "::error file=$($_.Extent.File),line=$($_.Extent.StartLineNumber)::$($_.Message)" } }
+          }
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Scope CurrentUser -Force }
+          $findings = Invoke-ScriptAnalyzer -Path lab -Recurse -Severity Error
+          $findings | Format-Table -AutoSize | Out-String | Write-Host
+          if ($findings) { $failed = $true }
+          if ($failed) { exit 1 }
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

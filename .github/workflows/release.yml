@@ -1,0 +1,284 @@
+name: Release
+
+# docs/UPDATES.md §1. A tag vX.Y.Z on main becomes a signed release:
+#   CI → check tag/versions/CHANGELOG → build all parts → fetch pinned Node + OpenClaw (hash-checked)
+#   → verify skills lock → Authenticode (if configured) → deterministic payload zip + manifest
+#   → ed25519 sign → verify with committed public key → GitHub Release (+ release store, + console).
+#
+# Prepare a release locally:  node tools/release/cli.mjs prepare 1.2.0  (then commit, tag, push)
+# Security release / re-run:  Actions → Release → Run workflow (tag, severity, deadline)
+# Dry run (no secrets needed): Run workflow with dry_run=true; signs with a throwaway key, publishes nothing.
+#
+# Secrets (Settings → Secrets → Actions); see PROGRESS.md "Waiting on Dwahnil":
+#   RELEASE_SIGNING_KEY   base64 ed25519 seed from `sign-manifest keygen` (required for real releases)
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET  Azure Trusted Signing (optional until M8)
+#   RELEASE_STORE_ENDPOINT, RELEASE_STORE_BUCKET, RELEASE_STORE_ACCESS_KEY_ID, RELEASE_STORE_SECRET_ACCESS_KEY  (R2/S3, optional)
+#   CONSOLE_URL, OM_RELEASE_REGISTER_TOKEN  register the release with the console (optional until M8)
+# Variables (Settings → Variables): RELEASE_KEY_ID (e.g. om-rel-2026a), AZURE_SIGNING_ENDPOINT,
+#   AZURE_SIGNING_ACCOUNT, AZURE_CERT_PROFILE
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, e.g. v1.2.0"
+        required: true
+      severity:
+        description: "normal or security"
+        type: choice
+        options: [normal, security]
+        default: normal
+      deadline_days:
+        description: "Security releases: days until Desks switch automatically"
+        default: "7"
+      dry_run:
+        description: "Build and sign with a throwaway key; publish nothing"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build, sign, manifest
+    needs: ci
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      SEVERITY: ${{ github.event.inputs.severity || 'normal' }}
+      DEADLINE_DAYS: ${{ github.event.inputs.deadline_days || '7' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      dry_run: ${{ steps.meta.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Release metadata
+        id: meta
+        run: |
+          set -euo pipefail
+          node tools/release/cli.mjs check-tag "$TAG"
+          version="${TAG#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          node -e '
+            const c = require("./release.config.json");
+            const out = [
+              `NODE_VERSION=${c.node.version}`, `NODE_SHA256=${c.node.sha256}`,
+              `OPENCLAW_VERSION=${c.openclaw.version}`, `MIN_AGENT_VERSION=${c.minAgentVersion}`];
+            require("fs").appendFileSync(process.env.GITHUB_ENV, out.join("\n") + "\n");'
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/server-agent/go.mod
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desk/src-tauri
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Server Agent
+        run: |
+          set -euo pipefail
+          mkdir -p payload
+          go build -trimpath -ldflags "-s -w \
+            -X offmanual/desk/server-agent/internal/version.Version=$VERSION \
+            -X offmanual/desk/server-agent/internal/version.Commit=$COMMIT" \
+            -o payload/server-agent.exe ./apps/server-agent/cmd/server-agent
+          ./payload/server-agent.exe version
+
+      - name: Build Desk
+        run: |
+          set -euo pipefail
+          pnpm --filter @offmanual/desk exec tauri build --no-bundle
+          mkdir -p payload/desk
+          cp apps/desk/src-tauri/target/release/offmanual-desk.exe payload/desk/
+
+      - name: Plugins
+        # docs/OPENCLAW_NOTES.md §4: each plugin dir = openclaw.plugin.json + package.json
+        # ("openclaw.extensions" → dist/*.js) + built JS. Loaded via plugins.load.paths.
+        # channel-relay is not shipped while ADR-023 (Telegram via Server Agent) is open.
+        run: |
+          set -euo pipefail
+          pnpm --filter @offmanual/openclaw-guard run build
+          mkdir -p payload/plugins/guard
+          cp -r packages/openclaw-plugins/guard/dist packages/openclaw-plugins/guard/openclaw.plugin.json \
+            packages/openclaw-plugins/guard/package.json payload/plugins/guard/
+
+      - name: Node runtime (pinned, hash-checked)
+        run: |
+          set -euo pipefail
+          f="node-v${NODE_VERSION}-win-x64.zip"
+          curl -fsSL -o "$RUNNER_TEMP/$f" "https://nodejs.org/dist/v${NODE_VERSION}/$f"
+          echo "${NODE_SHA256}  $RUNNER_TEMP/$f" | sha256sum -c -
+          7z x -y -o"$RUNNER_TEMP/node" "$RUNNER_TEMP/$f" > /dev/null
+          mv "$RUNNER_TEMP/node/node-v${NODE_VERSION}-win-x64" payload/node
+
+      - name: OpenClaw (pinned by release/openclaw/package-lock.json)
+        # npm ci installs exactly the lockfile (integrity-checked). Install scripts are
+        # disabled; anything OpenClaw needs at install time must be listed in
+        # docs/OPENCLAW_NOTES.md §2 and handled explicitly here.
+        run: |
+          set -euo pipefail
+          test -f release/openclaw/package-lock.json || { echo "::error::release/openclaw/package-lock.json missing"; exit 1; }
+          installed=$(node -p 'require("./release/openclaw/package.json").dependencies.openclaw')
+          [ "$installed" = "$OPENCLAW_VERSION" ] || { echo "::error::release.config.json openclaw ($OPENCLAW_VERSION) != release/openclaw ($installed)"; exit 1; }
+          mkdir -p payload/openclaw
+          cp release/openclaw/package.json release/openclaw/package-lock.json payload/openclaw/
+          (cd payload/openclaw && npm ci --omit=dev --ignore-scripts --no-audit --no-fund)
+          # OpenClaw's own postinstall only prunes stale dist files and repairs a missing
+          # @openclaw/fs-safe native prebuild (docs/OPENCLAW_NOTES.md §2); npm ci from the lock
+          # installs the win32-x64 prebuild directly. Prove the bundled runtime starts.
+          got=$(OPENCLAW_NO_RESPAWN=1 OPENCLAW_NO_AUTO_UPDATE=1 DO_NOT_TRACK=1 \
+            payload/node/node.exe payload/openclaw/node_modules/openclaw/openclaw.mjs --version)
+          echo "openclaw --version: $got"
+          case "$got" in *"$OPENCLAW_VERSION"*) ;; *) echo "::error::bundled OpenClaw did not report $OPENCLAW_VERSION"; exit 1;; esac
+
+      - name: Skills (verified against skills/registry.lock.json)
+        run: |
+          set -euo pipefail
+          node tools/release/cli.mjs verify-skills
+          mkdir -p payload/skills
+          node -e '
+            const fs = require("fs"), path = require("path");
+            const lock = require("./skills/registry.lock.json");
+            for (const s of lock.skills) for (const rel of Object.keys(s.files)) {
+              const dst = path.join("payload/skills", s.path, rel);
+              fs.mkdirSync(path.dirname(dst), { recursive: true });
+              fs.copyFileSync(path.join("skills", s.path, rel), dst);
+            }
+            fs.copyFileSync("skills/registry.lock.json", "payload/skills/registry.lock.json");'
+
+      - name: Authenticode (Azure Trusted Signing)
+        id: authenticode
+        env:
+          HAS_SIGNING: ${{ secrets.AZURE_CLIENT_SECRET != '' }}
+        run: |
+          if [ "$HAS_SIGNING" = "true" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT";
+          else echo "::warning::Authenticode signing not configured; binaries are UNSIGNED (fine for ring 0 only)."; echo "enabled=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Sign binaries
+        if: steps.authenticode.outputs.enabled == 'true'
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE }}
+          files-folder: ${{ github.workspace }}/payload
+          files-folder-filter: exe,dll
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Manifest + ed25519 signature
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          KEY_ID: ${{ vars.RELEASE_KEY_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          go build -o "$RUNNER_TEMP/sign-manifest.exe" ./tools/sign-manifest
+          SM="$RUNNER_TEMP/sign-manifest.exe"
+          pubfile=""
+          if [ "$DRY_RUN" = "true" ]; then
+            KEY_ID="om-dryrun"
+            "$SM" keygen -key-id "$KEY_ID" -out-public "$RUNNER_TEMP/dry.pub" -out-private "$RUNNER_TEMP/dry.seed"
+            export RELEASE_SIGNING_KEY="$(cat "$RUNNER_TEMP/dry.seed")"
+            pubfile="$RUNNER_TEMP/dry.pub"
+            echo "::warning::DRY RUN: signed with a throwaway key. Not for distribution."
+          else
+            [ -n "$RELEASE_SIGNING_KEY" ] || { echo "::error::RELEASE_SIGNING_KEY secret is not set"; exit 1; }
+            [ -n "$KEY_ID" ] || { echo "::error::RELEASE_KEY_ID variable is not set"; exit 1; }
+            pubfile="apps/server-agent/pkg/manifest/keys/$KEY_ID.pub"
+            [ -f "$pubfile" ] || { echo "::error::$pubfile is not committed"; exit 1; }
+          fi
+          deadline_args=()
+          if [ "$SEVERITY" = "security" ]; then
+            deadline_args=(-deadline "$(date -u -d "+${DEADLINE_DAYS} days" +%Y-%m-%dT%H:%M:%SZ)")
+          fi
+          "$SM" build -dir payload -version "$VERSION" -commit "$COMMIT" -openclaw "$OPENCLAW_VERSION" \
+            -node "$NODE_VERSION" -min-agent "$MIN_AGENT_VERSION" -severity "$SEVERITY" "${deadline_args[@]}" \
+            -key-id "$KEY_ID" -zip "out/offmanual-$VERSION.zip" -out out/manifest.json
+          "$SM" sign -manifest out/manifest.json -out out/manifest.sig.json
+          "$SM" verify -manifest out/manifest.json -sig out/manifest.sig.json -pubkey-file "$pubfile" -zip "out/offmanual-$VERSION.zip"
+          node tools/release/cli.mjs notes "$VERSION" > out/RELEASE_NOTES.md
+          (cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.meta.outputs.version }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish
+    needs: build
+    if: needs.build.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ needs.build.outputs.version }}
+          path: out
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --title "Off Manual Desk $VERSION" \
+            --notes-file out/RELEASE_NOTES.md --prerelease \
+            out/offmanual-$VERSION.zip out/manifest.json out/manifest.sig.json out/SHA256SUMS.txt
+      - name: Release store (R2/S3)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.RELEASE_STORE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RELEASE_STORE_SECRET_ACCESS_KEY }}
+          ENDPOINT: ${{ secrets.RELEASE_STORE_ENDPOINT }}
+          BUCKET: ${{ secrets.RELEASE_STORE_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ENDPOINT" ] || [ -z "$BUCKET" ]; then echo "::notice::Release store not configured (ADR-016); skipped."; exit 0; fi
+          aws s3 cp out/ "s3://$BUCKET/releases/$VERSION/" --recursive --endpoint-url "$ENDPOINT" --exclude RELEASE_NOTES.md
+      - name: Register with console (ring 0)
+        env:
+          CONSOLE_URL: ${{ secrets.CONSOLE_URL }}
+          TOKEN: ${{ secrets.OM_RELEASE_REGISTER_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CONSOLE_URL" ] || [ -z "$TOKEN" ]; then echo "::notice::Console registration not configured (M8); skipped."; exit 0; fi
+          jq -n --rawfile notes out/RELEASE_NOTES.md --slurpfile m out/manifest.json --slurpfile s out/manifest.sig.json \
+            '{manifest: $m[0], signature: $s[0], changelogMd: $notes, ring: 0}' > body.json
+          curl -fsS -X POST "$CONSOLE_URL/api/releases" -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" --data-binary @body.json

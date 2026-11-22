@@ -1,0 +1,21 @@
+# Weekly, grouped dependency updates. OpenClaw itself is NOT here: it is pinned in
+# release/openclaw and upgraded deliberately (.claude/rules/openclaw.md).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups: { actions: { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: gomod
+    directories: [/apps/server-agent, /tools/sign-manifest]
+    schedule: { interval: weekly }
+  - package-ecosystem: cargo
+    directory: /apps/desk/src-tauri
+    schedule: { interval: weekly }
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
