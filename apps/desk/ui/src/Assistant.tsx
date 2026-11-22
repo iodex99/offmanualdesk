@@ -5,6 +5,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { callAgent, type AgentCall } from "./agent";
 import { Chat, type QueuedMessage } from "./Chat";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
+import { Notices } from "./Notices";
 import { ReportProblem } from "./ReportProblem";
 import { TaskButtons } from "./TaskButtons";
 import { Review } from "./Review";
@@ -119,6 +120,7 @@ export function Assistant({
                   : "Your assistant is ready."}
           </p>
           <UpdateNotice {...(updates ? { api: updates } : {})} />
+          <Notices agent={agent} />
           <nav className="tabs" role="tablist">
             <button role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>
               Chat

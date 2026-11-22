@@ -12,6 +12,7 @@ import {
   auditSummaries,
   employees,
   enrolmentCodes,
+  firmAdmins,
   firmPolicies,
   firms,
   packGrants,
@@ -23,6 +24,7 @@ import { canonical, HEADERS, verifyAgentRequest, verifySignature, type NonceStor
 import { serverPublicId, serverUuid, uuidv7 } from "./ids";
 import { assignedRelease } from "./releases";
 import { BindError, redeemBindCode } from "./bind";
+import { activeNotices } from "./notices";
 import { createTicket, supportBody, SupportLimit } from "./support";
 
 export interface Deps {
@@ -264,6 +266,7 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
       status: employees.status,
       updatedAt: employees.updatedAt,
       totpResetAt: employees.totpResetAt,
+      email: employees.email,
     })
     .from(employees)
     .where(eq(employees.firmId, a.firmId));
@@ -271,6 +274,14 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
     .select({ packKey: packGrants.packKey, adGroup: packGrants.adGroup, employeeId: packGrants.employeeId })
     .from(packGrants)
     .where(eq(packGrants.firmId, a.firmId));
+  const adminEmails = new Set(
+    (
+      await deps.db
+        .select({ email: firmAdmins.email })
+        .from(firmAdmins)
+        .where(eq(firmAdmins.firmId, a.firmId))
+    ).map((r) => r.email.toLowerCase()),
+  );
   const latest = Math.max(0, ...emps.map((e) => e.updatedAt.getTime()));
   const etag = `"p${p?.version ?? 0}-e${emps.length}-${latest}-g${grants.length}"`;
   if (req.headers.get("if-none-match") === etag)
@@ -303,6 +314,7 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
           status: e.status,
           packs: packsFor(e.id),
           ...(e.totpResetAt ? { totpResetAt: e.totpResetAt.toISOString() } : {}),
+          ...(adminEmails.has(e.email.toLowerCase()) ? { admin: true } : {}),
         })),
     },
     { etag },
@@ -464,4 +476,22 @@ export async function agentUsage(deps: Deps, req: Request): Promise<Response> {
     stored++;
   }
   return json(200, { stored });
+}
+
+// ---- GET /api/agent/notices (ADR-052) ----
+
+export async function agentNotices(deps: Deps, req: Request): Promise<Response> {
+  const a = await authenticate(deps, req);
+  if (!a.ok) return a.res;
+  const rows = await activeNotices(deps.db, a.firmId, deps.now());
+  return json(200, {
+    notices: rows.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      audience: n.audience,
+      title: n.title,
+      body: n.body,
+      startsAt: n.startsAt.toISOString(),
+    })),
+  });
 }

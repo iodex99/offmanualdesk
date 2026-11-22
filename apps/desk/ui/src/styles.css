@@ -99,3 +99,10 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: 0.5rem;
 }
+.notices {
+  list-style: none;
+  padding: 0;
+}
+.notice--billing {
+  border-left-color: #b26a00;
+}

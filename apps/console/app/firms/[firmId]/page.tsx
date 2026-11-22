@@ -12,6 +12,7 @@ import {
   PolicyForm,
   ResendInviteButton,
   ResetAuthenticatorButton,
+  NoticeForm,
 } from "../forms";
 import { load, pageSession } from "../session";
 
@@ -98,6 +99,11 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
           <PolicyForm firmId={firmId} policy={overview.policy} />
         </section>
       )}
+
+      <section>
+        <h2>Notices</h2>
+        <NoticeForm firmId={firmId} />
+      </section>
 
       {overview.isStaff && (
         <section>

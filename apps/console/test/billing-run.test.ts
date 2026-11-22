@@ -412,7 +412,13 @@ describe("daily billing cron", () => {
     expect((await dailyBilling(deps(), cfg, undefined, req(`Bearer ${SECRET}`))).status).toBe(401);
     now = new Date("2026-11-30T20:00:00Z"); // 01:30 IST on 1 December
     const r = await dailyBilling(deps(), cfg, SECRET, req(`Bearer ${SECRET}`));
-    expect(await r.json()).toEqual({ date: "2026-12-01", drafts: 1, firmsChecked: 1, firmsWithContract: 1 });
+    expect(await r.json()).toEqual({
+      date: "2026-12-01",
+      drafts: 1,
+      firmsChecked: 1,
+      firmsWithContract: 1,
+      noticesCreated: 0,
+    });
     now = new Date("2026-12-02T20:00:00Z");
     expect(await (await dailyBilling(deps(), cfg, SECRET, req(`Bearer ${SECRET}`))).json()).toMatchObject({
       drafts: 0,

@@ -100,6 +100,8 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("support.bundle", a.supportBundle)
 	srv.Handle("support.submit", a.supportSubmit)
 	srv.Handle("usage.add", a.usageAdd)
+	srv.Handle("notices.list", a.noticesList)
+	srv.Handle("notices.ack", a.noticesAck)
 }
 
 // ---- errors in plain words ----

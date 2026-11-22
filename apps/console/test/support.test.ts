@@ -1,8 +1,24 @@
 import { generateKeyPairSync, sign as cryptoSign, type KeyObject } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { employees, enrolmentCodes, firms, supportTickets, usageDaily } from "@/db/schema";
+import {
+  employees,
+  enrolmentCodes,
+  firmAdmins,
+  firms,
+  notices,
+  supportTickets,
+  usageDaily,
+} from "@/db/schema";
 import { canonical, HEADERS } from "@/lib/agent-auth";
-import { agentSupport, agentUsage, ENROLMENT_SERVER_ID, enroll, hashCode } from "@/lib/agent-api";
+import {
+  agentNotices,
+  agentSupport,
+  agentUsage,
+  ENROLMENT_SERVER_ID,
+  enroll,
+  hashCode,
+  policy,
+} from "@/lib/agent-api";
 import type { SessionState } from "@/lib/auth";
 import type { DB } from "@/lib/db";
 import { uuidv7 } from "@/lib/ids";
@@ -223,5 +239,98 @@ describe("POST /api/agent/usage", () => {
         })
       ).status,
     ).toBe(400);
+  });
+});
+
+describe("GET /api/agent/notices and the policy admin flag", () => {
+  function signedGet(priv: KeyObject, serverId: string, path: string) {
+    const ts = Math.floor(NOW.getTime() / 1000);
+    const nonce = (++seq).toString(16).padStart(32, "0");
+    const sig = cryptoSign(
+      null,
+      Buffer.from(canonical("GET", path, serverId, ts, nonce, new Uint8Array())),
+      priv,
+    ).toString("base64");
+    return new Request(BASE + path, {
+      headers: {
+        [HEADERS.server]: serverId,
+        [HEADERS.timestamp]: String(ts),
+        [HEADERS.nonce]: nonce,
+        [HEADERS.signature]: sig,
+      },
+    });
+  }
+
+  it("returns the firm's and all-firm active notices only; marks firm admins in the policy", async () => {
+    const a = await firmWithServer("Mehta", "OMA-0001");
+    const b = await firmWithServer("Shah", "OMB-0001");
+    await db.insert(notices).values([
+      {
+        id: uuidv7(),
+        firmId: a.firmId,
+        kind: "admin",
+        audience: "all",
+        title: "Mine",
+        body: "x",
+        startsAt: new Date(NOW.getTime() - 1000),
+      },
+      {
+        id: uuidv7(),
+        firmId: null,
+        kind: "update",
+        audience: "all",
+        title: "Everyone",
+        body: "x",
+        startsAt: new Date(NOW.getTime() - 1000),
+      },
+      {
+        id: uuidv7(),
+        firmId: b.firmId,
+        kind: "admin",
+        audience: "all",
+        title: "Not mine",
+        body: "x",
+        startsAt: new Date(NOW.getTime() - 1000),
+      },
+      {
+        id: uuidv7(),
+        firmId: a.firmId,
+        kind: "admin",
+        audience: "all",
+        title: "Later",
+        body: "x",
+        startsAt: new Date(NOW.getTime() + 60_000),
+      },
+    ]);
+    const res = await agentNotices(deps(), signedGet(a.priv, a.serverId, "/api/agent/notices"));
+    const body = (await res.json()) as { notices: { title: string }[] };
+    expect(body.notices.map((n) => n.title).sort()).toEqual(["Everyone", "Mine"]);
+
+    await db.insert(employees).values([
+      {
+        id: uuidv7(),
+        firmId: a.firmId,
+        name: "Owner",
+        email: "Owner@Mehta.in",
+        windowsSid: "S-1-5-21-1-2-3-1100",
+        status: "active",
+      },
+      {
+        id: uuidv7(),
+        firmId: a.firmId,
+        name: "Asha",
+        email: "asha@mehta.in",
+        windowsSid: "S-1-5-21-1-2-3-1101",
+        status: "active",
+      },
+    ]);
+    await db
+      .insert(firmAdmins)
+      .values({ id: uuidv7(), firmId: a.firmId, email: "owner@mehta.in", name: "Owner", role: "owner" });
+    const p = (await (await policy(deps(), signedGet(a.priv, a.serverId, "/api/agent/policy"))).json()) as {
+      employees: { name: string; admin?: boolean }[];
+    };
+    expect(p.employees.find((e) => e.name === "Owner")!.admin).toBe(true);
+    expect(p.employees.find((e) => e.name === "Asha")!.admin).toBeUndefined();
   });
 });

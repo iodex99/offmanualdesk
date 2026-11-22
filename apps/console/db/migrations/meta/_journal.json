@@ -43,6 +43,13 @@
       "when": 1795359497544,
       "tag": "0005_ancient_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795361142134,
+      "tag": "0006_orange_lethal_legion",
+      "breakpoints": true
     }
   ]
 }

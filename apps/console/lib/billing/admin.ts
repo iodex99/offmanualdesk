@@ -3,6 +3,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { firms, invoiceLines, invoices, ladderOverrides } from "@/db/schema";
+import { billingNotices } from "../notices";
 import { renderInvoicePdf } from "./pdf";
 import { InputError } from "../admin";
 import { requireConsole, requireFirmAccess, type SessionState } from "../auth";
@@ -65,8 +66,11 @@ export async function billingAction(
     switch (a.action) {
       case "run":
         return await runMonth(deps, cfg, a.year, a.month);
-      case "issue":
-        return { number: await issueInvoice(deps, cfg, a.invoiceId) };
+      case "issue": {
+        const number = await issueInvoice(deps, cfg, a.invoiceId);
+        await billingNotices(deps); // "invoice issued" notice for the firm's admins (ADR-052)
+        return { number };
+      }
       case "payment":
         return {
           status: await recordPayment(deps, {

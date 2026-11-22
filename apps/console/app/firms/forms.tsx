@@ -210,6 +210,41 @@ export function ResetAuthenticatorButton({ firmId, employeeId }: { firmId: strin
   );
 }
 
+export function NoticeForm({ firmId }: { firmId: string }) {
+  const { busy, message, run } = useAction();
+  return (
+    <form
+      onSubmit={form((f) =>
+        run(async () => {
+          await send("/api/admin/notices", "POST", {
+            firmId,
+            audience: str(f, "audience") === "admins" ? "admins" : "all",
+            title: str(f, "title"),
+            body: str(f, "body"),
+          });
+          return "Posted. Desks show it within 15 minutes.";
+        }),
+      )}
+    >
+      <h3>Post a notice to Desk</h3>
+      <Field label="Title">
+        <input name="title" required minLength={3} maxLength={80} />
+      </Field>
+      <Field label="Message">
+        <textarea name="body" required maxLength={500} rows={3} />
+      </Field>
+      <Field label="Who sees it">
+        <select name="audience" defaultValue="all">
+          <option value="all">Everyone in the firm</option>
+          <option value="admins">Firm admins only</option>
+        </select>
+      </Field>
+      <button disabled={busy}>Post notice</button>
+      <Note m={message} />
+    </form>
+  );
+}
+
 export function EnrolmentCodeForm({ firmId }: { firmId: string }) {
   const { busy, message, run } = useAction();
   return (

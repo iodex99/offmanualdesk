@@ -170,6 +170,8 @@ type PolicyEmployee struct {
 	Packs      []string `json:"packs"`
 	// TOTPResetAt is when an admin last asked to reset this employee's authenticator (ADR-049).
 	TOTPResetAt string `json:"totpResetAt,omitempty"`
+	// Admin marks an employee who is also a firm admin (admin-only notices, ADR-052).
+	Admin bool `json:"admin,omitempty"`
 }
 
 // Policy is the firm policy document.
@@ -292,4 +294,37 @@ func (c *Client) SendUsage(ctx context.Context, date string, counts []UsageCount
 	_, _, _, err := c.do(ctx, c.ServerID, c.Key, http.MethodPost, "/api/agent/usage",
 		map[string]any{"date": date, "employees": counts}, nil)
 	return err
+}
+
+// ConsoleNotice is one active notice from GET /api/agent/notices.
+type ConsoleNotice struct {
+	ID       string `json:"id"`
+	Kind     string `json:"kind"`
+	Audience string `json:"audience"`
+	Title    string `json:"title"`
+	Body     string `json:"body"`
+	StartsAt string `json:"startsAt"`
+}
+
+// FetchNotices returns the firm's active notices; anything malformed is dropped.
+func (c *Client) FetchNotices(ctx context.Context) ([]ConsoleNotice, error) {
+	_, _, body, err := c.do(ctx, c.ServerID, c.Key, http.MethodGet, "/api/agent/notices", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var r struct {
+		Notices []ConsoleNotice `json:"notices"`
+	}
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, err
+	}
+	out := make([]ConsoleNotice, 0, len(r.Notices))
+	for _, n := range r.Notices {
+		kindOK := n.Kind == "update" || n.Kind == "billing" || n.Kind == "admin"
+		audOK := n.Audience == "all" || n.Audience == "admins"
+		if kindOK && audOK && len(n.ID) == 36 && n.Title != "" && len(n.Title) <= 400 && len(n.Body) <= 2000 {
+			out = append(out, n)
+		}
+	}
+	return out, nil
 }

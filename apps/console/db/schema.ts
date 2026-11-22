@@ -482,3 +482,24 @@ export const ladderOverrides = pgTable("ladder_overrides", {
   createdBy: uuid("created_by").references(() => consoleUsers.id),
   createdAt: createdAt(),
 });
+
+// ---- notices to Desk (BILLING §5, UPDATES §4, ADR-052) ----
+
+export const noticeKind = pgEnum("notice_kind", ["update", "billing", "admin"]);
+export const noticeAudience = pgEnum("notice_audience", ["all", "admins"]);
+
+export const notices = pgTable("notices", {
+  id: uuid("id").primaryKey(),
+  /** null = every firm (Off Manual announcements). */
+  firmId: uuid("firm_id").references(() => firms.id),
+  kind: noticeKind("kind").notNull(),
+  audience: noticeAudience("audience").notNull().default("all"),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  /** Generated notices (e.g. invoice-<id>-due7) are created once. */
+  dedupeKey: text("dedupe_key").unique(),
+  createdBy: uuid("created_by"),
+  createdAt: createdAt(),
+});

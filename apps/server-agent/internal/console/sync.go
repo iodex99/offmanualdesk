@@ -80,6 +80,9 @@ func (s *Syncer) Once(ctx context.Context) {
 	if err := s.uploadUsage(ctx); err != nil {
 		s.Log.Warn("usage upload failed", "error", err.Error())
 	}
+	if err := s.syncNotices(ctx); err != nil {
+		s.Log.Warn("notices sync failed", "error", err.Error())
+	}
 	s.maybeStage(ctx)
 }
 
@@ -134,6 +137,9 @@ func ApplyPolicy(ctx context.Context, st *store.Store, p Policy, etag string) er
 		}
 		listed[e.SID] = true
 		if err := st.UpsertEmployee(ctx, store.Employee{SID: e.SID, EmployeeID: e.EmployeeID, Name: e.Name, Status: e.Status, Packs: e.Packs}); err != nil {
+			return err
+		}
+		if err := st.SetEmployeeAdmin(ctx, e.SID, e.Admin); err != nil {
 			return err
 		}
 		if t, err := time.Parse(time.RFC3339, e.TOTPResetAt); err == nil {
@@ -218,6 +224,20 @@ func (s *Syncer) uploadUsage(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// syncNotices mirrors the console's active notices for this firm (ADR-052).
+func (s *Syncer) syncNotices(ctx context.Context) error {
+	list, err := s.Client.FetchNotices(ctx)
+	if err != nil {
+		return err
+	}
+	out := make([]store.Notice, 0, len(list))
+	for _, n := range list {
+		created, _ := time.Parse(time.RFC3339, n.StartsAt)
+		out = append(out, store.Notice{ID: n.ID, Kind: n.Kind, Audience: n.Audience, Title: n.Title, Body: n.Body, Created: created})
+	}
+	return s.Store.ReplaceNotices(ctx, out)
 }
 
 func jsonCompact(v any) (string, error) {

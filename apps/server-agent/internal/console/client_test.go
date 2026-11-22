@@ -83,6 +83,8 @@ func (f *fakeConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("ETag", f.etag)
 		_ = json.NewEncoder(w).Encode(f.policy)
+	case "/api/agent/notices":
+		_, _ = w.Write([]byte(`{"notices":[{"id":"11111111-1111-4111-8111-111111111111","kind":"billing","audience":"admins","title":"Invoice issued","body":"Due soon.","startsAt":"2026-12-01T05:00:00Z"},{"id":"bad","kind":"billing","audience":"admins","title":"x","body":"x","startsAt":""},{"id":"22222222-2222-4222-8222-222222222222","kind":"weird","audience":"all","title":"x","body":"x","startsAt":""}]}`))
 	case "/api/agent/usage":
 		var in struct {
 			Date      string       `json:"date"`
@@ -330,5 +332,28 @@ func TestUsageUploadSendsCompleteDaysOnce(t *testing.T) {
 	}
 	if _, ok := f.usage[yesterday]; ok {
 		t.Fatal("a sent day was sent again")
+	}
+}
+
+func TestNoticesSyncAndAdminFlag(t *testing.T) {
+	_, c, st := setup(t)
+	ctx := context.Background()
+	sid := "S-1-5-21-1-2-3-1101"
+	p := Policy{PolicyVersion: 1, Employees: []PolicyEmployee{{EmployeeID: "e1", SID: sid, Name: "Asha", Status: "active", Admin: true}}}
+	if err := ApplyPolicy(ctx, st, p, `"x"`); err != nil {
+		t.Fatal(err)
+	}
+	s := &Syncer{Client: c, Store: st, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), AgentVersion: "1.0.0"}
+	if err := s.syncNotices(ctx); err != nil {
+		t.Fatal(err)
+	}
+	list, err := st.NoticesFor(ctx, sid)
+	if err != nil || len(list) != 1 || list[0].Title != "Invoice issued" {
+		t.Fatalf("admin notices %+v %v (malformed ones must be dropped)", list, err)
+	}
+	p.Employees[0].Admin = false
+	_ = ApplyPolicy(ctx, st, p, `"y"`)
+	if list, _ := st.NoticesFor(ctx, sid); len(list) != 0 {
+		t.Fatalf("no longer an admin but still sees %+v", list)
 	}
 }

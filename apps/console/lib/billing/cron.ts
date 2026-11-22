@@ -4,6 +4,7 @@
 // drafts for the previous month. Issuing stays a superadmin action.
 import { timingSafeEqual } from "node:crypto";
 import { firms } from "@/db/schema";
+import { billingNotices } from "../notices";
 import { istDate, refreshFirmStatus, runMonth, type BillingConfig, type BillingDeps } from "./run";
 
 export function bearerOk(header: string | null, secret: string | undefined): boolean {
@@ -37,8 +38,15 @@ export async function dailyBilling(
     const { year, month } = previousMonth(today);
     drafts = (await runMonth(deps, cfg, year, month)).drafts;
   }
+  const noticesCreated = await billingNotices(deps); // due soon / due today / overdue (ADR-052)
   const ids = await deps.db.select({ id: firms.id }).from(firms);
   let changed = 0;
   for (const f of ids) if ((await refreshFirmStatus(deps, f.id)) !== null) changed++;
-  return json(200, { date: today, drafts, firmsChecked: ids.length, firmsWithContract: changed });
+  return json(200, {
+    date: today,
+    drafts,
+    firmsChecked: ids.length,
+    firmsWithContract: changed,
+    noticesCreated,
+  });
 }
