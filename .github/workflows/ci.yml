@@ -157,3 +157,6 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Findings fail the job and appear in the log; no SARIF artifact upload
+          # (artifact storage quota on the account is limited).
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
