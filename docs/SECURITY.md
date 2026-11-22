@@ -18,6 +18,7 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Client data leaks via Telegram | Text-only default; files only if firm enables; Server Agent enforces (incoming files refused without downloading; replies are plain text, no parse mode) |
 | Server Agent holds every employee's gateway token (relay) | It runs as SYSTEM, which already controls the host; tokens are DPAPI machine-scope in the SYSTEM/Admins-only agent.db, used only to relay a linked employee's own Telegram messages to their own gateway (ADR-040) |
 | Stolen employee password | OAuth bound to SID + TOTP; daily code; lockouts |
+| Someone binds another person's Off Manual account to their own Windows account | The bind code is shown only after the employee's own OIDC sign-in and is typed into Desk, which sends the SID from the OS; a SID pre-filled by AD import must match; one SID per employee per firm; same OIDC subject once bound; code single use, 10 min, hashed; 10 tries/hour per SID (ADR-044) |
 | Stolen console/firm-admin Google or Microsoft account | Console requires TOTP after OIDC (no bypass; pre-MFA sessions can do nothing and expire in 10 min); codes single-use; session tokens stored hashed; disabling a user ends sessions at once (ADR-037) |
 | Firm admin reads another firm's data | Every firm-scoped handler calls `requireFirmAccess(session, firmIdFromUrl)`; an admin email listed for two firms can't sign in (ambiguous) |
 | Shoulder access to unlocked desk | Idle lock, PIN, step-up for sensitive actions |

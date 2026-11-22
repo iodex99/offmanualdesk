@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- First sign-in: a new employee signs in with their work Google or Microsoft account and types the code it shows into Desk; Off Manual then knows their Windows account.
 - Desk shows a plain notice when the firm's bill is overdue, and a paused message instead of the assistant when the service is paused.
 - Skill packs: the assistant can only use the tools of the packs the firm gave each employee (Telegram: core plus the packs the firm allows there). Pack contents ship inside the signed release.
 - Licence: when a firm is suspended or closed, or the server hasn't reached Off Manual for over 7 days, employees get one plain message in Desk and Telegram instead of answers; overdue firms keep working with a notice.

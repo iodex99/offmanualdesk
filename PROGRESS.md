@@ -71,15 +71,15 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
 - [ ] Invite delivery (Resend email; WhatsApp v2) and admin UI pages beyond the fleet board
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
-- [ ] Agent API: usage, releases, support bundle, notices, auth/bind
-- [ ] Employee OAuth sign-in (Google, Microsoft) + SID binding endpoint
+- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044); [ ] usage, support bundle, notices
+- [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
 - [x] Fleet board v0 (`/fleet`: firm, server, health with 1 h staleness → red, last seen, version, seats)
 
 ### M4 Desk core
 - [ ] Tauri shell, autostart at logon, single instance per session
 - [x] Pipe client in Rust (`src-tauri/src/agent_client.rs`: CreateFileW with 0x12008B, SQOS anonymous, server must be LocalSystem, NDJSON, Desk method allowlist) + `agent_call` command
 - [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`)
-- [ ] Sign-in + SID binding (needs console employee OAuth + bind endpoint)
+- [x] Sign-in + SID binding: Desk signup screen (console URL + QR from `auth.bindStart`, code → `auth.bindComplete` with the OS-derived SID; 10 tries/hour)
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
 - [ ] Idle lock timer, step-up prompt
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
@@ -162,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 08:45: Employee sign-in and SID binding (M3/M4, F2)
+- Changed: console `bind_codes` table (migration 0002), `lib/bind.ts` (createBindCode by verified email, one live code per employee, same OIDC subject once bound; redeemBindCode in a transaction: same answer for unknown/used/expired/other-firm, refuses a different SID or a SID bound to someone else, activates, accepts invite, returns packs), `lib/bind-routes.ts` + `/bind` page and routes (code page escaped, no-store, CSP), `agentBind` handler; `auth-routes.ts` refactored (`verifyCallback`, configurable callback). Agent: `console.Client.Bind`, `auth.bindStart`/`auth.bindComplete` (caller SID only, strict params, 10 attempts/hour, disabled refused, local upsert), app `binderFor` (4xx console messages shown, 401 never). Desk signup screen. ADR-044.
+- Tests: console 85/85 (9 new: codes, refusals, single use, no oracle, SID conflicts, signed endpoint incl. other firm + unknown field, sign-in pages); Go agent/console/app bind tests; desk 25/25; `next build` lists the 4 new routes; golangci-lint both OSes 0.
+- Half-done / next: invite email (Resend, needs key); admin UI for employees; recovery codes (F2 step 4).
 
 ### 2026-11-23 08:00: Desk licence banner
 - Changed: `session.hello` returns servicePaused/pausedMessage/notice; Desk shows the paused message (with Check again) instead of starting the assistant, and the overdue notice above it.
