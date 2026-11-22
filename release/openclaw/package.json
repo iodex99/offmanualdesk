@@ -1,0 +1,8 @@
+{
+  "name": "offmanual-openclaw-runtime",
+  "private": true,
+  "description": "Pins OpenClaw for the release payload. Installed by release.yml with npm ci --omit=dev --ignore-scripts. Upgrade = its own change (ADR-019).",
+  "dependencies": {
+    "openclaw": "2026.11.6"
+  }
+}

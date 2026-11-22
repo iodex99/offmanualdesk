@@ -1,0 +1,14 @@
+{
+  "$comment": "Pinned runtime inputs for release.yml (docs/UPDATES.md §1). Change only in a dedicated upgrade commit; see .claude/rules/openclaw.md.",
+  "node": {
+    "version": "24.22.3",
+    "sha256": "e612af99f626ab415ea225af6bce5c971feb448cb5cae250bb1c3fa50c5f7d9f",
+    "source": "https://nodejs.org/dist/v24.22.3/SHASUMS256.txt (node-v24.22.3-win-x64.zip)"
+  },
+  "openclaw": {
+    "version": "2026.11.6",
+    "commit": "06afb10d3272cc9deaf38ca6a3b7b839d5935638",
+    "lock": "release/openclaw/package-lock.json"
+  },
+  "minAgentVersion": "0.0.0"
+}
