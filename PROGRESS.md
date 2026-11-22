@@ -81,7 +81,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Sign-in + SID binding (needs console employee OAuth + bind endpoint)
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
 - [ ] Idle lock timer, step-up prompt
-- [ ] Gateway lifecycle: lease, start as user in a Job Object, health, stop on idle, restart (F4)
+- [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
+- [ ] Gateway: listener check (ADR-020), idle stop, doctor on exit code 78, restart policy
 - [ ] Gateway client in Rust: protocol v4 + device auth (ADR-021)
 - [ ] Docked chat panel + global hotkey
 - [ ] Explorer right-click "Ask Off Manual"
@@ -155,6 +156,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 01:15: Desk gateway lifecycle (M4)
+- Changed: branch `m4-desk` (main now includes M0–M2 and the M3/M5 starts). Rust `gateway.rs` (layout per ARCHITECTURE §5, config from verified keys only: loopback, token auth, exemptLoopback false, Control UI + terminal off, updates/telemetry off, telegram/browser/device-pair denied, guard via load.paths with bridgeCommand, skills lockdown, tool denies; env preset incl. OPENCLAW_CONFIG_READONLY; args; `/readyz` poll over raw HTTP; Job Object via windows-sys JobObjects, API verified in crate source), `gateway_manager.rs` (token kept in Rust), Tauri commands; UI `Assistant.tsx` shown after unlock.
+- Tests: desk vitest 10/10; Rust unit tests (config lockdown, token only in env, readiness against a local TCP server) run in CI; fmt clean.
+- Half-done / next: chat client (gateway WS protocol v4 + device auth, ADR-021), listener check, idle lock.
 
 ### 2026-11-23 00:30: Guard plugin enforcement (M5 start)
 - Changed: `guard/src/agent-bridge.ts` (NDJSON JSON-RPC over `server-agent bridge` stdio; method allowlist lock.get/policy.get/audit.append; timeouts; restarts; fail closed), `gates.ts` (lockGate, LockCache, access-denied detection + replacement text, StoppedRuns, targetFromArgs), `plugin.ts` wired to `before_agent_run`, `registerAgentToolResultMiddleware`, `before_tool_call`, `agent_end`, `before_install`, service stop; manifest `bridgeCommand`.
