@@ -12,14 +12,26 @@ use std::time::Duration;
 
 pub struct Running {
     pub port: u16,
-    /// Used by the chat client (ADR-021, next M4 slice); never sent to the UI.
-    #[allow(dead_code)]
+    /// Used by the chat client (ADR-021); never sent to the UI.
     pub token: String,
     child: Child,
 }
 
 #[derive(Default)]
 pub struct GatewayState(pub Mutex<Option<Running>>);
+
+impl GatewayState {
+    /// Port and token of the running gateway, for Desk's own client only.
+    pub fn endpoint(&self) -> Option<(u16, String)> {
+        let mut guard = self.0.lock().ok()?;
+        let r = guard.as_mut()?;
+        if matches!(r.child.try_wait(), Ok(None)) {
+            Some((r.port, r.token.clone()))
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct GatewayStatus {

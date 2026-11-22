@@ -34,3 +34,52 @@ body {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.tabs [aria-selected="true"] {
+  font-weight: 600;
+  text-decoration: underline;
+}
+.chat__lines {
+  list-style: none;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.chat__line {
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+.chat__who {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.chat__form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+.chat__form textarea {
+  flex: 1;
+  font: inherit;
+}
+.review__list {
+  list-style: none;
+  padding: 0;
+}
+.review__item {
+  border-top: 1px solid var(--muted);
+  padding: 0.5rem 0;
+}
+.review__path {
+  display: block;
+  word-break: break-all;
+}
+.review__actions {
+  display: flex;
+  gap: 0.5rem;
+}

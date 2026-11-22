@@ -2,6 +2,9 @@
 // (ARCHITECTURE F4). The token never reaches the UI; Rust keeps it.
 import { useCallback, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { Chat } from "./Chat";
+import { tauriGateway, type GatewayApi } from "./gatewayApi";
+import { Review } from "./Review";
 
 export interface GatewayStatus {
   running: boolean;
@@ -17,8 +20,15 @@ export const startGateway: StartGateway = async () => {
 
 type State = { kind: "starting" } | { kind: "ready" } | { kind: "failed"; message: string };
 
-export function Assistant({ start = startGateway }: { start?: StartGateway }) {
+export function Assistant({
+  start = startGateway,
+  api = tauriGateway,
+}: {
+  start?: StartGateway;
+  api?: GatewayApi;
+}) {
   const [state, setState] = useState<State>({ kind: "starting" });
+  const [tab, setTab] = useState<"chat" | "review">("chat");
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -44,7 +54,20 @@ export function Assistant({ start = startGateway }: { start?: StartGateway }) {
     case "starting":
       return <p className="hint">Starting your assistant… this takes a few seconds.</p>;
     case "ready":
-      return <p>Your assistant is ready.</p>;
+      return (
+        <div className="assistant">
+          <p className="hint">Your assistant is ready.</p>
+          <nav className="tabs" role="tablist">
+            <button role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>
+              Chat
+            </button>
+            <button role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>
+              Review
+            </button>
+          </nav>
+          {tab === "chat" ? <Chat api={api} /> : <Review api={api} />}
+        </div>
+      );
     case "failed":
       return (
         <div role="alert">
