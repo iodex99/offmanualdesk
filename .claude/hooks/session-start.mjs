@@ -5,7 +5,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join } from "node:path";
 
-let input = {};
+let input;
 try {
   input = JSON.parse(readFileSync(0, "utf8") || "{}");
 } catch {
@@ -39,7 +39,9 @@ function git(cmd) {
 }
 
 const out = [];
-out.push(`[Off Manual Desk] Session ${source}. Memory files are the source of truth; read them, don't rely on recollection.`);
+out.push(
+  `[Off Manual Desk] Session ${source}. Memory files are the source of truth; read them, don't rely on recollection.`,
+);
 
 const progressPath = join(root, "PROGRESS.md");
 if (existsSync(progressPath)) {
@@ -66,14 +68,20 @@ const log = git("log --oneline -5");
 if (branch) out.push(`Git branch: ${branch}`);
 if (status) {
   const lines = status.split("\n");
-  out.push(`Uncommitted changes (${lines.length}):\n${lines.slice(0, 15).join("\n")}${lines.length > 15 ? "\n…" : ""}`);
+  out.push(
+    `Uncommitted changes (${lines.length}):\n${lines.slice(0, 15).join("\n")}${lines.length > 15 ? "\n…" : ""}`,
+  );
 }
 if (log) out.push(`Recent commits:\n${log}`);
 
 if (source === "compact") {
-  out.push("Context was just compacted. Re-read PROGRESS.md and the docs for the current task before continuing.");
+  out.push(
+    "Context was just compacted. Re-read PROGRESS.md and the docs for the current task before continuing.",
+  );
 }
-out.push("Before ending any turn that changed code or config: run the /checkpoint steps (PROGRESS.md, CHANGELOG.md, DECISIONS.md, affected docs).");
+out.push(
+  "Before ending any turn that changed code or config: run the /checkpoint steps (PROGRESS.md, CHANGELOG.md, DECISIONS.md, affected docs).",
+);
 
 process.stdout.write(out.join("\n\n") + "\n");
 process.exit(0);

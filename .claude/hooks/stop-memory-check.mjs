@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 
 const isPreCompact = process.argv.includes("--precompact");
 
-let input = {};
+let input;
 try {
   input = JSON.parse(readFileSync(0, "utf8") || "{}");
 } catch {
@@ -22,7 +22,17 @@ if (input.stop_hook_active === true) process.exit(0);
 const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 
 // Files and folders that ARE the memory; changing only these never needs a checkpoint.
-const MEMORY = [/^PROGRESS\.md$/, /^CHANGELOG\.md$/, /^DECISIONS\.md$/, /^CLAUDE\.md$/, /^CLAUDE\.local\.md$/, /^BUILD_PROMPT\.md$/, /^docs\//, /^\.claude\//, /^lab\/results\//];
+const MEMORY = [
+  /^PROGRESS\.md$/,
+  /^CHANGELOG\.md$/,
+  /^DECISIONS\.md$/,
+  /^CLAUDE\.md$/,
+  /^CLAUDE\.local\.md$/,
+  /^BUILD_PROMPT\.md$/,
+  /^docs\//,
+  /^\.claude\//,
+  /^lab\/results\//,
+];
 
 let porcelain = "";
 try {
