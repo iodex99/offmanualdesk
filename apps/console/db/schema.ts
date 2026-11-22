@@ -363,3 +363,114 @@ export const sessions = pgTable(
   },
   (t) => [index("sessions_user").on(t.kind, t.userId), index("sessions_expiry").on(t.expiresAt)],
 );
+
+// ---- billing (docs/BILLING.md, ADR-038, ADR-045). Money in paise (bigint). ----
+
+export const contractStatus = pgEnum("contract_status", ["draft", "active", "superseded", "ended"]);
+export const invoiceStatus = pgEnum("invoice_status", ["draft", "issued", "paid", "void"]);
+export const paymentProvider = pgEnum("payment_provider", ["razorpay", "manual"]);
+
+/** One version of a firm's deal. Lines live in `contract_lines`. */
+export const contracts = pgTable(
+  "contracts",
+  {
+    id: uuid("id").primaryKey(),
+    firmId: uuid("firm_id")
+      .notNull()
+      .references(() => firms.id),
+    version: integer("version").notNull(),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on"),
+    paymentTermsDays: integer("payment_terms_days").notNull().default(15),
+    graceDays: integer("grace_days").notNull().default(15),
+    suspendAfterDays: integer("suspend_after_days").notNull().default(45),
+    seatCountMode: text("seat_count_mode").notNull().default("prorated_enabled_days"),
+    bandsMode: text("bands_mode").notNull().default("tiered"),
+    status: contractStatus("status").notNull().default("draft"),
+    notes: text("notes"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("contracts_firm_version").on(t.firmId, t.version)],
+);
+
+/** A line as the billing engine's ContractLine, paise as decimal strings (jsonb has no bigint). */
+export const contractLines = pgTable("contract_lines", {
+  id: uuid("id").primaryKey(),
+  contractId: uuid("contract_id")
+    .notNull()
+    .references(() => contracts.id),
+  spec: jsonb("spec").$type<Record<string, unknown>>().notNull(),
+  /** one_time lines: the invoice that billed it (set when that invoice is issued). */
+  billedInvoiceId: uuid("billed_invoice_id"),
+  createdAt: createdAt(),
+});
+
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").primaryKey(),
+    firmId: uuid("firm_id")
+      .notNull()
+      .references(() => firms.id),
+    number: text("number").unique(), // OM/FY2026-27/0001, set on issue
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    issuedOn: date("issued_on"),
+    dueOn: date("due_on"),
+    taxablePaise: bigint("taxable_paise", { mode: "bigint" }).notNull(),
+    cgstPaise: bigint("cgst_paise", { mode: "bigint" }).notNull(),
+    sgstPaise: bigint("sgst_paise", { mode: "bigint" }).notNull(),
+    igstPaise: bigint("igst_paise", { mode: "bigint" }).notNull(),
+    totalPaise: bigint("total_paise", { mode: "bigint" }).notNull(),
+    status: invoiceStatus("status").notNull().default("draft"),
+    pdfUrl: text("pdf_url"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("invoices_firm_period").on(t.firmId, t.periodStart)],
+);
+
+export const invoiceLines = pgTable("invoice_lines", {
+  id: uuid("id").primaryKey(),
+  invoiceId: uuid("invoice_id")
+    .notNull()
+    .references(() => invoices.id),
+  contractLineId: uuid("contract_line_id").references(() => contractLines.id),
+  description: text("description").notNull(),
+  sac: text("sac").notNull(),
+  quantity: text("quantity").notNull(),
+  amountPaise: bigint("amount_paise", { mode: "bigint" }).notNull(),
+});
+
+export const payments = pgTable("payments", {
+  id: uuid("id").primaryKey(),
+  invoiceId: uuid("invoice_id")
+    .notNull()
+    .references(() => invoices.id),
+  provider: paymentProvider("provider").notNull(),
+  providerRef: text("provider_ref"),
+  amountPaise: bigint("amount_paise", { mode: "bigint" }).notNull(),
+  paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
+  method: text("method"),
+  recordedBy: uuid("recorded_by").references(() => consoleUsers.id),
+  createdAt: createdAt(),
+});
+
+/** Invoice number series per financial year (BILLING §2). */
+export const invoiceCounters = pgTable("invoice_counters", {
+  fy: text("fy").primaryKey(), // "FY2026-27"
+  lastSeq: integer("last_seq").notNull().default(0),
+});
+
+/** Superadmin override of the ladder state, with a reason (BILLING §6). */
+export const ladderOverrides = pgTable("ladder_overrides", {
+  id: uuid("id").primaryKey(),
+  firmId: uuid("firm_id")
+    .notNull()
+    .references(() => firms.id),
+  state: text("state").notNull(),
+  reason: text("reason").notNull(),
+  until: date("until"),
+  createdBy: uuid("created_by").references(() => consoleUsers.id),
+  createdAt: createdAt(),
+});
