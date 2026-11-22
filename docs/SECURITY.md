@@ -23,6 +23,13 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Lost LLM key | Firm-owned key DPAPI machine scope; rotate via console |
 | Tally posting errors | Read-only default; review queue; read-back check |
 | Departed employee | Console disable → gateway stop, Telegram unlink, token revoke |
+| Another user squats the Server Agent pipe (creates an instance and reads PINs/codes) | Pipe DACL gives users `FILE_GENERIC_READ \| FILE_WRITE_DATA` only (no `FILE_CREATE_PIPE_INSTANCE`), `FILE_FLAG_FIRST_PIPE_INSTANCE`, `PIPE_REJECT_REMOTE_CLIENTS`; clients verify the server process is LocalSystem (ADR-029; L7) |
+| Brute-forcing a gateway token from another RDS session (all sessions are "loopback") | 256-bit tokens; `gateway.auth.rateLimit.exemptLoopback: false` (OpenClaw's default exempts loopback); device-auth handshake (ADR-021; L2 measures it) |
+| Gateway opens extra listeners (browser control/CDP, MCP Apps) other sessions can reach | `browser` plugin denied, MCP Apps off, Desk refuses to run a gateway whose process tree listens on anything but its leased port (ADR-020; L1) |
+| Agent installs a skill/plugin or edits its own config | Layered lockdown: `OPENCLAW_CONFIG_READONLY=1`, guard `before_install` block, `security.installPolicy`, tool denies, skill roots wiped before start (ADR-024) |
+| Employee tampers with their own gateway (it runs as them) | Out of scope for the guard; config read-only to the user, Server Agent checks plugin inventory, LLM key proxy considered (ADR-027). Windows rights still bound what files they reach |
+| Agent keeps going after Access Denied | Tool-result middleware rewrites the denial, every later tool call in the run is blocked, Desk aborts the run (ADR-022; L3) |
+| Machine-scope DPAPI secret read by any local user who copies the blob | LocalMachine DPAPI is decryptable by any local account with the blob (+ entropy): machine secrets also need SYSTEM-only file ACLs (L10) |
 
 ## 3. Unbreakable rules
 

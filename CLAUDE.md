@@ -42,14 +42,20 @@ tools/                  skill vetting, release, manifest signing
 
 ## Commands
 
-Fill these in during M0 and keep them correct. Placeholder until then:
+Keep these correct. Run from the repo root unless noted. (pnpm 12: `pnpm run <script>`, not `pnpm -s`.)
 
-- Install: `TBD`
-- Lint all: `TBD`
-- Test all: `TBD`
-- Console dev: `TBD`
-- Desk dev: `TBD`
-- Server Agent build/test: `TBD`
+- Install: `pnpm install`
+- Everything TS (format, lint, typecheck, tests, hook + release-tool tests): `pnpm run check`
+- Lint all: `pnpm run lint` · Format: `pnpm run format` · Typecheck: `pnpm run typecheck`
+- Test all TS: `pnpm run test` (workspaces + `test:hooks` + `test:tools`)
+- Go (Server Agent + sign-manifest): `go vet ./apps/server-agent/... ./tools/sign-manifest/...` and `go test ./apps/server-agent/... ./tools/sign-manifest/...`; lint `golangci-lint run` in each module dir
+- Server Agent build: `go build -o dist/server-agent.exe ./apps/server-agent/cmd/server-agent`
+- Console dev: `pnpm --filter @offmanual/console dev` · build: `pnpm --filter @offmanual/console run build`
+- Desk dev: `pnpm --filter @offmanual/desk tauri dev` (needs Rust + MSVC) · UI only: `pnpm --filter @offmanual/desk dev:ui`
+- Desk Rust: in `apps/desk/src-tauri`: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (this dev box has no MSVC: only fmt runs locally; CI `windows-latest` is the authority)
+- Workflows: `actionlint .github/workflows/*.yml`
+- Release: `node tools/release/cli.mjs prepare <v>` → commit → tag `v<v>` → push (docs/UPDATES.md §1)
+- Skills lock: `node tools/release/cli.mjs verify-skills`
 
 ## Non-negotiable rules (full list in BUILD_PROMPT.md §3 and docs/SECURITY.md)
 

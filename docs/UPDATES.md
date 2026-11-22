@@ -4,17 +4,22 @@ A tagged commit becomes a signed release that every assigned server stages; empl
 
 ## 1. Release workflow (`.github/workflows/release.yml`)
 
-Trigger: tag `v*.*.*` on `main`.
+**Status (2026-11-22):** workflow written and `actionlint`-clean; tooling (`tools/release`, `tools/sign-manifest`) unit-tested. First real run needs the repo on GitHub, the signing key secret, and `release/openclaw/` (see PROGRESS.md "Waiting on Dwahnil"). Steps marked *(M8)* are placeholders until that milestone.
 
-1. Build Server Agent (Go), Desk (Tauri), guard + channel-relay plugins, shared schemas.
-2. Fetch the pinned OpenClaw version and Node runtime (versions from `release.config.json`; SHA-256 checked).
-3. Build the skill pack from `skills/registry.lock.json`; fail if any file hash differs from the lock.
-4. Run tests, lint, skill scanners (`tools/skill-vet`), secret scan.
-5. Authenticode-sign every `.exe`/`.dll` (cert or Azure Trusted Signing).
-6. Zip `versions/<semver>/` payload; write `manifest.json` (version, files + SHA-256, payload SHA-256, OpenClaw version, min agent version, severity, deadline, key_id); sign with ed25519 (`tools/sign-manifest`).
-7. Upload payload + manifest to release store; `POST` console `/api/releases` (release record, ring 0).
-8. Build MSI (first install only) from the same payload.
-9. Move CHANGELOG Unreleased → version section; commit back.
+**Prepare (local, ADR-017):** `node tools/release/cli.mjs prepare 1.2.0` moves CHANGELOG Unreleased → `## [1.2.0] - <date IST>` and bumps every versioned file (Desk `Cargo.toml` + `tauri.conf.json` + `package.json`, console and plugin `package.json`). Commit, `git tag -a v1.2.0`, push.
+
+Trigger: tag `v*.*.*` (normal release), or *Run workflow* with an existing tag, `severity` (`normal`/`security`), `deadline_days`, and `dry_run` (default true: signs with a throwaway key, publishes nothing, needs no secrets).
+
+1. Run the whole CI workflow (`ci.yml` via `workflow_call`): format, lint, typecheck, all tests, Go on Windows + Linux, Rust clippy/test, lab-script parse, actionlint, secret scan.
+2. `cli.mjs check-tag`: every versioned file and the CHANGELOG section must equal the tag.
+3. Build Server Agent (`-ldflags` version + commit), Desk (`tauri build --no-bundle`), plugins (sources until M5 fixes the packaging format from OPENCLAW_NOTES.md §4).
+4. Node runtime: `nodejs.org` zip for `release.config.json` `node.version`, SHA-256 checked against `node.sha256`.
+5. OpenClaw: `npm ci --omit=dev --ignore-scripts` from `release/openclaw/package-lock.json` (integrity-checked lock; version must equal `release.config.json` `openclaw.version`).
+6. Skills: `cli.mjs verify-skills` (every file's SHA-256 matches `skills/registry.lock.json`, nothing unlisted, only `approved` skills), then copy the locked files. Skill scanners (`tools/skill-vet`) join in M7.
+7. Authenticode-sign every `.exe`/`.dll` via Azure Trusted Signing when its secrets exist; otherwise warn "UNSIGNED (ring 0 only)".
+8. `sign-manifest build`: deterministic `offmanual-<v>.zip` of the payload + `manifest.json` (ADR-015: schema, version, commit, createdAt, severity, deadlineAt for security releases, minAgentVersion, openclawVersion, nodeVersion, keyId, payload name/SHA-256/size, every file's path/SHA-256/size). `sign-manifest sign` (key only from env `RELEASE_SIGNING_KEY`) → `manifest.sig.json`; `sign-manifest verify` against the committed `apps/server-agent/pkg/manifest/keys/<keyId>.pub`, including a test extraction.
+9. Publish (not on dry runs): GitHub pre-release with zip, manifest, signature, `SHA256SUMS.txt`, notes from CHANGELOG; upload to the release store if configured (ADR-016); `POST <console>/api/releases` (ring 0) if configured *(M8: endpoint)*.
+10. MSI for first installs *(M8)*.
 
 ## 2. Rings
 
@@ -23,7 +28,7 @@ Trigger: tag `v*.*.*` on `main`.
 ## 3. Staging (Server Agent)
 
 1. Learns of the assigned release via SSE push or 15-min poll.
-2. Downloads payload to `staging\`, verifies manifest signature (embedded public keys by key_id), payload hash, every file hash, Authenticode on binaries.
+2. Downloads payload to `staging\`, verifies manifest signature (embedded public keys by key_id), payload hash, every file hash, Authenticode on binaries. The verification and safe-extraction code already exists in `apps/server-agent/pkg/manifest` (`Verify`, `VerifyFileHash`, `ExtractZip`, `VerifyDir`); M8 wires it into the service and adds `go:embed` of `pkg/manifest/keys/*.pub`.
 3. Unpacks to `versions\<new>\`, reports `staged`. Does **not** move `current` until no employee gateway runs the old version, or for new gateway starts only (decide in M8; record ADR).
 4. Server Agent self-update: staged like everything else, swapped by a small updater that restarts the service.
 

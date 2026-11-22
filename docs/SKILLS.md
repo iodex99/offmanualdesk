@@ -11,7 +11,7 @@ ClawHub is a parts bin. Nothing from it runs on a client server unless it has be
 - `skills/registry.lock.json`: every skill's ID, version, path, SHA-256 of every file, review status (`approved`/`rejected`), reviewer, date, packs it belongs to.
 - `tools/skill-vet`: runs static checks (network calls, shell exec, file writes outside allowed roots, obfuscation, base64 blobs, install scripts, external binaries), wraps any available scanner, and prints a review checklist. A human approval line in PROVENANCE.md is required.
 - Review checklist per skill: what it executes; every network destination; every file path it writes; binaries it needs and where they come from; whether it sends data to a third party (reject or replace "managed OAuth" proxies with direct APIs); Windows compatibility.
-- Runtime: OpenClaw configured to load skills only from `current\skills\` (verify config in OPENCLAW_NOTES.md §7); skill install commands and ClawHub access disabled.
+- Runtime: there is no single "only this directory" switch in OpenClaw (OPENCLAW_NOTES.md §7). Lockdown is layered (ADR-024, Proposed): `skills.load.extraDirs: [current\skills]`, `skills.allowBundled: []`, `agents.defaults.skills` allowlist, Skill Workshop off, `skill_workshop`/`plugins`/`openclaw`/`gateway` tools denied, `OPENCLAW_CONFIG_READONLY=1`, guard `before_install` block (implemented in `packages/openclaw-plugins/guard/src/plugin.ts`), `security.installPolicy` block, unexpected skill dirs removed before each gateway start.
 
 ## 3. Starter pack (Core, from ClawHub, review before shipping)
 
@@ -29,7 +29,7 @@ ClawHub is a parts bin. Nothing from it runs on a client server unless it has be
 | Google Workspace | `steipete/gog` | email-send (send), core (read) | Firms on Google |
 | Outlook | `jotamed/outlook` | email-send (send), core (read) | Firms on M365; direct Graph |
 | Telegram buttons | `ighniz/telegram-ui` (plugin) | core | Unlock + approvals |
-| Approvals pipelines | `openclaw/lobster` (plugin) | core | Evaluate vs own review queue in guard (ADR) |
+| Approvals pipelines | `openclaw/lobster` (plugin) | — | Evaluated in M1: not used for the review queue; the guard owns it (ADR-028, Proposed) |
 | Long-term memory | `openclaw/memory-lancedb` (plugin) | core | Per-employee state |
 | Diagnostics | `openclaw/diagnostics-otel` (plugin) | core | Usage counts for console |
 | Web search | `openclaw/duckduckgo-plugin` or `openclaw/brave-plugin` | core | Circulars, notifications |
