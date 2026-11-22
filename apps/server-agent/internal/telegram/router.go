@@ -144,8 +144,12 @@ func (r *Router) Handle(ctx context.Context, u Update) {
 	case strings.TrimSpace(answer) == "":
 		reply(MsgBusyError)
 	default:
+		clean, changed := SanitizeReply(answer)
+		if changed {
+			r.audit(ctx, m.From.ID, "message", "sanitized")
+		}
 		r.audit(ctx, m.From.ID, "message", "answered")
-		reply(answer)
+		reply(clean)
 	}
 }
 
