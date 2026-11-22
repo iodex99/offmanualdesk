@@ -76,8 +76,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 
 ### M4 Desk core
 - [ ] Tauri shell, autostart at logon, single instance per session
-- [ ] Sign-in + SID binding + TOTP enrolment + PIN set
-- [ ] Daily unlock, idle lock, PIN unlock, step-up prompt
+- [x] Pipe client in Rust (`src-tauri/src/agent_client.rs`: CreateFileW with 0x12008B, SQOS anonymous, server must be LocalSystem, NDJSON, Desk method allowlist) + `agent_call` command
+- [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`)
+- [ ] Sign-in + SID binding (needs console employee OAuth + bind endpoint)
+- [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
+- [ ] Idle lock timer, step-up prompt
 - [ ] Gateway lifecycle: lease, start as user in a Job Object, health, stop on idle, restart (F4)
 - [ ] Gateway client in Rust: protocol v4 + device auth (ADR-021)
 - [ ] Docked chat panel + global hotkey
@@ -150,6 +153,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 23:45: Desk ↔ Server Agent client and unlock flow
+- Changed: Rust `agent_client.rs` (windows-sys 0.61 FFI, paths verified in the crate source; `unsafe_code` lint now `deny` with one audited module), Tauri command `agent_call` on a blocking thread; UI `agent.ts`, `Unlock.tsx` (signup / enrol / PIN / unlock / ready), wired into `App.tsx`; `qrcode` dependency.
+- Tests: desk vitest 8/8 (scripted fake agent: enrol, wrong PIN message, 3-strike switch to daily code, service down + retry); Rust unit tests for access mask, method allowlist, request/reply parsing (run in CI); cargo fmt clean locally. Rust compile/clippy only in CI.
+- Half-done / next: idle lock + gateway lifecycle (lease → spawn OpenClaw in a Job Object, readiness, listener check), Explorer menu, hotkey, single instance.
 
 ### 2026-11-22 23:00: Console management API + fleet board
 - Changed: `lib/admin.ts` (createFirm with default policy, listFirms scoped, one-time enrolment codes without look-alike characters, add/list/disable employees, pack grants by employee or AD group with ownership checks, policy updates with version bump, fleet with staleness), `lib/admin-routes.ts` (session + plain errors + JSON-only mutations), routes under `app/api/admin/*`, `/fleet` page. Postgres unique violations mapped by SQLSTATE 23505 (a test caught Drizzle's wrapped error).
