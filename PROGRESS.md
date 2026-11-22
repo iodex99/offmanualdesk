@@ -162,6 +162,9 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Half-done / next: …
 -->
 
+### 2026-11-24 00:05: Full-history scan result
+- First full-history gitleaks run (141 commits): 1 finding, `generic-api-key` on a made-up test value (`"0123456789abcdef-cron"`) in `billing-run.test.ts`; not a secret. Ignored by exact fingerprint in `.gitleaksignore`; re-run to confirm clean.
+
 ### 2026-11-23 23:50: agent.db backups and restore (M11, ADR-060)
 - Changed: store `Backup` (VACUUM INTO) + `IntegrityCheck`; app `dailyBackup` (IST date name, temp + rename, keeps 7 of ours, ignores other files), `backupLoop` (start + hourly), `Restore` (refuses while the pipe exists, copies the backup, opens/migrates/checks it, keeps the current db and its WAL files as before-restore-<UTC>, swaps); CLI `server-agent restore -from FILE`; admin guide Backups; ARCHITECTURE layout; DATA_MODEL.
 - Tests: once per IST day, IST date across midnight UTC, keeps 7, foreign files untouched, backup opens and passes the integrity check; restore brings back the backed-up employees and keeps the previous db; refused while running, junk and missing files refused without touching agent.db or leaving the temp copy; CLI usage; golangci-lint both OSes 0.

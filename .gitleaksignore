@@ -1,0 +1,5 @@
+# Findings reviewed and accepted as not secrets (gitleaks reads this file by fingerprint).
+# Add a line only after checking the value is a made-up test value, and say why.
+
+# Made-up CRON_SECRET for the billing cron bearer-check test ("0123456789abcdef-cron"); never a real secret.
+58ab843e7c5800d1fd569d152017bbab7e91afe5:apps/console/test/billing-run.test.ts:generic-api-key:403
