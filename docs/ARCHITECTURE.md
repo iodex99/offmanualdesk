@@ -82,6 +82,8 @@ HTTPS, signed requests (ADR-013, ADR-035): headers `X-OM-Server`, `X-OM-Timestam
 | `POST /auth/bind` | Complete OAuth → SID binding |
 | `GET /auth/secrets` | Encrypted TOTP secrets sync (encrypted to server's key) |
 
+Console management API (implemented): `/api/admin/firms` (GET, POST), `/api/admin/firms/[firmId]/enrolment-codes` (POST), `/employees` (GET, POST), `/employees/[employeeId]` (PATCH status), `/pack-grants` (POST), `/policy` (PATCH), `/api/admin/fleet` (GET). All require a full (TOTP) session; firm admins are limited to their own firm; mutations must be `application/json`.
+
 Long-lived connection for push (release available, policy changed): Server-Sent Events from `GET /stream`, with 15-minute polling as fallback.
 
 ## 4. Ports

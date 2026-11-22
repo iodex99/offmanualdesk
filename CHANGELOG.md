@@ -31,6 +31,8 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Console agent API: server enrolment with one-time codes, heartbeat, firm policy (cached with ETag), daily audit counts.
 - `server-agent enroll`: registers a server with the console; the agent then reports every 15 minutes and keeps its employee list in step with the console (removed employees are switched off).
 - Console sign-in with Google or Microsoft, followed by a mandatory authenticator code (QR set-up on first sign-in); sessions end after 12 hours or when the user is disabled.
+- Console management API: firms, one-time server enrolment codes, employees (add, list, switch off), skill-pack grants by employee or AD group, firm policy; firm admins only ever see their own firm.
+- Console fleet board: every server with red/amber/green status, last seen, version and active seats.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed
