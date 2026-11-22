@@ -52,6 +52,8 @@ IDs are UUIDv7. All tables have `created_at`, `updated_at`. Money in paise as `b
 
 ## 2. Server Agent (SQLite, `C:\ProgramData\OffManual\agent.db`)
 
+Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tables, times as Unix seconds UTC, foreign keys on, WAL). Applied versions live in `schema_migrations`; an agent refuses to open a database with a newer schema. `meta` is key/value. `leases.port` is UNIQUE; `audit` is indexed on `ts`; the console-bound audit data is `AuditSummary` (category counts only).
+
 | Table | Key columns |
 | --- | --- |
 | `meta` | server_id, key_id, policy_etag, licence_expires_at, last_console_contact_at |

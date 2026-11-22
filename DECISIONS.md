@@ -245,3 +245,11 @@ Template:
 - Options: A 4–8 digits, refuse repeated/sequential/common PINs, argon2id m=64 MiB t=3 p=2 / B 6 digits fixed (more friction for article assistants) / C bcrypt (weaker against GPU cracking of a stolen agent.db)
 - Decision: A. Hashes are PHC strings (`$argon2id$v=19$m=…,t=…,p=…$salt$hash`); decoding bounds the parameters (8 MiB–1 GiB, t 1–20) so a tampered row can't request absurd work; verification reports "needs rehash" when stored parameters are weaker than current. Code: `apps/server-agent/internal/auth/pin.go`, `lockout.go`.
 - Consequences: About 64 MiB and a fraction of a second per PIN check on the server; fine at a few checks per employee per day. Revisit if an RDS host shows contention (L1 RAM numbers).
+
+## ADR-032: Server Agent libraries: modernc.org/sqlite and Microsoft go-winio
+- Date: 2026-11-22
+- Status: Accepted
+- Context: M2 needs SQLite and an overlapped-I/O named-pipe server on Windows without a C toolchain in the build.
+- Options: SQLite: A modernc.org/sqlite (pure Go, transpiled SQLite) / B mattn/go-sqlite3 (cgo; needs gcc in CI and release). Pipes: A github.com/Microsoft/go-winio (overlapped I/O, deadlines, SDDL, FILE_CREATE first instance, always FILE_PIPE_REJECT_REMOTE_CLIENTS; used by Docker and containerd) / B own CreateNamedPipe code with synchronous handles (cancellation and shutdown are fragile)
+- Decision: A and A. Caller identity uses x/sys/windows `GetNamedPipeClientProcessId` → `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` → `OpenProcessToken(TOKEN_QUERY)` → `GetTokenUser`, plus `ProcessIdToSessionId`, on the accepted connection's handle (`Fd()`).
+- Consequences: `CGO_ENABLED=0` builds keep working; the race detector runs only on Linux CI. Dependencies: golang.org/x/crypto, golang.org/x/sys, modernc.org/sqlite (+ runtime), go-winio, all tracked by dependabot.

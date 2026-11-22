@@ -31,7 +31,8 @@ Status markers: **[V]** verified in lab or source, **[A]** assumption pending `L
 ### 3.1 Named pipe: Desk / plugins ↔ Server Agent
 
 - Pipe: `\\.\pipe\offmanual-agent`. ACL (ADR-029): SYSTEM full; Authenticated Users `FILE_GENERIC_READ | FILE_WRITE_DATA` only (generic write would include `FILE_CREATE_PIPE_INSTANCE` and let any user squat the pipe: shown by lab L7 self-test); created with `FILE_FLAG_FIRST_PIPE_INSTANCE` and `PIPE_REJECT_REMOTE_CLIENTS`. No anonymous. Clients verify the server end is a LocalSystem process (`GetNamedPipeServerProcessId` → token SID S-1-5-18) before sending anything.
-- Protocol: JSON-RPC 2.0, one JSON object per line (newline-delimited), UTF-8.
+- Protocol: JSON-RPC 2.0, one JSON object per line (newline-delimited), UTF-8, at most 64 KiB per message; unknown envelope fields and identity-like params are rejected; an optional `correlationId` (generated if absent) is echoed in error `data`. Implemented in `apps/server-agent/internal/rpc` [V tests].
+- Transport: `internal/pipe` on github.com/Microsoft/go-winio (first instance created with FILE_CREATE, remote clients rejected, SDDL from ADR-029) [V real-pipe tests on Windows 11; A L7 on Server 2022].
 - Caller identity: the agent calls `GetNamedPipeClientProcessId` / impersonates the client to read its token → SID and session ID. Every method authorises on that SID. Message bodies never carry identity.
 - Methods (v1; schemas in `packages/shared-schema/ipc/`):
 
