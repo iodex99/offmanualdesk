@@ -19,6 +19,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Lab validation scripts L1–L10 with a runbook for the Windows Server 2022 RDS lab.
 - Automated tests for the Claude Code memory hooks.
 - Server Agent TOTP verification (RFC 6238; one-step clock tolerance; each code usable once).
+- Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed
 - OpenClaw pinned to 2026.11.6 and Node runtime to 24.22.3 (ADR-019).
@@ -26,6 +27,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 
 ### Fixed
 - Memory hooks: removed a dead initial assignment flagged by ESLint.
+- CI: shellcheck findings in the release workflow; secret scan no longer fails when artifact storage is full.
 
 ### Security
 - Server Agent pipe ACL tightened to explicit rights plus first-instance flag and server identity check, after the lab self-test showed generic write allows pipe squatting (ADR-029).

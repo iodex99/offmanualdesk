@@ -55,7 +55,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Enrollment with console (keypair, signed requests), heartbeat
 - [ ] Policy fetch → `policy.json` (read-only to users)
 - [x] TOTP verification (RFC 6238, ±1 step, replay protection) in `internal/auth` (ADR-030)
-- [ ] PIN hashing (argon2id) + verification, lock state, lockout
+- [x] PIN rules + argon2id hashing/verification, lockout rules (3 PINs → daily code; 5 codes → 15 min + admin alert) in `internal/auth` (ADR-031)
+- [ ] Persist lock state / attempts in agent.db (needs the store)
 - [ ] Port + token leases for gateways (ADR-020)
 - [ ] Audit log append + summary upload
 - [ ] Pre-flight check command
@@ -143,6 +144,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 18:00: CI fixes + M2 slice 2: PIN and lockout
+- Changed: first CI run on GitHub: Desk Rust (fmt, clippy -D warnings, tests) passed first time on windows-latest; fixed 4 shellcheck findings in release.yml (only visible on the runner) and turned off gitleaks' SARIF artifact upload (account artifact quota full; scan itself found no leaks). M2: `internal/auth/pin.go` (PIN rules, argon2id PHC hashes, bounded decode, rehash flag), `lockout.go` (F3 rules), ADR-031; first Go dependency `golang.org/x/crypto` v0.59.0.
+- Tests: `go test` server-agent + sign-manifest → pass (auth 94.9% cover); golangci-lint → 0 issues; sign-manifest builds with GOWORK=off.
+- Half-done / next: confirm the re-run of CI on `m0-scaffold` is green, merge to `main`; then M2 store (SQLite) and lease allocator.
 
 ### 2026-11-22 17:30: M2 slice 1: TOTP verification
 - Changed: branch `m2-server-agent` (from `m0-scaffold`); `apps/server-agent/internal/auth/totp.go` (HOTP/TOTP, Verify with skew + replay protection, secret generation, otpauth URI); ADR-030; DATA_MODEL §2 `employees.totp_last_counter`.

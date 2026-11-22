@@ -237,3 +237,11 @@ Template:
 - Options: A SHA-1 / 6 digits / 30 s (what every authenticator app supports) / B SHA-256 or 8 digits (several apps ignore these URI parameters and show wrong codes)
 - Decision: A, with ±1 step tolerance and replay protection: the highest accepted step is stored per employee (`totp_last_counter`) and any code at or below it is refused. 160-bit random secrets. Comparison is constant-time and checks every window step. HMAC-SHA-1 is not affected by SHA-1 collision attacks. Code: `apps/server-agent/internal/auth/totp.go`, checked against RFC 4226/6238 vectors.
 - Consequences: A code typed for the daily unlock can't be reused for step-up within the same 30 s; Desk asks for the next code (plain message).
+
+## ADR-031: PIN rules and argon2id parameters
+- Date: 2026-11-22
+- Status: Accepted
+- Context: DATA_MODEL §2 stores `pin_hash (argon2id)`; length, weak-PIN policy and cost parameters weren't set. PINs unlock only after idle (F3) and three wrong PINs force the daily code, so online guessing is capped at 3 tries per daily-code cycle.
+- Options: A 4–8 digits, refuse repeated/sequential/common PINs, argon2id m=64 MiB t=3 p=2 / B 6 digits fixed (more friction for article assistants) / C bcrypt (weaker against GPU cracking of a stolen agent.db)
+- Decision: A. Hashes are PHC strings (`$argon2id$v=19$m=…,t=…,p=…$salt$hash`); decoding bounds the parameters (8 MiB–1 GiB, t 1–20) so a tampered row can't request absurd work; verification reports "needs rehash" when stored parameters are weaker than current. Code: `apps/server-agent/internal/auth/pin.go`, `lockout.go`.
+- Consequences: About 64 MiB and a fraction of a second per PIN check on the server; fine at a few checks per employee per day. Revisit if an RDS host shows contention (L1 RAM numbers).
