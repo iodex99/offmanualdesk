@@ -49,6 +49,7 @@ export const consoleUsers = pgTable("console_users", {
   role: consoleRole("role").notNull(),
   totpSecretEnc: text("totp_secret_enc"),
   totpEnrolledAt: timestamp("totp_enrolled_at", { withTimezone: true }),
+  totpLastCounter: bigint("totp_last_counter", { mode: "number" }).notNull().default(0),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -83,6 +84,7 @@ export const firmAdmins = pgTable(
     role: firmAdminRole("role").notNull().default("admin"),
     totpSecretEnc: text("totp_secret_enc"),
     totpEnrolledAt: timestamp("totp_enrolled_at", { withTimezone: true }),
+    totpLastCounter: bigint("totp_last_counter", { mode: "number" }).notNull().default(0),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -326,3 +328,20 @@ export const supportTickets = pgTable("support_tickets", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+// ---- console sessions (ADR-037) ----
+
+export const principalKind = pgEnum("principal_kind", ["console", "firm_admin"]);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    tokenHash: text("token_hash").primaryKey(), // sha256 of the cookie token; the token itself is never stored
+    kind: principalKind("kind").notNull(),
+    userId: uuid("user_id").notNull(), // console_users.id or firm_admins.id
+    mfaAt: timestamp("mfa_at", { withTimezone: true }), // null until TOTP passed: no access before that
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sessions_user").on(t.kind, t.userId), index("sessions_expiry").on(t.expiresAt)],
+);

@@ -8,6 +8,13 @@
       "when": 1795344882431,
       "tag": "0000_lush_falcon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795345571236,
+      "tag": "0001_foamy_frog_thor",
+      "breakpoints": true
     }
   ]
 }
