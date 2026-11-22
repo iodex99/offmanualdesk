@@ -264,6 +264,9 @@ func TestGatewayLeases(t *testing.T) {
 	if a["port"].(float64) != 18800 || r["port"].(float64) != 18801 {
 		t.Fatalf("ports %v %v", a["port"], r["port"])
 	}
+	if p, ok := a["packs"].([]any); !ok || len(p) != 1 || p[0] != "core" {
+		t.Fatalf("lease packs %v (ADR-069)", a["packs"])
+	}
 	tok := a["token"].(string)
 	if !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(tok) || tok == r["token"] {
 		t.Fatalf("tokens %q %q", tok, r["token"])

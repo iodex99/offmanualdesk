@@ -94,7 +94,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Packaging + SDK typing: `openclaw.plugin.json`, `dist/plugin.js`, `before_install` block (M1)
 - [x] Lock enforcement on every inbound turn (`before_agent_run` via `server-agent bridge`, 5 s cache, fail closed, Telegram window) 
 - [x] Licence (firm status) enforcement (ADR-042): Server Agent `Licence` from synced `firm_status` + last console contact (7-day offline grace), carried in `lock.get` (`servicePaused`, `pausedMessage`, `notice`); guard blocks every turn while paused; Telegram router replies with the plain message
-- [x] Skill packs → tool allowlist (ADR-043): `skills/packs.json` ships in the signed release; guard `before_tool_call` allows only tools of the employee's granted packs (policy.get, cached 30 s, fail closed), Telegram = core + firm-allowed packs; release tooling validates packs.json and skills' pack names; Desk passes `packsPath`. [ ] AD-group grants resolved on the server (needs lab: group names from the caller token), [ ] per-pack skill visibility in the gateway config
+- [x] Skill packs → tool allowlist (ADR-043): `skills/packs.json` ships in the signed release; guard `before_tool_call` allows only tools of the employee's granted packs (policy.get, cached 30 s, fail closed), Telegram = core + firm-allowed packs; release tooling validates packs.json and skills' pack names; Desk passes `packsPath`. [ ] AD-group grants resolved on the server (needs lab: group names from the caller token), per-pack skill visibility in the gateway config (ADR-069: lease carries packs, Desk sets `agents.defaults.skills` from the shipped lock; fail closed)
 - [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
 - [x] Desk side: Request access (ADR-058): card after a reply for each folder refused since it was sent, note to the firm's admins (local only), Access tab (own requests; admins close them); no `chat.abort` needed (guard blocks further tools)
 - [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; [ ] Desk Review tab (needs the Rust gateway client), step-up on approve, Tally/email actions
@@ -163,6 +163,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 04:10: Skills visible by pack (M5, ADR-069)
+- Changed: Server Agent `gateway.lease` returns the employee's `packs`; Desk `gateway::visible_skills` (approved skills in `current\skills\registry.lock.json` whose packs overlap; name = folder slug, vendored `<owner>__<slug>` → slug; strict characters; unreadable → none) and `agents.defaults.skills` in the generated config; `tools/release` `verify-skills` checks each SKILL.md `name` equals its folder slug (all 9 do).
+- Tests: Go lease carries packs; Rust visible_skills (approval, pack overlap, two packs, none, junk, empty) + config field (CI); release tools 19/19 (name mismatch refused); `pnpm run check` green. CI for receipts green; `main` at 3f87e03.
 
 ### 2026-11-24 03:40: Telegram Approve held for a decision (ADR-068 Proposed)
 - Changed: docs only. F8's "Approve on Telegram" for Desk unlock would replace the daily TOTP code (rule 9); recorded options and a recommendation, marked F8 and M6 as waiting on Dwahnil. No code.

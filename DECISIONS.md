@@ -515,3 +515,10 @@ Template:
   - (b) Telegram Approve may replace the **PIN** only, i.e. after idle on a day the employee already unlocked with the authenticator code; never the daily code, never after a lockout, never when the firm turns it off. Approve shows the server name and time, expires in 60 seconds, and is audited.
   - (c) As F8: Approve may replace the daily code. Rejected here because it removes TOTP from the daily unlock.
 - Recommendation: (b) if Dwahnil wants it, else (a). Until decided nothing is built and F8's first bullet stays unimplemented.
+
+## ADR-069: Skills visible per pack via `agents.defaults.skills`
+- Date: 2026-11-23
+- Status: Accepted (part of ADR-024's layered lockdown; L1 confirms OpenClaw honours the list)
+- Context: The guard already blocks tools outside the employee's packs (ADR-043), but every shipped skill was visible, so the model could try a Tally skill for someone without the Tally pack and fail at the tool. OpenClaw offers `agents.defaults.skills` (visibility allowlist by skill `name`; "not a shell-time authorization boundary", OPENCLAW_NOTES §7).
+- Decision: The Server Agent returns the employee's packs with the gateway lease (SID from the pipe). Desk reads the signed release's `skills\registry.lock.json`, keeps approved skills whose packs overlap, and writes their names to `agents.defaults.skills`; an unreadable lock gives an empty list. The release tooling refuses a skill whose SKILL.md `name` differs from its folder slug, so names and the lock agree.
+- Consequences: Visibility only; the guard remains the enforcement point. Pack changes in the console reach the assistant at its next start (a lease is taken per start).

@@ -434,7 +434,13 @@ func (a *Agent) gatewayLease(ctx context.Context, c rpc.Caller, p json.RawMessag
 	}
 	a.audit(ctx, e.SID, "gateway", "lease", "ok")
 	// The token is returned once, to the employee's own process; only its hash is stored.
-	return map[string]any{"port": lease.Port, "token": token}, nil
+	// Packs let Desk show only the skills of the employee's packs (ADR-069); the guard
+	// still enforces tools by pack on every call (ADR-043).
+	packs := e.Packs
+	if packs == nil {
+		packs = []string{}
+	}
+	return map[string]any{"port": lease.Port, "token": token, "packs": packs}, nil
 }
 
 func (a *Agent) gatewayRelease(ctx context.Context, c rpc.Caller, p json.RawMessage) (any, error) {

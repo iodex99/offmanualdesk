@@ -238,3 +238,13 @@ test("verifySkillsLock checks packs.json and the packs skills name", () => {
   writeFileSync(join(t4.s, "packs.json"), "{nope");
   assert.throws(() => verifySkillsLock(t4.root), /packs.json missing or not JSON/);
 });
+
+test("verifySkillsLock requires the SKILL.md name to be the folder slug (ADR-069)", () => {
+  const { root, s, lock } = skillsTree();
+  const content = "---\nname: tally-reader\n---\nRead Tally.\n";
+  writeFileSync(join(s, "vendored", "acme__tally", "SKILL.md"), content);
+  lock.skills[0].files["SKILL.md"] = createHash("sha256").update(content).digest("hex");
+  writeFileSync(join(s, "registry.lock.json"), JSON.stringify(lock));
+  assert.throws(() => verifySkillsLock(root), /SKILL\.md name tally-reader must be tally/);
+  rmSync(root, { recursive: true, force: true });
+});

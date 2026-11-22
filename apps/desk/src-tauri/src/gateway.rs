@@ -58,7 +58,7 @@ impl Layout {
 }
 
 /// The gateway config (JSON is valid JSON5). Every key is from OPENCLAW_NOTES.md.
-pub fn config(port: u16, layout: &Layout) -> Value {
+pub fn config(port: u16, layout: &Layout, skills: &[String]) -> Value {
     let path = |p: &Path| p.to_string_lossy().to_string();
     json!({
         "gateway": {
@@ -94,6 +94,9 @@ pub fn config(port: u16, layout: &Layout) -> Value {
             "load": { "extraDirs": [path(&layout.skills_dir)] },
             "workshop": { "autonomous": { "mode": "off" } }
         },
+        // Only the skills of the employee's packs are visible (ADR-069). Not an
+        // authorization boundary: the guard enforces tools by pack (ADR-043).
+        "agents": { "defaults": { "skills": skills } },
         "tools": {
             "deny": ["gateway", "plugins", "openclaw", "skill_workshop", "terminal", "browser", "nodes", "computer"]
         }
@@ -132,10 +135,49 @@ pub fn arguments(layout: &Layout, port: u16) -> Vec<String> {
     ]
 }
 
+/// Skill names the employee may see: approved skills in the shipped registry lock
+/// whose packs overlap the employee's packs (ADR-069). The name is the skill folder's
+/// last segment (release tooling checks it equals the SKILL.md `name`). Anything
+/// unreadable gives no skills (fail closed).
+pub fn visible_skills(lock: &[u8], packs: &[String]) -> Vec<String> {
+    let Ok(v) = serde_json::from_slice::<Value>(lock) else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = v["skills"]
+        .as_array()
+        .map(|a| a.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter(|s| s["review"]["status"] == "approved")
+        .filter(|s| {
+            s["packs"].as_array().is_some_and(|ps| {
+                ps.iter()
+                    .any(|p| p.as_str().is_some_and(|p| packs.iter().any(|q| q == p)))
+            })
+        })
+        .filter_map(|s| s["path"].as_str())
+        .filter_map(|p| p.rsplit('/').next())
+        .filter_map(|seg| seg.rsplit("__").next()) // vendored/<owner>__<slug>
+        .filter(|n| {
+            !n.is_empty()
+                && n.chars().all(|c| {
+                    c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '-' | '_' | '.')
+                })
+        })
+        .map(str::to_string)
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
 /// Writes the config file (creating the state directory).
-pub fn write_config(layout: &Layout, port: u16) -> std::io::Result<()> {
+pub fn write_config(layout: &Layout, port: u16, packs: &[String]) -> std::io::Result<()> {
     std::fs::create_dir_all(&layout.state_dir)?;
-    let body = serde_json::to_vec_pretty(&config(port, layout)).map_err(std::io::Error::other)?;
+    let lock = std::fs::read(layout.skills_dir.join("registry.lock.json")).unwrap_or_default();
+    let skills = visible_skills(&lock, packs);
+    let body =
+        serde_json::to_vec_pretty(&config(port, layout, &skills)).map_err(std::io::Error::other)?;
     std::fs::write(layout.config_path(), body)
 }
 
@@ -375,7 +417,7 @@ mod tests {
 
     #[test]
     fn config_locks_everything_down() {
-        let c = config(18800, &layout());
+        let c = config(18800, &layout(), &["client-directory".to_string()]);
         assert_eq!(c["gateway"]["port"], 18800);
         assert_eq!(c["gateway"]["bind"], "loopback");
         assert_eq!(c["gateway"]["auth"]["mode"], "token");
@@ -390,6 +432,10 @@ mod tests {
             .collect();
         assert!(deny.contains(&"telegram") && deny.contains(&"browser"));
         assert_eq!(c["skills"]["allowBundled"], json!([]));
+        assert_eq!(
+            c["agents"]["defaults"]["skills"],
+            json!(["client-directory"])
+        );
         // The guard reads pack → tool definitions from the signed release (ADR-043).
         let packs = c["plugins"]["entries"]["offmanual-guard"]["config"]["packsPath"]
             .as_str()
@@ -430,7 +476,7 @@ mod tests {
     fn writes_config_file() {
         let dir = std::env::temp_dir().join(format!("om-desk-test-{}", std::process::id()));
         let l = Layout::new(Path::new("C:/om"), &dir);
-        write_config(&l, 18801).unwrap();
+        write_config(&l, 18801, &["core".to_string()]).unwrap();
         let v: Value = serde_json::from_slice(&std::fs::read(l.config_path()).unwrap()).unwrap();
         assert_eq!(v["gateway"]["port"], 18801);
         let _ = std::fs::remove_dir_all(&dir);
@@ -603,5 +649,28 @@ mod tests {
     #[test]
     fn install_root_can_be_overridden() {
         assert!(install_root().to_string_lossy().len() > 3);
+    }
+
+    #[test]
+    fn visible_skills_follow_packs_and_approval() {
+        let lock = br#"{"schema":1,"skills":[
+            {"id":"offmanual/client-directory","path":"offmanual/client-directory","packs":["core"],"review":{"status":"approved"}},
+            {"id":"offmanual/tally-mis","path":"offmanual/tally-mis","packs":["tally-read"],"review":{"status":"approved"}},
+            {"id":"offmanual/tds-checks","path":"offmanual/tds-checks","packs":["core"],"review":{"status":"pending"}},
+            {"id":"bad","path":"offmanual/Bad Name","packs":["core"],"review":{"status":"approved"}}
+        ]}"#;
+        let core = vec!["core".to_string()];
+        assert_eq!(
+            visible_skills(lock, &core),
+            vec!["client-directory".to_string()]
+        );
+        let both = vec!["core".to_string(), "tally-read".to_string()];
+        assert_eq!(
+            visible_skills(lock, &both),
+            vec!["client-directory".to_string(), "tally-mis".to_string()]
+        );
+        assert!(visible_skills(lock, &[]).is_empty());
+        assert!(visible_skills(b"not json", &core).is_empty());
+        assert!(visible_skills(b"", &core).is_empty());
     }
 }

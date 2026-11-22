@@ -182,6 +182,16 @@ export function verifySkillsLock(root) {
         problems.push(`${s.id}: missing file ${rel}`);
       }
     }
+    // Desk shows skills by name (ADR-069): the SKILL.md `name` must be the folder's slug.
+    const slug = s.path.split("/").pop().split("__").pop();
+    try {
+      const md = readFileSync(join(skillsDir, s.path, "SKILL.md"), "utf8");
+      const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(md);
+      const name = fm && /^name:\s*(\S+)\s*$/m.exec(fm[1])?.[1];
+      if (name !== slug) problems.push(`${s.id}: SKILL.md name ${name ?? "missing"} must be ${slug}`);
+    } catch {
+      problems.push(`${s.id}: missing file SKILL.md`);
+    }
   }
   const placeholder = (p) =>
     /(^|[\\/])(README\.md|\.gitkeep)$/.test(relative(skillsDir, p)) &&

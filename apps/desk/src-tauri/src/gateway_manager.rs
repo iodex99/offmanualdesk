@@ -99,6 +99,15 @@ fn start_inner(state: &GatewayState, correlation_id: &str) -> Result<GatewayStat
         .as_str()
         .ok_or_else(|| err("Unexpected reply from the server."))?
         .to_string();
+    // The employee's packs decide which skills the assistant sees (ADR-069).
+    let packs: Vec<String> = lease["packs"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|p| p.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
 
     let lad =
         local_app_data().ok_or_else(|| err("Your Windows profile folder couldn't be found."))?;
@@ -111,7 +120,7 @@ fn start_inner(state: &GatewayState, correlation_id: &str) -> Result<GatewayStat
         )
         .into());
     }
-    gateway::write_config(&layout, port)
+    gateway::write_config(&layout, port, &packs)
         .map_err(|_| err("Couldn't prepare your assistant's settings."))?;
 
     let mut child = spawn_gateway(&layout, port, &token)?;
