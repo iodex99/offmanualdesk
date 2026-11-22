@@ -147,6 +147,8 @@ export const employees = pgTable(
     boundAt: timestamp("bound_at", { withTimezone: true }),
     totpSecretEnc: text("totp_secret_enc"),
     totpEnrolledAt: timestamp("totp_enrolled_at", { withTimezone: true }),
+    /** Admin asked to reset this employee's authenticator (ADR-049); synced to the server. */
+    totpResetAt: timestamp("totp_reset_at", { withTimezone: true }),
     telegramLinked: boolean("telegram_linked").notNull().default(false),
     status: employeeStatus("status").notNull().default("invited"),
     enabledFrom: date("enabled_from"),

@@ -168,6 +168,8 @@ type PolicyEmployee struct {
 	Name       string   `json:"name"`
 	Status     string   `json:"status"`
 	Packs      []string `json:"packs"`
+	// TOTPResetAt is when an admin last asked to reset this employee's authenticator (ADR-049).
+	TOTPResetAt string `json:"totpResetAt,omitempty"`
 }
 
 // Policy is the firm policy document.

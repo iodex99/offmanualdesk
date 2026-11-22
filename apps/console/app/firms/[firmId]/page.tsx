@@ -11,6 +11,7 @@ import {
   PackGrantForm,
   PolicyForm,
   ResendInviteButton,
+  ResetAuthenticatorButton,
 } from "../forms";
 import { load, pageSession } from "../session";
 
@@ -60,6 +61,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                   <td>
                     <EmployeeStatusButton firmId={firmId} employeeId={p.id} status={p.status} />
                     {p.status === "invited" && <ResendInviteButton firmId={firmId} employeeId={p.id} />}
+                    {p.status === "active" && <ResetAuthenticatorButton firmId={firmId} employeeId={p.id} />}
                   </td>
                 </tr>
               ))}

@@ -184,6 +184,32 @@ export function ResendInviteButton({ firmId, employeeId }: { firmId: string; emp
   );
 }
 
+export function ResetAuthenticatorButton({ firmId, employeeId }: { firmId: string; employeeId: string }) {
+  const { busy, message, run } = useAction();
+  return (
+    <>
+      <button
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            if (
+              !window.confirm(
+                "Reset this person's authenticator? Use this only when they lost their phone and their recovery codes.",
+              )
+            )
+              return;
+            await send(`/api/admin/firms/${firmId}/employees/${employeeId}/reset-authenticator`, "POST", {});
+            return "Done. Within 15 minutes they can set up their authenticator again in Off Manual Desk.";
+          })
+        }
+      >
+        Reset authenticator
+      </button>
+      <Note m={message} />
+    </>
+  );
+}
+
 export function EnrolmentCodeForm({ firmId }: { firmId: string }) {
   const { busy, message, run } = useAction();
   return (

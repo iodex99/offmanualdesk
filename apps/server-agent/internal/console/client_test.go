@@ -225,3 +225,48 @@ func TestBind(t *testing.T) {
 		t.Fatalf("bad code: %v", err)
 	}
 }
+
+func TestPolicyAppliesAuthenticatorResetOnce(t *testing.T) {
+	_, _, st := setup(t)
+	ctx := context.Background()
+	sid := "S-1-5-21-1-2-3-1101"
+	enrolled := func() bool {
+		e, _ := st.Employee(ctx, sid)
+		return !e.TOTPEnrolledAt.IsZero()
+	}
+	enrol := func() {
+		_ = st.SetTOTPSecret(ctx, sid, []byte("secret"))
+		_ = st.ConfirmTOTP(ctx, sid)
+		_ = st.SetRecoveryCodes(ctx, sid, []string{"h1", "h2"})
+	}
+	p := func(reset string) Policy {
+		return Policy{PolicyVersion: 2, Employees: []PolicyEmployee{{EmployeeID: "e1", SID: sid, Name: "Asha", Status: "active", TOTPResetAt: reset}}}
+	}
+	if err := ApplyPolicy(ctx, st, p(""), `"a"`); err != nil {
+		t.Fatal(err)
+	}
+	enrol()
+	if !enrolled() {
+		t.Fatal("setup: not enrolled")
+	}
+	if err := ApplyPolicy(ctx, st, p("2026-11-23T08:00:00Z"), `"b"`); err != nil {
+		t.Fatal(err)
+	}
+	if enrolled() {
+		t.Fatal("reset not applied")
+	}
+	if left, _ := st.RecoveryCodesLeft(ctx, sid); left != 0 {
+		t.Fatalf("recovery codes kept: %d", left)
+	}
+	// The employee enrols a new phone; the same request must not reset it again.
+	enrol()
+	_ = ApplyPolicy(ctx, st, p("2026-11-23T08:00:00Z"), `"c"`)
+	if !enrolled() {
+		t.Fatal("same reset applied twice")
+	}
+	_ = ApplyPolicy(ctx, st, p("2026-11-24T08:00:00Z"), `"d"`)
+	if enrolled() {
+		t.Fatal("newer reset not applied")
+	}
+	_ = ApplyPolicy(ctx, st, p("not a time"), `"e"`) // ignored, not an error
+}

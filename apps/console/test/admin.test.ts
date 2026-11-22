@@ -21,6 +21,7 @@ import {
   listFirms,
   newEnrolmentCode,
   resendInvite,
+  resetAuthenticator,
   setEmployeeStatus,
   updatePolicy,
   type AdminDeps,
@@ -273,5 +274,27 @@ describe("invite email", () => {
     await expect(resendInvite(d, adminOf(other), other, a.id)).rejects.toThrow(/isn't in this firm/);
     await db.update(employees).set({ status: "active" }).where(eq(employees.id, a.id));
     await expect(resendInvite(d, staff, firmId, a.id)).rejects.toThrow(/already signed in/);
+  });
+});
+
+describe("authenticator reset", () => {
+  it("own admin or staff, active employees only; bumps the policy and reaches the agent policy", async () => {
+    const { id: firmId } = await createFirm(deps, staff, firmBody);
+    const { id: other } = await createFirm(deps, staff, { ...firmBody, name: "Shah", gstin: undefined });
+    const { id: emp } = await addEmployee(deps, staff, firmId, {
+      name: "Asha",
+      email: "asha@mehta.in",
+      windowsSid: "S-1-5-21-1-2-3-1101",
+    });
+    await expect(resetAuthenticator(deps, adminOf(firmId), firmId, emp)).rejects.toThrow(/active employee/); // still invited
+    await db.update(employees).set({ status: "active" }).where(eq(employees.id, emp));
+    const before = (await db.select().from(firmPolicies).where(eq(firmPolicies.firmId, firmId)))[0]!.version;
+    expect(await resetAuthenticator(deps, adminOf(firmId), firmId, emp)).toEqual({ ok: true });
+    expect((await db.select().from(employees).where(eq(employees.id, emp)))[0]!.totpResetAt).toEqual(NOW);
+    expect((await db.select().from(firmPolicies).where(eq(firmPolicies.firmId, firmId)))[0]!.version).toBe(
+      before + 1,
+    );
+    await expect(resetAuthenticator(deps, adminOf(other), firmId, emp)).rejects.toBeInstanceOf(AuthError);
+    await expect(resetAuthenticator(deps, adminOf(other), other, emp)).rejects.toThrow(/active employee/);
   });
 });

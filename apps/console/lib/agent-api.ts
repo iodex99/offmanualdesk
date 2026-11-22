@@ -261,6 +261,7 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
       name: employees.name,
       status: employees.status,
       updatedAt: employees.updatedAt,
+      totpResetAt: employees.totpResetAt,
     })
     .from(employees)
     .where(eq(employees.firmId, a.firmId));
@@ -299,6 +300,7 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
           name: e.name,
           status: e.status,
           packs: packsFor(e.id),
+          ...(e.totpResetAt ? { totpResetAt: e.totpResetAt.toISOString() } : {}),
         })),
     },
     { etag },

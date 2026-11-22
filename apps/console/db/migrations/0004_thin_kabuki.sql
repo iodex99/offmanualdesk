@@ -1,0 +1,1 @@
+ALTER TABLE "employees" ADD COLUMN "totp_reset_at" timestamp with time zone;

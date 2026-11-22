@@ -281,6 +281,15 @@ describe("signed agent routes", () => {
       }),
     );
     expect(cached.status).toBe(304);
+    // An authenticator reset travels with the employee (ADR-049).
+    await db.update(employees).set({ totpResetAt: NOW }).where(eq(employees.id, asha));
+    await db.update(firmPolicies).set({ version: 4 }).where(eq(firmPolicies.firmId, firmId));
+    const again = (await (
+      await policy(deps, signedRequest(s.priv, s.serverId, "GET", "/api/agent/policy"))
+    ).json()) as {
+      employees: { totpResetAt?: string }[];
+    };
+    expect(again.employees[0]!.totpResetAt).toBe(NOW.toISOString());
   });
 
   it("audit summary stores counts per category and day (idempotent)", async () => {

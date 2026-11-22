@@ -392,3 +392,26 @@ export async function firmOverview(deps: AdminDeps, s: SessionState | null, firm
     packs,
   };
 }
+
+/**
+ * Resets an employee's authenticator (lost phone and recovery codes; ADR-049). The
+ * Server Agent applies it at the next policy sync: TOTP, recovery codes and the day
+ * grant are cleared, so the employee enrols again from their own Windows session.
+ */
+export async function resetAuthenticator(
+  deps: AdminDeps,
+  s: SessionState | null,
+  firmId: string,
+  employeeId: string,
+) {
+  requireFirmAccess(s, firmId);
+  const now = deps.now();
+  const updated = await deps.db
+    .update(employees)
+    .set({ totpResetAt: now, updatedAt: now })
+    .where(and(eq(employees.id, employeeId), eq(employees.firmId, firmId), eq(employees.status, "active")))
+    .returning({ id: employees.id });
+  if (updated.length !== 1) throw new InputError("Only an active employee of this firm can be reset.");
+  await bumpPolicy(deps.db, firmId);
+  return { ok: true };
+}

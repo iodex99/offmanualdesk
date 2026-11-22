@@ -132,6 +132,11 @@ func ApplyPolicy(ctx context.Context, st *store.Store, p Policy, etag string) er
 		if err := st.UpsertEmployee(ctx, store.Employee{SID: e.SID, EmployeeID: e.EmployeeID, Name: e.Name, Status: e.Status, Packs: e.Packs}); err != nil {
 			return err
 		}
+		if t, err := time.Parse(time.RFC3339, e.TOTPResetAt); err == nil {
+			if _, err := st.ApplyTOTPReset(ctx, e.SID, t); err != nil {
+				return err
+			}
+		}
 	}
 	sids, err := st.EmployeeSIDs(ctx)
 	if err != nil {
