@@ -19,6 +19,7 @@ type Employee struct {
 	Packs           []string
 	TOTPSecretDPAPI []byte
 	TOTPLastCounter uint64
+	TOTPEnrolledAt  time.Time // zero until the first code is confirmed
 	PINHash         string
 }
 
@@ -42,10 +43,10 @@ func (s *Store) Employee(ctx context.Context, sid string) (Employee, error) {
 	var e Employee
 	var packs string
 	var pin sql.NullString
-	var counter int64
+	var counter, enrolled int64
 	err := s.db.QueryRowContext(ctx, `SELECT sid, employee_id, name, status, packs, totp_secret_dpapi,
-		totp_last_counter, pin_hash FROM employees WHERE sid = ?`, sid).
-		Scan(&e.SID, &e.EmployeeID, &e.Name, &e.Status, &packs, &e.TOTPSecretDPAPI, &counter, &pin)
+		totp_last_counter, totp_enrolled_at, pin_hash FROM employees WHERE sid = ?`, sid).
+		Scan(&e.SID, &e.EmployeeID, &e.Name, &e.Status, &packs, &e.TOTPSecretDPAPI, &counter, &enrolled, &pin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Employee{}, ErrNotFound
 	}
@@ -57,13 +58,21 @@ func (s *Store) Employee(ctx context.Context, sid string) (Employee, error) {
 	}
 	e.TOTPLastCounter = uint64(counter) //nolint:gosec // stored from uint64, never negative
 	e.PINHash = pin.String
+	e.TOTPEnrolledAt = unixOrZero(enrolled)
 	return e, nil
 }
 
-// SetTOTPSecret stores the DPAPI-protected TOTP secret and resets replay state.
+// SetTOTPSecret stores a new (unconfirmed) DPAPI-protected TOTP secret and resets
+// replay state and enrolment.
 func (s *Store) SetTOTPSecret(ctx context.Context, sid string, protected []byte) error {
-	return s.exec1(ctx, `UPDATE employees SET totp_secret_dpapi = ?, totp_last_counter = 0, updated_at = ? WHERE sid = ?`,
-		protected, s.now().Unix(), sid)
+	return s.exec1(ctx, `UPDATE employees SET totp_secret_dpapi = ?, totp_last_counter = 0, totp_enrolled_at = 0,
+		updated_at = ? WHERE sid = ?`, protected, s.now().Unix(), sid)
+}
+
+// ConfirmTOTP marks the stored secret as enrolled.
+func (s *Store) ConfirmTOTP(ctx context.Context, sid string) error {
+	return s.exec1(ctx, `UPDATE employees SET totp_enrolled_at = ?, updated_at = ? WHERE sid = ? AND totp_secret_dpapi IS NOT NULL`,
+		s.now().Unix(), s.now().Unix(), sid)
 }
 
 // AdvanceTOTPCounter records an accepted TOTP step. It only moves forward, so a

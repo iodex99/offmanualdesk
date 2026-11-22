@@ -37,8 +37,8 @@ func TestMigrationsApplyOnceAndReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	v, _ := s.SchemaVersion(ctx)
-	if v != 1 {
-		t.Fatalf("schema version %d, want 1", v)
+	if v != 2 {
+		t.Fatalf("schema version %d, want 2", v)
 	}
 	_ = s.SetMeta(ctx, "server_id", "srv-1")
 	_ = s.Close()
@@ -97,6 +97,19 @@ func TestEmployeesAndSecrets(t *testing.T) {
 	}
 	if e.Name != "Asha M" || len(e.Packs) != 2 || e.TOTPLastCounter != 100 || e.PINHash != "$argon2id$x" || len(e.TOTPSecretDPAPI) != 3 {
 		t.Fatalf("unexpected employee %+v", e)
+	}
+	if !e.TOTPEnrolledAt.IsZero() {
+		t.Fatal("secret enrolled before confirmation")
+	}
+	if err := s.ConfirmTOTP(ctx, "S-1"); err != nil {
+		t.Fatal(err)
+	}
+	if e2, _ := s.Employee(ctx, "S-1"); !e2.TOTPEnrolledAt.Equal(t0) {
+		t.Fatalf("enrolled_at %v", e2.TOTPEnrolledAt)
+	}
+	_ = s.SetTOTPSecret(ctx, "S-1", []byte{9})
+	if e3, _ := s.Employee(ctx, "S-1"); !e3.TOTPEnrolledAt.IsZero() || e3.TOTPLastCounter != 0 {
+		t.Fatalf("re-enrol must reset: %+v", e3)
 	}
 	if err := s.SetPINHash(ctx, "S-404", "x"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("unknown sid: want ErrNotFound, got %v", err)

@@ -92,6 +92,36 @@ jobs:
       - name: Build server-agent.exe
         if: runner.os == 'Windows'
         run: go build -trimpath -o dist/server-agent.exe ./apps/server-agent/cmd/server-agent && ./dist/server-agent.exe version
+      - name: Service round trip (install as LocalSystem, call over the pipe, uninstall)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path $PWD 'dist\server-agent.exe'
+          $data = Join-Path $env:RUNNER_TEMP 'om-data'
+          & $exe install -data $data
+          if ($LASTEXITCODE -ne 0) { throw "install failed" }
+          try {
+            $deadline = (Get-Date).AddSeconds(30)
+            while ((Get-Service OffManualAgent).Status -ne 'Running' -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+            if ((Get-Service OffManualAgent).Status -ne 'Running') { throw "service not running" }
+            $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', 'offmanual-agent', [System.IO.Pipes.PipeDirection]::InOut)
+            $pipe.Connect(10000)
+            $w = New-Object System.IO.StreamWriter($pipe); $w.AutoFlush = $true
+            $r = New-Object System.IO.StreamReader($pipe)
+            $w.WriteLine('{"jsonrpc":"2.0","id":1,"method":"session.hello","params":{}}')
+            $line = $r.ReadLine()
+            Write-Host "session.hello -> $line"
+            if ($line -notmatch '"known":false') { throw "unexpected reply" }
+            $w.WriteLine('{"jsonrpc":"2.0","id":2,"method":"session.hello","params":{"sid":"S-1-5-18"}}')
+            $line = $r.ReadLine()
+            if ($line -notmatch '-32602') { throw "identity in params was not refused: $line" }
+            $pipe.Dispose()
+          } finally {
+            Get-Content (Join-Path $data 'logs\server-agent.log') -ErrorAction SilentlyContinue | Select-Object -Last 20
+            & $exe uninstall
+          }
+          if (Get-Service OffManualAgent -ErrorAction SilentlyContinue) { throw "service still installed" }
 
   desk:
     name: Desk (Rust, windows-latest)
