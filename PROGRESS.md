@@ -81,7 +81,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`)
 - [x] Sign-in + SID binding: Desk signup screen (console URL + QR from `auth.bindStart`, code → `auth.bindComplete` with the OS-derived SID; 10 tries/hour)
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
-- [ ] Idle lock timer, step-up prompt
+- [x] Idle lock: session idle from `GetLastInputInfo` (Rust `idle.rs`, per RDS session) polled every 30 s, firm `lockTimeoutMax` from policy.get (default 15), fallback to in-window activity, `lock.set` then back to the unlock screen; [ ] step-up prompt
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
 - [ ] Gateway: listener check (ADR-020), idle stop, doctor on exit code 78, restart policy
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
@@ -162,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 09:10: Desk idle lock (M4, F3)
+- Changed: Rust `idle.rs` (GetLastInputInfo + GetTickCount with wrap-safe elapsed; third audited unsafe module) and command `idle_seconds`; windows-sys features SystemInformation + KeyboardAndMouse (verified in 0.61.2 source); UI `idleLock.ts` hook wired into Unlock's ready state.
+- Tests: desk 29/29 (timeout bounds, locks at the timeout only, window-activity fallback, inactive does nothing); Rust wrap test + real read on the CI runner.
+- Half-done / next: step-up prompt; per-employee shorter timeout setting.
 
 ### 2026-11-23 08:45: Employee sign-in and SID binding (M3/M4, F2)
 - Changed: console `bind_codes` table (migration 0002), `lib/bind.ts` (createBindCode by verified email, one live code per employee, same OIDC subject once bound; redeemBindCode in a transaction: same answer for unknown/used/expired/other-firm, refuses a different SID or a SID bound to someone else, activates, accepts invite, returns packs), `lib/bind-routes.ts` + `/bind` page and routes (code page escaped, no-store, CSP), `agentBind` handler; `auth-routes.ts` refactored (`verifyCallback`, configurable callback). Agent: `console.Client.Bind`, `auth.bindStart`/`auth.bindComplete` (caller SID only, strict params, 10 attempts/hour, disabled refused, local upsert), app `binderFor` (4xx console messages shown, 401 never). Desk signup screen. ADR-044.

@@ -134,7 +134,7 @@ C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM
 
 ### F3 Daily unlock, idle lock, step-up
 - First Desk unlock of the working day → `auth.verifyDaily` → day grant until firm's day end.
-- Idle ≥ lock timeout → `lock.set(locked)`; guard rejects inbound turns from all channels; running scheduled jobs finish.
+- Idle ≥ lock timeout (session input time from `GetLastInputInfo`, checked every 30 s; firm `lockTimeoutMax`) → `lock.set(locked)`; guard rejects inbound turns from all channels; running scheduled jobs finish.
 - PIN → `auth.verifyPin`; 3 wrong PINs → daily code needed; 5 wrong codes → 15 min lockout + admin alert.
 - Sensitive action (firm list) → `auth.stepUp` → grant valid 10 minutes for that action class.
 
