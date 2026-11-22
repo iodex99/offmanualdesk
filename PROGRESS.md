@@ -88,7 +88,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
 - [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
 - [ ] Explorer right-click "Ask Off Manual"
-- [ ] Notifications area (updates, billing, admin)
+- [~] Notifications area: licence notice banner and paused screen from `session.hello` (ADR-042); [ ] updates, admin notices
 
 ### M5 Guard plugin
 - [x] Packaging + SDK typing: `openclaw.plugin.json`, `dist/plugin.js`, `before_install` block (M1)
@@ -162,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 08:00: Desk licence banner
+- Changed: `session.hello` returns servicePaused/pausedMessage/notice; Desk shows the paused message (with Check again) instead of starting the assistant, and the overdue notice above it.
+- Tests: agent hello carries licence; desk vitest 24/24 (paused screen doesn't start the gateway, notice banner); golangci-lint 0.
+- Half-done / next: console firm status from the ladder.
 
 ### 2026-11-23 07:45: Skill packs gate tools (M5)
 - Changed: `skills/packs.json` (core tools; other packs empty until their tools exist), guard `src/packs.ts` (parse/validate, allowedTools per channel, packBlockReason with `bash`→`exec` alias, PolicyCache), `plugin.ts` before_tool_call pack check before the delete check + `tool_blocked/not_in_pack` audit, manifest `packsPath`; `tools/release/lib.mjs` checks packs.json and unknown pack names; release workflow ships packs.json; Desk config passes `packsPath`. ADR-043.
