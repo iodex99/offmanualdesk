@@ -122,22 +122,22 @@ pub fn stop(state: &GatewayState, correlation_id: &str) {
 }
 
 pub fn status(state: &GatewayState) -> GatewayStatus {
-    match state.0.lock() {
-        Ok(mut g) => match g.as_mut() {
-            Some(r) if matches!(r.child.try_wait(), Ok(None)) => GatewayStatus {
+    let stopped = GatewayStatus {
+        running: false,
+        port: None,
+    };
+    let Ok(mut guard) = state.0.lock() else {
+        return stopped;
+    };
+    if let Some(r) = guard.as_mut() {
+        if matches!(r.child.try_wait(), Ok(None)) {
+            return GatewayStatus {
                 running: true,
                 port: Some(r.port),
-            },
-            _ => GatewayStatus {
-                running: false,
-                port: None,
-            },
-        },
-        Err(_) => GatewayStatus {
-            running: false,
-            port: None,
-        },
+            };
+        }
     }
+    stopped
 }
 
 #[cfg(test)]
