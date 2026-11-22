@@ -97,7 +97,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Skill packs from policy (AD groups + console overrides)
 - [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
 - [ ] Desk side: `chat.abort` + Request access button
-- [ ] Review queue (ADR-028; approve all / edit / reject), Desk UI
+- [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; [ ] Desk Review tab (needs the Rust gateway client), step-up on approve, Tally/email actions
 - [x] Audit events to Server Agent (access denials)
 - [ ] Telegram policy enforcement (off / text / files)
 
@@ -162,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 06:00: Review queue core (M5)
+- Changed: guard `src/review.ts` (ReviewStore: JSON file, serialised writes, atomic rename, finished-item cap, corrupt file refuses to load, interrupted approvals → failed; ReviewQueue: propose/decide; `bypassBlockReason` for exec/apply_patch/fs_delete deletes), `src/delete-files.ts` (first action: absolute/UNC paths only, files only, Windows rights decide), `plugin.ts` registers the tool, the two gateway methods and the before_tool_call check; manifest `contracts.tools`. ADR-041. OPENCLAW_NOTES §4: registerTool / registerGatewayMethod / contracts.tools / resolveStateDir / tools-invoke facts.
+- Tests: guard 58/58 (persistence, concurrent adds, exactly-once approval under a race, reject, validated edit, approve all with failures and thrown errors, path rules, real delete in a temp dir, 13 delete-command patterns blocked and 6 ordinary commands allowed); `pnpm run check` green.
+- Half-done / next: Rust gateway client + Desk Review tab; lab L-guard confirms a plain JSON Schema tool registers and the plugin's gateway methods are reachable.
 
 ### 2026-11-23 05:00: Telegram router + relay (M6)
 - Changed: migration 0003 (`leases.token_dpapi`), store Telegram methods (link codes, links, protected lease token; DisableEmployee also unlinks), `internal/telegram` (Bot client, Router with plain replies, Run with backoff), agent `telegram.linkStart`, `TelegramUnlock`, mode/active hooks, `UserMessage` error type, lease stores the protected token; app relay (`gateway.Dial` + `Chat` on session `agent:main:telegram`, persistent relay device key), router start when configured, `server-agent telegram-setup` (token from stdin). ADR-040.

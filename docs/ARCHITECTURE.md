@@ -153,14 +153,14 @@ C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM
 3. Access denied (implemented in `packages/openclaw-plugins/guard` [V types; A L3 runtime]; Desk abort still to do; Proposed, ADR-022; the original "after-call hook stops the turn" is impossible: `after_tool_call` is observe-only and plugins can't abort a run). Node on Windows reports a denial as `EPERM` (Win32 error 5; confirmed by the L3 smoke test on Windows 11), `exec` as output text ("Access is denied."). The guard's tool-result middleware rewrites any denial result to a fixed ACCESS_DENIED text before the model sees it and marks the run; `before_tool_call` then blocks every further tool call in that run (no alternate path, no copy); the guard tells Desk over the pipe; Desk sends `chat.abort` and shows the plain message + *Request access* → `audit.append` [A L3 on UNC/mapped drives].
 
 ### F6 Review queue
-1. Guard intercepts a listed action in `before_tool_call` (Tally voucher create/alter/cancel, client email, delete, portal action) → stores a proposal (action, params, human summary, before/after) in the user's state → blocks the call with `blockReason` "Queued for review #<id>" (a hook can't return a synthetic success; ADR-028, Proposed).
-2. Desk *Review* tab: list, approve all, edit, reject. Step-up if the firm requires.
-3. Approve → guard executes → for Tally, re-fetches the voucher and compares → result + audit.
+1. Irreversible actions exist only as guard proposal tools (v1: `offmanual_delete_files`; Tally voucher and client email follow). The tool validates, stores a proposal (kind, params, plain summary) in `review.json` and returns "Queued for review #<id> … nothing has been done yet" (ADR-041). `before_tool_call` blocks built-in deletes (exec delete commands, `apply_patch` deletes, `fs_delete`/`fs_move`) with a pointer to the proposal tool.
+2. Desk *Review* tab calls gateway methods `offmanual.review.list` and `offmanual.review.decide { ids, decision, params? }` (scope `operator.approvals`; the agent can't call them because the `gateway` tool is denied): list, approve all, edit (one item, re-validated), reject. Step-up if the firm requires (to do).
+3. Approve → the item is claimed atomically (runs once) → guard executes as the employee → plain result + audit (`review_queued`/`review_approved`/`review_rejected`, no paths). For Tally, re-fetch the voucher and compare (to do).
 
 ### F7 Telegram linking and messages
 1. Desk `telegram.linkStart` → code (single use, 10 min) → opens `https://t.me/<FirmBot>?start=<code>`.
 2. Employee presses Start → Server Agent (polling `getUpdates`) sees `/start <code>` → binds Telegram user ID ↔ SID → confirms in chat.
-3. Inbound message from a linked user → policy check → the gateway must be running (employee logged in; ADR-026). Original plan: deliver via the `telegram.subscribe` stream → channel-relay plugin → agent. Proposed (ADR-023): the Server Agent connects to the employee's gateway as a client and sends `chat.send` on a dedicated Telegram session key; no channel plugin in v1.
+3. Inbound message from a linked user → policy check → the gateway must be running (employee logged in, fresh lease; ADR-026). Implemented (ADR-023/040): the Server Agent connects to the employee's gateway as a client (protected lease token, persistent relay device key) and sends `chat.send` on session `agent:main:telegram` [A L2]; no channel plugin in v1.
 4. Outbound → (ADR-023) the Server Agent takes the `chat` final event text → enforces Telegram mode (no files in text-only) → Bot API. (Original plan: channel-relay `telegram.send`.)
 5. Unlinked senders get one "not linked" reply; nothing else.
 

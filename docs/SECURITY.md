@@ -56,7 +56,7 @@ See BUILD_PROMPT.md §3. Any code that would violate one needs an ADR and Dwahni
 - [ ] Pipe ACL and SID derivation tested with a second user trying to call as the first
 - [ ] Gateway token isolation tested across two RDS sessions
 - [ ] Access-denied path tested on UNC, mapped drive, OneDrive folder
-- [ ] Review queue cannot be bypassed by any skill in the pack
+- [ ] Review queue cannot be bypassed by any skill in the pack (v1: deletes only exist as `offmanual_delete_files`; exec/apply_patch delete patterns are blocked as defence in depth, ADR-041; re-check when each pack adds tools)
 - [ ] Telegram text-only blocks attachments, links to files and base64 dumps
 - [ ] Console payloads inspected: no client content
 - [ ] Update with bad signature / bad hash refused

@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Review queue: Off Manual can now only ask to delete files; the request waits until a person approves it (approve, edit, reject, approve all), runs once, and reports what happened. Delete commands that would skip the queue are blocked.
 - Project kit: CLAUDE.md, PROGRESS.md, DECISIONS.md, docs/, Claude Code hooks and skills.
 - Monorepo scaffold: pnpm workspace (console, desk, shared-schema, guard, channel-relay), Go workspace (server-agent, sign-manifest), Tauri 2 Desk with React UI, Next.js console with `/api/health`.
 - Server Agent `version`/`help` commands with build info injected at link time.
