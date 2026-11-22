@@ -10,6 +10,7 @@ import {
   firms,
   invoices,
   notices,
+  payments,
   servers,
   usageDaily,
 } from "@/db/schema";
@@ -200,6 +201,78 @@ export async function weeklyDigests(deps: MailDeps): Promise<number> {
       } catch {
         // Next week's digest still goes; this one is not retried.
       }
+    }
+  }
+  return sent;
+}
+
+/**
+ * Emails a receipt for each payment recorded in the last 30 days that has none yet
+ * (BILLING §4, ADR-067). A payment is claimed before sending so two runs can't both
+ * send; if no admin could be reached it is released for the next run. Amounts only.
+ */
+export async function emailReceipts(deps: MailDeps): Promise<number> {
+  if (!deps.mailer) return 0;
+  const since = new Date(deps.now().getTime() - 30 * DAY);
+  const due = await deps.db
+    .select({
+      id: payments.id,
+      invoiceId: payments.invoiceId,
+      amount: payments.amountPaise,
+      paidAt: payments.paidAt,
+      method: payments.method,
+      number: invoices.number,
+      total: invoices.totalPaise,
+      firmId: invoices.firmId,
+    })
+    .from(payments)
+    .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
+    .where(and(isNull(payments.receiptSentAt), gte(payments.createdAt, since)));
+  let sent = 0;
+  for (const p of due) {
+    const claimed = await deps.db
+      .update(payments)
+      .set({ receiptSentAt: deps.now() })
+      .where(and(eq(payments.id, p.id), isNull(payments.receiptSentAt)))
+      .returning({ id: payments.id });
+    if (claimed.length === 0) continue;
+    const paidSoFar = BigInt(
+      (
+        await deps.db
+          .select({ s: sql<string>`coalesce(sum(${payments.amountPaise}), 0)` })
+          .from(payments)
+          .where(eq(payments.invoiceId, p.invoiceId))
+      )[0]!.s,
+    );
+    const balance = p.total - paidSoFar;
+    const number = p.number ?? "your invoice";
+    const lines = [
+      `We received ${formatINR(p.amount, { showPaise: true })} on ${formatDate(p.paidAt)}${p.method ? ` (${p.method})` : ""} for invoice ${number}.`,
+      "",
+      `Invoice total: ${formatINR(p.total, { showPaise: true })}`,
+      `Paid so far: ${formatINR(paidSoFar, { showPaise: true })}`,
+      balance > 0n ? `Still to pay: ${formatINR(balance, { showPaise: true })}` : "Paid in full. Thank you.",
+      "",
+      "Off Manual",
+    ];
+    let ok = 0;
+    for (const to of await adminEmails(deps.db, p.firmId)) {
+      try {
+        await deps.mailer.send({
+          to,
+          subject: `Payment received for ${number}`,
+          text: lines.join("\n"),
+          idempotencyKey: `receipt-${p.id}-${to}`,
+        });
+        ok++;
+      } catch {
+        // Try the other admins; if none worked, the payment is released below.
+      }
+    }
+    if (ok === 0) {
+      await deps.db.update(payments).set({ receiptSentAt: null }).where(eq(payments.id, p.id));
+    } else {
+      sent += ok;
     }
   }
   return sent;

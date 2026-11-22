@@ -421,6 +421,7 @@ describe("daily billing cron", () => {
       emailsSent: 0,
       digests: 0,
       paymentLinks: 0,
+      receipts: 0,
     });
     now = new Date("2026-12-02T20:00:00Z");
     expect(await (await dailyBilling(deps(), cfg, SECRET, req(`Bearer ${SECRET}`))).json()).toMatchObject({

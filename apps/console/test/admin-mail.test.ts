@@ -1,9 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { auditSummaries, employees, firmAdmins, firms, invoices, servers, usageDaily } from "@/db/schema";
-import { digestText, emailBillingNotices, lastWeek, weeklyDigests } from "@/lib/admin-mail";
+import { eq } from "drizzle-orm";
+import {
+  auditSummaries,
+  employees,
+  firmAdmins,
+  firms,
+  invoices,
+  payments,
+  servers,
+  usageDaily,
+} from "@/db/schema";
+import { digestText, emailBillingNotices, emailReceipts, lastWeek, weeklyDigests } from "@/lib/admin-mail";
 import type { DB } from "@/lib/db";
 import type { Email, Mailer } from "@/lib/email";
 import { uuidv7 } from "@/lib/ids";
+import { recordPayment } from "@/lib/billing/run";
 import { billingNotices } from "@/lib/notices";
 import { testDb } from "./helpers/db";
 
@@ -165,5 +176,80 @@ describe("weekly digest", () => {
     });
     expect(t.text).not.toContain("Invoices to pay");
     expect(t.text).not.toContain("folder access");
+  });
+});
+
+describe("payment receipts (ADR-067)", () => {
+  async function issuedInvoice() {
+    const id = uuidv7();
+    await db.insert(invoices).values({
+      id,
+      firmId,
+      number: "OM/FY2026-27/0007",
+      periodStart: "2026-11-01",
+      periodEnd: "2026-11-30",
+      issuedOn: "2026-12-01",
+      dueOn: "2026-12-16",
+      taxablePaise: 200000n,
+      cgstPaise: 18000n,
+      sgstPaise: 18000n,
+      igstPaise: 0n,
+      totalPaise: 236000n,
+      status: "issued",
+    });
+    return id;
+  }
+  const pay = (invoiceId: string, amountPaise: bigint, ref: string) =>
+    recordPayment(deps(), {
+      invoiceId,
+      amountPaise,
+      paidAt: new Date("2026-12-05T06:30:00Z"),
+      provider: "razorpay",
+      providerRef: ref,
+      method: "upi",
+    });
+
+  it("emails each payment once to active admins, with the balance", async () => {
+    const inv = await issuedInvoice();
+    await pay(inv, 100000n, "pay_1");
+    expect(await emailReceipts(deps())).toBe(2); // owner + partner; the disabled admin gets nothing
+    expect(await emailReceipts(deps())).toBe(0); // once
+    expect(sent.map((m) => m.to).sort()).toEqual(["owner@mehta.in", "partner@mehta.in"]);
+    expect(sent[0]!.subject).toBe("Payment received for OM/FY2026-27/0007");
+    expect(sent[0]!.text).toContain(
+      "We received ₹1,000.00 on 05-12-2026 (upi) for invoice OM/FY2026-27/0007.",
+    );
+    expect(sent[0]!.text).toContain("Still to pay: ₹1,360.00");
+    expect(sent[0]!.idempotencyKey).toMatch(/^receipt-/);
+    sent = [];
+    await pay(inv, 136000n, "pay_2");
+    expect(await emailReceipts(deps())).toBe(2);
+    expect(sent[0]!.text).toContain("Paid in full. Thank you.");
+  });
+
+  it("keeps the receipt for the next run if nobody could be emailed; nothing without a mailer", async () => {
+    const inv = await issuedInvoice();
+    await pay(inv, 236000n, "pay_9");
+    expect(await emailReceipts({ db, now: () => now, mailer: null })).toBe(0);
+    expect(
+      (await db.select().from(payments).where(eq(payments.invoiceId, inv)))[0]!.receiptSentAt,
+    ).toBeNull();
+    const down: Mailer = {
+      async send() {
+        throw new Error("down");
+      },
+    };
+    expect(await emailReceipts({ db, now: () => now, mailer: down })).toBe(0);
+    expect(
+      (await db.select().from(payments).where(eq(payments.invoiceId, inv)))[0]!.receiptSentAt,
+    ).toBeNull();
+    expect(await emailReceipts(deps())).toBe(2);
+  });
+
+  it("doesn't send receipts for payments older than 30 days", async () => {
+    const inv = await issuedInvoice();
+    await pay(inv, 236000n, "pay_old");
+    now = new Date("2027-01-15T05:00:00Z");
+    expect(await emailReceipts(deps())).toBe(0);
   });
 });

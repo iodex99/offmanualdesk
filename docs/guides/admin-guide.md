@@ -56,7 +56,7 @@ attention.
 
 Download any issued invoice as a PDF, or click **Pay online** to pay it by UPI, card or net banking through
 Razorpay; it shows as paid within a minute. You also get an email when an invoice is issued, a week before it's due,
-on the due date and if it becomes overdue, plus a Monday summary of how your firm used Off Manual.
+on the due date and if it becomes overdue, a receipt for every payment, plus a Monday summary of how your firm used Off Manual.
 
 ## Access requests
 

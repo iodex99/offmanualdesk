@@ -6,6 +6,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { firms, invoices } from "@/db/schema";
 import { isUniqueViolation } from "../admin";
+import { emailReceipts } from "../admin-mail";
+import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
 import { BillingError, recordPayment, refreshFirmStatus, type BillingDeps } from "./run";
 
@@ -160,7 +162,11 @@ interface PaidEvent {
  * Only `payment_link.paid` records a payment; everything else is acknowledged. Razorpay
  * delivers at least once: the same payment id is recorded once (unique index).
  */
-export async function razorpayWebhook(deps: BillingDeps, secret: string | undefined, req: Request) {
+export async function razorpayWebhook(
+  deps: BillingDeps & { mailer?: Mailer | null },
+  secret: string | undefined,
+  req: Request,
+) {
   const raw = await req.text();
   if (raw.length > 256 * 1024) return json(413, { error: "too large" });
   if (!signatureOk(raw, req.headers.get("x-razorpay-signature"), secret))
@@ -211,5 +217,6 @@ export async function razorpayWebhook(deps: BillingDeps, secret: string | undefi
   }
   await billingNotices(deps); // a paid invoice ends its notices (ADR-052)
   await refreshFirmStatus(deps, inv.firmId); // paying restores the firm (BILLING §6)
+  await emailReceipts(deps); // receipt to the firm's admins (ADR-067)
   return json(200, { recorded: true });
 }

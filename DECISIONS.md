@@ -498,3 +498,10 @@ Template:
 - Context: DATA_MODEL listed `desk\settings.json` (hotkey, side, lock timeout ≤ firm max, language). People on the right-hand side of a dual monitor want the panel on the left; some want to lock sooner than the firm requires.
 - Decision: v1 settings are the dock side and an optional lock time. Rust owns the file (strict JSON, unknown fields or invalid values give defaults, atomic save); saving re-docks immediately. The idle lock uses the employee's time only when it is shorter than the firm's `lockTimeoutMax`, re-reading it on every check. The hotkey stays fixed and language isn't offered until there is a second language.
 - Consequences: A setting can never loosen a firm rule. The file lives in the employee's profile, so it follows them on roaming/FSLogix profiles.
+
+## ADR-067: Receipts by email for every payment, claimed once
+- Date: 2026-11-23
+- Status: Accepted
+- Context: BILLING §4 promises automatic receipts. Payments arrive from two places (superadmin manual entry, Razorpay webhook) and email can fail.
+- Decision: Each payment row gets `receipt_sent_at`. `emailReceipts` claims a payment (conditional update), emails the firm's active admins with the amount, date, method, invoice number, total, paid so far and balance, and releases the claim if no admin could be reached. It runs after both payment paths and daily, covering only payments from the last 30 days (so turning email on later doesn't send old receipts). Resend's idempotency key per payment and address makes a retry after a partial failure safe.
+- Consequences: Receipts are plain email, not a GST document (the invoice is). Amounts only; no client data.

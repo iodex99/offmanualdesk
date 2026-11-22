@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { firms, invoiceLines, invoices, ladderOverrides } from "@/db/schema";
-import { emailBillingNotices } from "../admin-mail";
+import { emailBillingNotices, emailReceipts } from "../admin-mail";
 import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
 import { renderInvoicePdf } from "./pdf";
@@ -78,18 +78,19 @@ export async function billingAction(
         await emailBillingNotices(deps, since); // and its email copy (ADR-053)
         return { number };
       }
-      case "payment":
-        return {
-          status: await recordPayment(deps, {
-            invoiceId: a.invoiceId,
-            amountPaise: BigInt(a.amountPaise),
-            paidAt: new Date(`${a.paidOn}T06:30:00Z`), // noon IST on the day paid
-            provider: "manual",
-            ...(a.method ? { method: a.method } : {}),
-            ...(a.reference ? { providerRef: a.reference } : {}),
-            recordedBy: p.userId,
-          }),
-        };
+      case "payment": {
+        const status = await recordPayment(deps, {
+          invoiceId: a.invoiceId,
+          amountPaise: BigInt(a.amountPaise),
+          paidAt: new Date(`${a.paidOn}T06:30:00Z`), // noon IST on the day paid
+          provider: "manual",
+          ...(a.method ? { method: a.method } : {}),
+          ...(a.reference ? { providerRef: a.reference } : {}),
+          recordedBy: p.userId,
+        });
+        await emailReceipts(deps); // receipt to the firm's admins (ADR-067)
+        return { status };
+      }
       case "refresh": {
         const ids = a.firmId
           ? [a.firmId]

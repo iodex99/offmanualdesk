@@ -130,7 +130,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; invoice list on the firm page; superadmin `/billing` page
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
 - [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); invoice PDF (`lib/billing/pdf.ts`, pdf-lib 1.17.1: both GSTINs, place of supply, SAC, CGST/SGST or IGST, total in words; drafts marked; route `GET .../invoices/[invoiceId]/pdf`, drafts staff-only)
-- [x] Razorpay payment links + webhook (ADR-065): link on issue (and daily retry), *Pay online* for firm admins, `payment_link.paid` recorded once per payment, notices end, firm status refreshed; [ ] UPI AutoPay / e-mandate (BILLING §4), [ ] live check with test keys
+- [x] Razorpay payment links + webhook (ADR-065): link on issue (and daily retry), *Pay online* for firm admins, `payment_link.paid` recorded once per payment, notices end, firm status refreshed; receipts emailed to the firm's admins for every payment (ADR-067); [ ] UPI AutoPay / e-mandate (BILLING §4), [ ] live check with test keys
 - [x] Notification engine + Desk banners (ADR-052): billing notices for firm admins (issued, due in 7 days, due today, overdue; once each; end when paid), staff/firm-admin notices from the console; email copies of billing notices to the firm's active admins (ADR-053)
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
 - [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; override UI on the superadmin `/billing` page (state, reason, until)
@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 03:30: Payment receipts (M9, ADR-067)
+- Changed: console `payments.receipt_sent_at` (migration 0012), `emailReceipts` in `lib/admin-mail.ts` (claim → send to active admins → release if none reached; 30-day window; amounts and dates only), called after a manual payment, the Razorpay webhook (route passes the mailer) and the daily cron (`receipts` in its JSON).
+- Tests: console (once per payment to active admins, balance then "Paid in full", ₹ and DD-MM-YYYY, released when every send fails and sent next run, nothing without a mailer, old payments skipped; webhook and cron unchanged otherwise); `pnpm run check` green. CI for settings green; `main` at 589341e.
 
 ### 2026-11-24 03:10: Desk settings (M4, ADR-066)
 - Changed: Rust `settings.rs` (side + optional lock minutes, deny unknown fields, invalid → defaults, atomic save), commands `settings_get`/`settings_set` (save docks the panel again at once), `dock::docked` takes the side; UI `settings.ts` (`effectiveLockMinutes`: own only when shorter than the firm's maximum; `lockChoices`), `SettingsTab.tsx`, idle lock reads the own time on every check.

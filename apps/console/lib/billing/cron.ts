@@ -4,7 +4,7 @@
 // drafts for the previous month. Issuing stays a superadmin action.
 import { timingSafeEqual } from "node:crypto";
 import { firms } from "@/db/schema";
-import { emailBillingNotices, weeklyDigests } from "../admin-mail";
+import { emailBillingNotices, emailReceipts, weeklyDigests } from "../admin-mail";
 import type { Mailer } from "../email";
 import { billingNotices } from "../notices";
 import { ensurePaymentLinks, type PaymentLinks } from "./razorpay";
@@ -46,6 +46,7 @@ export async function dailyBilling(
   const since = deps.now();
   const noticesCreated = await billingNotices(deps); // due soon / due today / overdue (ADR-052)
   const emailsSent = await emailBillingNotices(deps, since); // copies to firm admins (ADR-053)
+  const receipts = await emailReceipts(deps); // any receipt a failed send left (ADR-067)
   // Weekly partner digest on Mondays (IST), last week's counts (ADR-053).
   const digests = new Date(`${today}T00:00:00Z`).getUTCDay() === 1 ? await weeklyDigests(deps) : 0;
   const ids = await deps.db.select({ id: firms.id }).from(firms);
@@ -60,5 +61,6 @@ export async function dailyBilling(
     emailsSent,
     digests,
     paymentLinks,
+    receipts,
   });
 }

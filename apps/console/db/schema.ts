@@ -473,6 +473,8 @@ export const payments = pgTable(
     paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
     method: text("method"),
     recordedBy: uuid("recorded_by").references(() => consoleUsers.id),
+    /** Receipt emailed to the firm's admins (BILLING §4, ADR-067). */
+    receiptSentAt: timestamp("receipt_sent_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   // A provider's payment is recorded once, however often its webhook arrives (ADR-065).
