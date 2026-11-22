@@ -393,3 +393,10 @@ Template:
 - Context: Billing's `peak_active` seat mode and the usage line need per-employee activity and tokens; rule 10 allows counts, never text.
 - Decision: The guard counts a turn on `agent_end` and adds `usage.input`/`usage.output` from `llm_output` (cache tokens are not billed separately in v1). It flushes counts every 60 s and on stop through the guard-only pipe method `usage.add`; a failed flush keeps the counts. The Server Agent adds them to `usage_daily` per SID and IST day, and the sync loop uploads complete days (yesterday and earlier, up to a week of backlog) once. The console stores a day's totals per employee of the calling firm, replacing earlier totals for the same day so retries never double-count.
 - Consequences: Usage for today appears in the console tomorrow. Counts made while the Server Agent was down are kept by the guard until the next successful flush, but are lost if the gateway also stops first.
+
+## ADR-052: Notices are mirrored to each server and filtered by role on the server
+- Date: 2026-11-23
+- Status: Accepted
+- Context: BILLING §5 and UPDATES §4 need messages in Desk: billing reminders for firm admins, Off Manual announcements, the firm's own messages. Desk only talks to the Server Agent; the Server Agent didn't know who is a firm admin.
+- Decision: The console keeps notices (firm or all firms; audience everyone or firm admins; start/end; a unique dedupe key for generated ones). Billing notices are generated after issuing and by the daily cron, once per invoice and stage (issued, due in 7 days, due today, overdue) and end when the invoice is paid. Staff can post to one firm or all; a firm admin only to their own firm. The policy marks employees whose email matches a firm admin of that firm (`admin: true`). Each sync the Server Agent mirrors the active list (removing ended ones and their dismissals), and `notices.list` returns only what the caller may see and hasn't dismissed.
+- Consequences: Up to 15 minutes before a notice appears. Being a firm admin in Desk depends on using the same email in both places.

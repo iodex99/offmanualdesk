@@ -69,7 +69,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
 - [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; invite email on add (Resend, `lib/email.ts`; invites.sent_at; failure never undoes the add) + "Send invite again"; superadmin `/billing` page (make drafts, issue with confirm, record payments in rupees, override with reason and date, refresh statuses); [ ] WhatsApp invites (v2)
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
-- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044), support (`POST /api/agent/support`, ADR-050), usage (`POST /api/agent/usage`, ADR-051); [ ] notices
+- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044), support (`POST /api/agent/support`, ADR-050), usage (`POST /api/agent/usage`, ADR-051), notices (`GET /api/agent/notices`, ADR-052)
 - [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
 - [x] Fleet board v0 (`/fleet`: firm, server, health with 1 h staleness → red, last seen, version, seats)
 
@@ -86,7 +86,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
 - [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
 - [ ] Explorer right-click "Ask Off Manual"
-- [~] Notifications area: licence notice banner and paused screen from `session.hello` (ADR-042); [ ] updates, admin notices
+- [x] Notifications area: licence banner/paused screen (ADR-042), update notice (ADR-048), notices from Off Manual and the firm with Dismiss (ADR-052)
 
 ### M5 Guard plugin
 - [x] Packaging + SDK typing: `openclaw.plugin.json`, `dist/plugin.js`, `before_install` block (M1)
@@ -130,7 +130,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
 - [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); invoice PDF (`lib/billing/pdf.ts`, pdf-lib 1.17.1: both GSTINs, place of supply, SAC, CGST/SGST or IGST, total in words; drafts marked; route `GET .../invoices/[invoiceId]/pdf`, drafts staff-only)
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
-- [ ] Notification engine + Desk banners
+- [x] Notification engine + Desk banners (ADR-052): billing notices for firm admins (issued, due in 7 days, due today, overdue; once each; end when paid), staff/firm-admin notices from the console; email copies still to do
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
 - [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; [ ] override UI
 
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 17:50: Notices (ADR-052)
+- Changed: console `notices` table (migration 0006), `lib/notices.ts` (post: staff to one/all firms, firm admin to own firm; feed; billing notices by dedupe key; paid invoices end their notices), issuing and the daily cron create billing notices, policy marks employees whose email is a firm admin's (`admin`), `GET /api/agent/notices`, `POST /api/admin/notices`, firm page form; agent migration 0007 (`employees.is_admin`), store notices (mirror active list, per-SID dismissals), `notices.list`/`notices.ack`, Syncer mirrors notices, client drops malformed notices; Desk `Notices.tsx` banner.
+- Tests: console 120/120 (roles, windows, all-firm vs own, billing stages once with ₹ and DD-MM-YYYY, paid ends them, feed and admin flag over a signed request); Go (audience filtering, dismissals per person, mirror removes, admin flag from policy, malformed dropped); desk 52/52; golangci-lint both OSes 0.
+- Half-done / next: email copies of billing notices (Resend); weekly partner digest.
 
 ### 2026-11-23 17:10: Usage counts (ADR-051)
 - Changed: guard `usage.ts` (UsageMeter: turns from `agent_end`, input/output tokens from `llm_output` usage, verified in the 2026.11.6 hook types; flush every 60 s and on stop; failed sends kept), guard bridge allows `usage.add`; agent migration 0006 (`usage_daily`), `usage.add` (bounds, caller SID), Syncer uploads complete IST days once (`usage_sent_through`, a week of backlog), console client `SendUsage`; console `POST /api/agent/usage` (strict, complete days only, other firms' employees ignored, a day's totals replace on retry). Billing's seat activity (`peak_active`) and the usage line now have a real source.

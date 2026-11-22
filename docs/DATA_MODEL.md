@@ -39,6 +39,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 | `usage_daily` | firm_id, employee_id, date, input_tokens, output_tokens, turns, tasks_completed |
 | `seat_days` | firm_id, employee_id, date, enabled (bool), active (bool) |
 | `audit_summaries` | firm_id, date, category, count |
+| `notices` | firm_id (null = all firms), kind (`update`/`billing`/`admin`), audience (`all`/`admins`), title (≤ 80), body (≤ 500), starts_at, ends_at, dedupe_key (unique; generated billing notices), created_by (migration 0006, ADR-052) |
 | `support_tickets` | firm_id, server_id, employee_id (only if in the same firm), ref (OM-XXXXXX, unique), description (≤ 500, employee's words), bundle (jsonb: server versions, licence, policy ETag, pre-flight, log tail; desk versions), bundle_url (unused), status, notes (migration 0005, ADR-050) |
 
 ### Billing (see BILLING.md)
@@ -70,7 +71,7 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 | `telegram_links` | sid, telegram_user_id, linked_at; `telegram_link_codes` (code_hash, sid, expires_at, used_at) |
 | `audit` | ts, sid, category, action, target (may contain path, never leaves the server), result, correlation_id |
 | `usage` | date, sid, input_tokens, output_tokens, turns, tasks_completed |
-| `notices` | id, kind (`update`/`billing`/`admin`), audience, title, body, created_at, ack (per sid in `notice_acks`) |
+| `notices` | id, kind (`update`/`billing`/`admin`), audience (`all`/`admins`), title, body, created_at, ack (per sid in `notice_acks`); mirrors the console's active list each sync (ADR-052). `employees.is_admin` (migration 0007) decides who sees `admins` notices |
 | `usage_daily` | sid, date (IST), turns, input_tokens, output_tokens (migration 0006; from the guard's `usage.add`; uploaded once per complete day, ADR-051) |
 | `updates` | version, state (`available`/`downloading`/`staged`/`failed`/`active`), verified_at, error, severity (`normal`/`security`), deadline_at (migration 0004) |
 
