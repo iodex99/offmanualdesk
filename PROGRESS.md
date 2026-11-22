@@ -139,7 +139,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Setup (ADR-054): firm page shows each server's pre-flight problems (must fix / check, with the fix), bulk import "Name, email" per line (header/blank lines ignored, per-line reasons, invites sent), Desk "Build client list" task (client-directory skill); [ ] import from an AD group (needs the lab)
 - [x] Weekly partner digest (ADR-053): Mondays (IST) from the daily cron, last week's counts per firm (people using Off Manual, turns, servers healthy, invoices to pay) to the firm's active admins, once per firm and week (`digest_runs`)
 - [x] Report a problem → support queue (ADR-050): Desk tab with preview of exactly what is sent, `support.bundle`/`support.submit` (agent rebuilds the server part; pre-flight + log tail, bounded), `POST /api/agent/support` (strict schema, 20/server/day, ticket ref OM-XXXXXX), staff `/support` page
-- [ ] Fleet board v1
+- [x] Fleet board v1: firm (link) and firm status, health with 1 h staleness, last seen, agent/OpenClaw/Desk/staged versions, seats, problem reports in the last 7 days, count of unhealthy servers, links to firms/billing/reports
 
 ### M11 Pilot hardening
 - [ ] Security review against SECURITY.md checklist
@@ -160,6 +160,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 19:20: Fleet board v1 (M10)
+- Changed: `fleet()` adds firm id/status, OpenClaw/Desk/staged versions and 7-day problem report counts; `/fleet` page uses the shared session helper and links.
+- Tests: console fleet (firm status, reports counted only inside 7 days); `next build` ok.
 
 ### 2026-11-23 19:00: Firm setup: servers' pre-flight, bulk import, client list task (M10)
 - Changed: console `lib/setup.ts` (firmServers: firm-scoped, only warn/fail items; importEmployees: ≤ 200 lines, comma/semicolon/tab, header and blanks ignored, each line through addEmployee so validation, duplicates and invites behave the same), route `POST .../employees/import`, firm page Servers section for admins too, import form; Desk task "Build client list".
