@@ -129,3 +129,30 @@ export async function listInvoices(deps: BillingDeps, s: SessionState | null, fi
     })),
   };
 }
+
+/** Superadmin billing board: every firm's invoices, newest period first (money as strings). */
+export async function billingBoard(deps: BillingDeps, s: SessionState | null) {
+  requireConsole(s, ["superadmin"]);
+  const rows = await deps.db
+    .select({
+      id: invoices.id,
+      firm: firms.name,
+      firmId: invoices.firmId,
+      number: invoices.number,
+      periodStart: invoices.periodStart,
+      dueOn: invoices.dueOn,
+      status: invoices.status,
+      totalPaise: invoices.totalPaise,
+    })
+    .from(invoices)
+    .innerJoin(firms, eq(firms.id, invoices.firmId))
+    .orderBy(desc(invoices.periodStart), firms.name);
+  const firmRows = await deps.db
+    .select({ id: firms.id, name: firms.name, status: firms.status })
+    .from(firms)
+    .orderBy(firms.name);
+  return {
+    invoices: rows.map((r) => ({ ...r, totalPaise: r.totalPaise.toString() })),
+    firms: firmRows,
+  };
+}

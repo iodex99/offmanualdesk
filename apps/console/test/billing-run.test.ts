@@ -25,8 +25,9 @@ import {
   type BillingConfig,
 } from "@/lib/billing/run";
 import type { SessionState } from "@/lib/auth";
-import { billingAction, listInvoices } from "@/lib/billing/admin";
+import { billingAction, billingBoard, listInvoices } from "@/lib/billing/admin";
 import { dailyBilling, previousMonth } from "@/lib/billing/cron";
+import { rupeesToPaise } from "@/app/billing/forms";
 import type { DB } from "@/lib/db";
 import { uuidv7 } from "@/lib/ids";
 import { testDb } from "./helpers/db";
@@ -421,5 +422,32 @@ describe("daily billing cron", () => {
   it("previous month wraps the year", () => {
     expect(previousMonth("2027-01-01")).toEqual({ year: 2026, month: 12 });
     expect(previousMonth("2026-12-01")).toEqual({ year: 2026, month: 11 });
+  });
+});
+
+describe("billing board", () => {
+  it("superadmin only; lists invoices with firm names and string money", async () => {
+    await contract(1, "2026-10-01", null, [AMC]);
+    await generateDraft(deps(), cfg, firmId, 2026, 11);
+    const b = await billingBoard(deps(), superadmin);
+    expect(b.invoices).toHaveLength(1);
+    expect(b.invoices[0]).toMatchObject({
+      firm: "Mehta",
+      status: "draft",
+      totalPaise: "236000",
+      number: null,
+    });
+    expect(b.firms.map((f) => f.name)).toEqual(["Mehta"]);
+    await expect(billingBoard(deps(), staffOnly)).rejects.toMatchObject({ status: 403 });
+    await expect(billingBoard(deps(), adminOf(firmId))).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe("rupee input", () => {
+  it("converts rupees to paise strictly", () => {
+    expect(rupeesToPaise("2360")).toBe("236000");
+    expect(rupeesToPaise("2360.5")).toBe("236050");
+    expect(rupeesToPaise(" 0.05 ")).toBe("5");
+    for (const bad of ["", "0", "1.234", "-5", "1,000", "abc"]) expect(rupeesToPaise(bad), bad).toBeNull();
   });
 });
