@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Skill packs: the assistant can only use the tools of the packs the firm gave each employee (Telegram: core plus the packs the firm allows there). Pack contents ship inside the signed release.
 - Licence: when a firm is suspended or closed, or the server hasn't reached Off Manual for over 7 days, employees get one plain message in Desk and Telegram instead of answers; overdue firms keep working with a notice.
 - Desk: Telegram tab shows a QR code to link your phone's Telegram in one scan.
 - Desk: chat with your assistant (replies appear as they are written; Stop button) and a Review tab to approve, edit or reject what the assistant asked to do.

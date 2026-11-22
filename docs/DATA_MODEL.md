@@ -22,7 +22,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 ### Capabilities and policy
 | Table | Key columns |
 | --- | --- |
-| `skill_packs` | key (`core`, `tally-read`, `tally-post`, `email-send`, `portals`, `admin`), name, skills (jsonb list of skill IDs), actions (jsonb allowlist), review_required (jsonb) |
+| `skill_packs` | key (`core`, `tally-read`, `tally-post`, `email-send`, `portals`, `admin`), name, skills (jsonb list of skill IDs), actions (jsonb allowlist), review_required (jsonb). Catalogue for the console UI only: what a pack allows on the server comes from the signed `skills/packs.json` (ADR-043) |
 | `pack_grants` | firm_id, pack_key, ad_group (nullable), employee_id (nullable) |
 | `firm_policies` | firm_id, lock_timeout_max_min, day_end_hour_ist (replaces working_day_hours; ADR-033), telegram_mode (`off`/`text`/`files`), telegram_unlock_max_min, telegram_allowed_packs, step_up_actions, gateway_idle_stop_hours, retention_days, version (bumped on change; agent ETag) |
 

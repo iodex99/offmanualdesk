@@ -6,6 +6,8 @@ ClawHub is a parts bin. Nothing from it runs on a client server unless it has be
 
 ## 2. Registry policy
 
+- `skills/packs.json` (ADR-043): pack key → name and the tools that pack allows. It ships in the signed release next to `registry.lock.json`; the console only grants pack keys (by employee or `OM-*` AD group). The guard allows a tool only if one of the employee's packs lists it (Telegram: `core` plus the firm's `telegramAllowedPacks`). `verify-skills` fails on a bad packs.json or a skill naming an unknown pack.
+
 - `skills/vendored/<owner>__<slug>/`: exact copy of an upstream skill at a version, plus `PROVENANCE.md` (source URL, version, upstream hash, date, reviewer, review notes, changes made).
 - `skills/offmanual/<skill>/`: Off Manual's skills.
 - `skills/registry.lock.json`: every skill's ID, version, path, SHA-256 of every file, review status (`approved`/`rejected`), reviewer, date, packs it belongs to.

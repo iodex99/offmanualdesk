@@ -327,3 +327,11 @@ Template:
 - Options: A guard reads firm status itself / B Server Agent derives one licence result and serves it inside `lock.get` (one round trip, already cached ≤ 5 s by the guard) and to the Telegram router
 - Decision: B. Rules: never synced or no contact time → not activated (paused); `suspended`/`closed` → paused; unknown status or unparseable time → paused (fail closed); last contact older than 7 days → paused (offline); `overdue`/`restricted` → usable with a notice; `trial`/`active` → usable. The licence check runs before every lock rule, so a Telegram unlock window doesn't bypass it. The grace is a constant (7 days) until contracts carry `offline_grace_days` to the server.
 - Consequences: A new server is unusable until its first successful heartbeat (expected: enrolment does one). Firm admins are paused too in v1 (BILLING says Desk opens for admins only); needs admin identity on the server.
+
+## ADR-043: Pack → tool definitions ship in the signed release; the guard allowlists tools per employee
+- Date: 2026-11-23
+- Status: Accepted
+- Context: Packs decide what each employee's assistant can do (PRODUCT, SECURITY: "skill packs limit tools"). The console has a `skill_packs` table with an `actions` list, but a compromised or mistaken console could then widen what runs on a client server, and skills (which name their packs) already ship in the signed release.
+- Options: A pack definitions from the console policy / B `skills/packs.json` in the signed release, console grants only pack keys
+- Decision: B. The guard loads packs.json (path from Desk's plugin config) and, in `before_tool_call`, allows a tool only if a granted pack lists it; packs come from `policy.get` (cached 30 s). No pack file or no policy → every tool call refused (fail closed). Telegram turns get `core` plus the firm's `telegramAllowedPacks` intersected with the employee's packs. Tool names are normalised (lower case, `bash` → `exec`). `verify-skills` validates packs.json and that every skill's packs exist.
+- Consequences: Adding a tool to a pack needs a release (deliberate). Every tool the agent needs must be listed in some pack, or it is refused; internal OpenClaw tools that turn out to be needed get added after lab L-guard. The console's `skill_packs.actions` becomes display-only.

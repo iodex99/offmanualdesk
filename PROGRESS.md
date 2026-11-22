@@ -94,7 +94,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Packaging + SDK typing: `openclaw.plugin.json`, `dist/plugin.js`, `before_install` block (M1)
 - [x] Lock enforcement on every inbound turn (`before_agent_run` via `server-agent bridge`, 5 s cache, fail closed, Telegram window) 
 - [x] Licence (firm status) enforcement (ADR-042): Server Agent `Licence` from synced `firm_status` + last console contact (7-day offline grace), carried in `lock.get` (`servicePaused`, `pausedMessage`, `notice`); guard blocks every turn while paused; Telegram router replies with the plain message
-- [ ] Skill packs from policy (AD groups + console overrides)
+- [x] Skill packs → tool allowlist (ADR-043): `skills/packs.json` ships in the signed release; guard `before_tool_call` allows only tools of the employee's granted packs (policy.get, cached 30 s, fail closed), Telegram = core + firm-allowed packs; release tooling validates packs.json and skills' pack names; Desk passes `packsPath`. [ ] AD-group grants resolved on the server (needs lab: group names from the caller token), [ ] per-pack skill visibility in the gateway config
 - [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
 - [ ] Desk side: `chat.abort` + Request access button
 - [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; [ ] Desk Review tab (needs the Rust gateway client), step-up on approve, Tally/email actions
@@ -162,6 +162,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 07:45: Skill packs gate tools (M5)
+- Changed: `skills/packs.json` (core tools; other packs empty until their tools exist), guard `src/packs.ts` (parse/validate, allowedTools per channel, packBlockReason with `bash`→`exec` alias, PolicyCache), `plugin.ts` before_tool_call pack check before the delete check + `tool_blocked/not_in_pack` audit, manifest `packsPath`; `tools/release/lib.mjs` checks packs.json and unknown pack names; release workflow ships packs.json; Desk config passes `packsPath`. ADR-043.
+- Tests: guard 66/66 (bad files, shipped packs.json valid and never grants denied tools, union, Telegram intersection, fail closed, cache); release tools 18/18 (missing core, unknown pack, bad tool name, bad JSON); Rust config assertion (CI); actionlint clean; CI run 45025138445 green for the licence slice.
+- Half-done / next: AD-group pack grants on the server; skill visibility per pack; Desk banner for licence notice.
 
 ### 2026-11-23 07:15: Licence enforcement (M5/M9)
 - Changed: agent `licence.go` (Licence / PausedMessage: not activated, suspended/closed → paused, unknown status or bad timestamp → paused, offline > 7 days → paused, overdue/restricted → usable with notice), `lockStatus` gains servicePaused/pausedMessage/notice; Telegram `Hooks.Paused` checked before mode and relay; guard `lockGate` blocks with reason `licence` on both channels before any lock rule. ADR-042.
