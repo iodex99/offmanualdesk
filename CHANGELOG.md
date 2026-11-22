@@ -19,6 +19,8 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Lab validation scripts L1–L10 with a runbook for the Windows Server 2022 RDS lab.
 - Automated tests for the Claude Code memory hooks.
 - Server Agent TOTP verification (RFC 6238; one-step clock tolerance; each code usable once).
+- Server Agent local database (SQLite, embedded migrations) with employees, day grants, lock state, audit and stable port leases.
+- Server Agent JSON-RPC over the named pipe: caller identity from the Windows process token, strict parsing, plain error messages with correlation IDs, no request content in logs.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

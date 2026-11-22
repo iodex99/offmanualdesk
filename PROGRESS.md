@@ -19,7 +19,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] GitHub repo: `https://github.com/iodex99/offmanualdesk` (created 2026-11-22; `main` + `m0-scaffold` pushed). Note the name has no hyphen; docs that say `offmanual-desk` mean this repo.
 - [x] GitHub CLI installed (winget, 2026-11-22).
 - [ ] Approve the `gh` login: open https://github.com/login/device and enter the code Claude gave you (new code needed if it expired: ask Claude to restart `gh auth login --web`).
-- [ ] **Decide Proposed ADRs** (one line each is enough), DECISIONS.md: ADR-023 (Telegram via Server Agent, no channel plugin in v1), ADR-026 (no logged-off gateways in v1), ADR-027 (guard protects against the agent, not the employee), ADR-016 (release store: Cloudflare R2 recommended), ADR-019 (production on OpenClaw `extended-stable`). The others wait for lab results.
+- [x] Proposed product ADRs accepted on Dwahnil's "do everything" instruction (016, 019, 023, 025, 026, 027, 028); overturn any by saying so. Lab-dependent ADRs (020, 021, 022, 024) stay Proposed until L1–L3.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
@@ -46,18 +46,20 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [x] Assumptions that broke → Proposed ADRs (ADR-020…028; ADR-029 accepted)
 - [x] `lab/` scripts for L1–L10 + `lab/README.md` runbook (parse clean on PS 5.1; L3/L7/L8/L9/L10 smoke-tested on Windows 11)
 - [ ] Lab results recorded (needs Dwahnil) and ADRs updated
-- [ ] Proposed ADRs decided (needs Dwahnil for 016, 019-production, 023, 026, 027)
+- [x] Product ADRs decided (016, 019, 023, 025–028); lab-dependent ones wait for results
 
 ### M2 Server Agent core
 - [ ] Windows service install/uninstall/start/stop, structured logs
-- [ ] SQLite local store + migrations (DATA_MODEL.md §2)
-- [ ] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL)
+- [x] SQLite local store + migrations (DATA_MODEL.md §2; `internal/store`, ADR-032)
+- [x] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL; `internal/rpc`, `internal/pipe`; DACL verified on a real pipe)
+- [ ] Method handlers wired to store/auth (session.hello, lock.*, auth.*, gateway.*, audit.append, policy.get)
 - [ ] Enrollment with console (keypair, signed requests), heartbeat
 - [ ] Policy fetch → `policy.json` (read-only to users)
 - [x] TOTP verification (RFC 6238, ±1 step, replay protection) in `internal/auth` (ADR-030)
 - [x] PIN rules + argon2id hashing/verification, lockout rules (3 PINs → daily code; 5 codes → 15 min + admin alert) in `internal/auth` (ADR-031)
 - [ ] Persist lock state / attempts in agent.db (needs the store)
-- [ ] Port + token leases for gateways (ADR-020)
+- [x] Port lease storage: stable per employee, lowest free port, expiry (`store/leases.go`)
+- [ ] Token generation + gateway.lease handler (ADR-020 listener check is Desk's job)
 - [ ] Audit log append + summary upload
 - [ ] Pre-flight check command
 
@@ -144,6 +146,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 18:45: M2 slice 3: store, JSON-RPC, named pipe
+- Changed: `internal/store` (SQLite via modernc.org/sqlite, embedded migration 0001, employees/day grants/lock state/audit summary/leases), `internal/rpc` (strict NDJSON JSON-RPC, caller from transport, plain errors + correlation IDs, no params in logs, 64 KiB cap, panic recovery), `internal/pipe` (go-winio listener with ADR-029 DACL, caller SID/session/PID from the client process token, ServerSID for clients, Dial); accepted product ADRs on Dwahnil's "do everything"; ADR-032.
+- Tests: `go test` all Go → pass (store 84.6%, rpc 87.6%, pipe 81.0%, auth 94.9%); real Windows pipe tests on this box: caller identity correct over 3 connections, second listener refused, DACL = `D:P(A;;FA;;;SY)(A;;FA;;;<owner>)(A;;0x12008b;;;AU)`; golangci-lint (windows + GOOS=linux) → 0 issues.
+- Half-done / next: handlers (agent package) + DPAPI wrapper + service wrapper + `run` command.
 
 ### 2026-11-22 18:00: CI fixes + M2 slice 2: PIN and lockout
 - Changed: first CI run on GitHub: Desk Rust (fmt, clippy -D warnings, tests) passed first time on windows-latest; fixed 4 shellcheck findings in release.yml (only visible on the runner) and turned off gitleaks' SARIF artifact upload (account artifact quota full; scan itself found no leaks). M2: `internal/auth/pin.go` (PIN rules, argon2id PHC hashes, bounded decode, rehash flag), `lockout.go` (F3 rules), ADR-031; first Go dependency `golang.org/x/crypto` v0.59.0.

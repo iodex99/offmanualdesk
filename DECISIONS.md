@@ -115,7 +115,7 @@ Template:
 
 ## ADR-016: Release store: GitHub Releases now, Cloudflare R2 (or S3) with console-issued URLs before the pilot
 - Date: 2026-11-22
-- Status: Proposed (needs Dwahnil's choice of storage account)
+- Status: Accepted: option B (R2, private, console-issued URLs) (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: UPDATES.md names "R2/S3" but no account exists yet. The repo is private, so GitHub Release assets need a GitHub token to download, which must never sit on a firm's server.
 - Options: A GitHub Releases only (agents would need a GitHub token: rejected) / B R2 bucket, private, console hands each server a short-lived presigned URL after verifying its signed request / C public R2 bucket (payload is signed anyway; but exposes build contents)
 - Decision: Release workflow always attaches artifacts to a GitHub pre-release (internal record) and uploads to R2/S3 when `RELEASE_STORE_*` secrets exist. Recommend B for servers (M8).
@@ -138,7 +138,7 @@ Template:
 
 ## ADR-019: Pin OpenClaw 2026.11.6 for development; production channel decided before the pilot
 - Date: 2026-11-22
-- Status: Accepted for M1–M7 development; production channel part Proposed
+- Status: Accepted, including option B for production (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: M1 research (docs/OPENCLAW_NOTES.md §1). Latest stable is 2026.11.6 (tag `v2026.11.6`, commit `06afb10d`, 2026-11-19, npm integrity `sha512-4MGjAMv8…`). Upstream also has `extended-stable` (2026.10.33, "our current equivalent to LTS", security fixes only). Upstream ships several stables a week.
 - Options: A track `latest` stable, re-vet each bump / B track `extended-stable` for firms, `latest` in ring 0 only / C pin forever
 - Decision: Develop and run the M1 lab on 2026.11.6 (`release.config.json`, `release/openclaw/package-lock.json`). Proposed for production (decide before M11): B, firms on `extended-stable`, each bump re-verified in OPENCLAW_NOTES.md and shipped through ring 0 like any release. Runtime Node: 24.22.3 LTS (`engines` `>=24.16.0 <25 || >=26.1.0`; 24.22.1+ strongly recommended). Payload install: `npm ci --omit=dev --ignore-scripts` from the Windows-generated lockfile (it includes the `@openclaw/fs-safe-win32-x64-msvc` prebuild, so OpenClaw's postinstall repair is not needed), then a `--version` smoke test with the bundled Node.
@@ -174,7 +174,7 @@ Template:
 
 ## ADR-023: Telegram v1 via the Server Agent as a gateway client, not a channel plugin
 - Date: 2026-11-22
-- Status: Proposed (refines ADR-005; needs Dwahnil's OK because it drops the channel-relay plugin from v1)
+- Status: Accepted: option B (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: A load-path channel plugin can replace the built-in Telegram channel (`plugins.deny: ["telegram"]`), but the channel SDK is large and marked experimental (inbound dispatch via `channelRuntime.inbound.*`; template `extensions/qa-channel`, 2.3k lines) (OPENCLAW_NOTES.md §6).
 - Options: A own channel plugin (`channel-relay`, original plan) / B the Server Agent, which already leases the gateway's port and token, connects as a gateway client: `chat.send` on a dedicated Telegram session key, reads the `chat` final event, sends the text to Telegram; the guard recognises Telegram turns by session key and applies Telegram policy / C built-in Telegram channel with one bot per employee
 - Decision (recommended): B for v1. Keep `packages/openclaw-plugins/channel-relay` as a placeholder; revisit A if native inline buttons or approvals inside OpenClaw are needed.
@@ -191,7 +191,7 @@ Template:
 
 ## ADR-025: Update = back up state, doctor, switch; rollback = restore the backup
 - Date: 2026-11-22
-- Status: Proposed (amends ADR-010 and UPDATES.md §4–5)
+- Status: Accepted: option A (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: Migrations run via `openclaw doctor --fix --yes --non-interactive` with the gateway stopped; with `OPENCLAW_CONFIG_READONLY=1` config repairs are only printed as a patch; downgrading after a migration is unsupported (OPENCLAW_NOTES.md §8).
 - Options: A before Doctor, snapshot the user's `openclaw-state` (or `openclaw backup create --verify`) into `backups\`; rollback restores that snapshot with the old version / B forward-fix only
 - Decision (recommended): A. Our config generator applies Doctor's printed config patch itself.
@@ -199,7 +199,7 @@ Template:
 
 ## ADR-026: No file-server work while the employee is logged off in v1
 - Date: 2026-11-22
-- Status: Proposed (depends on L5/L6; needs Dwahnil's product call)
+- Status: Accepted: option C for v1 (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: OpenClaw's own Scheduled Task uses S4U, which "does not provide Windows network credentials": a logged-off gateway can't read `\\fileserver\Clients` even with correct NTFS rights (OPENCLAW_NOTES.md §2). F4.6 and F7.3 assumed it could.
 - Options: A Password-logon task (store each employee's Windows password: DPAPI/LSA burden, breaks on password change) / B logged-off Telegram answers only from local, non-file-server data and says "Log in to Desk for client files" / C no logged-off gateways in v1 (Telegram replies "Open Desk to use Off Manual")
 - Decision (recommended): C for v1, B as the first extension; A only with explicit firm consent.
@@ -208,7 +208,7 @@ Template:
 
 ## ADR-027: The guard protects against the agent, not against the employee
 - Date: 2026-11-22
-- Status: Proposed (touches ADR-011; needs Dwahnil's OK)
+- Status: Accepted: A + B now, C later (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: The gateway runs as the employee, so the employee can edit their own config, start their own OpenClaw, or read the LLM key from the gateway's environment.
 - Options: A accept and document / B config in a ProgramData path read-only to the user + `OPENCLAW_CONFIG_READONLY=1` + Server Agent probes the gateway's plugin inventory over the leased connection / C LLM calls proxied through the Server Agent so the provider key never sits in a user process
 - Decision (recommended): A + B now; C considered for M9/M11 (it also enables Off Manual's metered-key mode from ADR-011 without exposing the key).
@@ -216,7 +216,7 @@ Template:
 
 ## ADR-028: The guard owns the review queue; Lobster not used for it
 - Date: 2026-11-22
-- Status: Proposed
+- Status: Accepted (Dwahnil, 2026-11-22: "do everything": recommended option accepted; revisit any time)
 - Context: With Lobster the agent itself can resume an approval with the token, pending items can't be listed, and there is no human-only gate; plugin approvals (`requireApproval`) are synchronous and capped at 10 minutes; `before_tool_call` can't return a synthetic success (OPENCLAW_NOTES.md §5, §9).
 - Decision (recommended): listed actions are blocked in `before_tool_call` with `blockReason` "Queued for review #<id>"; the guard persists the proposal (`review.db`); Desk shows it; on approval the guard (not the agent) executes it. `requireApproval` only for immediate yes/no prompts.
 - Consequences: More guard code in M5; no dependency on `@openclaw/lobster`. SKILLS.md §3 drops Lobster from the starter pack.
