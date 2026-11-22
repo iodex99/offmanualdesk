@@ -75,4 +75,34 @@ describe("Assistant keeper", () => {
     expect(await screen.findByText("Request access")).toBeTruthy();
     expect(screen.getByText(MEHTA)).toBeTruthy();
   });
+  it('puts an Explorer "Ask Off Manual" path in the chat box, now and on later signals (ADR-059)', async () => {
+    let queue: { kind: "ask"; path: string }[] = [{ kind: "ask", path: MEHTA }];
+    let signal: () => void = () => undefined;
+    const inbox = {
+      take: vi.fn(async () => {
+        const q = queue;
+        queue = [];
+        return q;
+      }),
+      onSignal: vi.fn(async (cb: () => void) => {
+        signal = cb;
+        return () => undefined;
+      }),
+    };
+    render(
+      <Assistant
+        start={() => Promise.resolve({ running: true, port: 18800 })}
+        api={fakeGateway().api}
+        agent={vi.fn(async () => ({}))}
+        inbox={inbox}
+      />,
+    );
+    const box = (await screen.findByLabelText("Message")) as HTMLTextAreaElement;
+    await vi.waitFor(() => expect(box.value).toBe(`About ${MEHTA}: `));
+    fireEvent.click(screen.getByText("Review"));
+    queue = [{ kind: "ask", path: String.raw`\\fs01\Clients\Shah` }];
+    await act(async () => signal());
+    const box2 = (await screen.findByLabelText("Message")) as HTMLTextAreaElement;
+    await vi.waitFor(() => expect(box2.value).toBe(String.raw`About \\fs01\Clients\Shah: `));
+  });
 });

@@ -74,7 +74,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Fleet board v0 (`/fleet`: firm, server, health with 1 h staleness → red, last seen, version, seats)
 
 ### M4 Desk core
-- [ ] Tauri shell, autostart at logon, single instance per session
+- [x] Tauri shell; single instance per session (ADR-059: `Local\OffManualDesk` mutex, second launch forwards through the per-user inbox + wake event and exits); [ ] autostart at logon (MSI / runbook step), [ ] L8 on the RDS host
 - [x] Pipe client in Rust (`src-tauri/src/agent_client.rs`: CreateFileW with 0x12008B, SQOS anonymous, server must be LocalSystem, NDJSON, Desk method allowlist) + `agent_call` command
 - [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`); recovery codes shown once after enrolment and "Lost your phone?" → `auth.recover` → re-enrol (ADR-046)
 - [x] Sign-in + SID binding: Desk signup screen (console URL + QR from `auth.bindStart`, code → `auth.bindComplete` with the OS-derived SID; 10 tries/hour)
@@ -85,7 +85,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
 - [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
-- [ ] Explorer right-click "Ask Off Manual"
+- [x] Explorer right-click "Ask Off Manual": `--ask <path>` handled (forwarded to the running Desk, path put in the chat box, ADR-059); [ ] verb registered by the MSI (manual `reg add` in the install runbook)
 - [x] Notifications area: licence banner/paused screen (ADR-042), update notice (ADR-048), notices from Off Manual and the firm with Dismiss (ADR-052)
 
 ### M5 Guard plugin
@@ -161,6 +161,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 23:10: One Desk per session + Explorer "Ask Off Manual" (M4, ADR-059)
+- Changed: Rust `instance.rs` (mutex `Local\OffManualDesk`, inbox in `%LOCALAPPDATA%\OffManual\desk\inbox` with temp + rename, auto-reset wake event, drain with size/count/path checks; fourth audited unsafe module; CreateMutexW/CreateEventW/OpenEventW/SetEvent/WaitForSingleObject verified in windows-sys 0.61.2; Tauri `get_webview_window`/`unminimize`/`show`/`set_focus`/`try_state`/`setup` verified in tauri 2.12.7), `main.rs` (second launch forwards and exits; first queues asks, `inbox_take`, `om-inbox` signal); UI `inbox.ts`, Chat `prefill`, Assistant takes asks now and on each signal. ARCHITECTURE F12; runbook `reg add` for the verb; employee quick start.
+- Tests: desk 65/65 (newest ask, prompt, Assistant end to end incl. a later signal while on another tab); Rust (command line, path rules incl. device paths and length, post + drain with junk/oversize/relative files, second claim refused and released, a second launch wakes the first via the real event) run in CI; cargo fmt. CI for Request access + digest green; `main` at a955653.
+- Half-done / next: MSI registers the verb + autostart; global hotkey (needs the Tauri global-shortcut plugin, L8).
 
 ### 2026-11-23 22:40: Request access (M5, ADR-058)
 - Changed: agent migration 0009 (`access_requests`), store (RecentDenials from the guard's local audit rows, CreateAccessRequest copies the path from the caller's own row, ≤ 20 open, AccessRequests, Resolve, IsAdmin), pipe methods `access.denials|request|list|resolve` (shared IPC schema, Desk allowlist), `session.hello` carries `admin`; Desk `AccessRequests.tsx` (DenialCards after each reply, Access tab), Chat `onRunEnd`.

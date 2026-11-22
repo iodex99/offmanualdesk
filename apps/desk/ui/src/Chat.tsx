@@ -18,10 +18,13 @@ export interface QueuedMessage {
 export function Chat({
   api,
   queued,
+  prefill,
   onRunEnd,
 }: {
   api: GatewayApi;
   queued?: QueuedMessage | null;
+  /** Text put in the message box for the employee to finish (Explorer "Ask Off Manual"). */
+  prefill?: QueuedMessage | null;
   /** Called when a reply ends, with the time (ms) the message was sent. */
   onRunEnd?: (startedAt: number) => void;
 }) {
@@ -107,6 +110,14 @@ export function Chat({
     }
   };
 
+  const box = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (prefill) {
+      setDraft(prefill.text);
+      box.current?.focus();
+    }
+  }, [prefill]);
+
   // A task button's request (Tasks tab) is sent once, as if typed.
   const sentQueued = useRef<number | null>(null);
   useEffect(() => {
@@ -137,6 +148,7 @@ export function Chat({
         }}
       >
         <textarea
+          ref={box}
           aria-label="Message"
           value={draft}
           rows={3}

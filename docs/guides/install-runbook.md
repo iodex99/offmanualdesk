@@ -27,6 +27,14 @@ step given instead.
    `OffManualAgent` service.
 6. **Desk autostart** **(MSI to build)**. Manually: add `C:\Program Files\OffManual\current\desk\offmanual-desk.exe`
    to the All Users Startup folder.
+7. **Explorer "Ask Off Manual"** **(MSI to build)**. Manually, in an elevated command prompt (all users):
+   ```
+   reg add "HKLM\Software\Classes\*\shell\OffManualDesk" /ve /d "Ask Off Manual" /f
+   reg add "HKLM\Software\Classes\*\shell\OffManualDesk\command" /ve /d "\"C:\Program Files\OffManual\current\desk\offmanual-desk.exe\" --ask \"%1\"" /f
+   reg add "HKLM\Software\Classes\Directory\shell\OffManualDesk" /ve /d "Ask Off Manual" /f
+   reg add "HKLM\Software\Classes\Directory\shell\OffManualDesk\command" /ve /d "\"C:\Program Files\OffManual\current\desk\offmanual-desk.exe\" --ask \"%1\"" /f
+   ```
+   Right-clicking a file or folder then opens Desk (or brings the running one forward) with the path in the chat box.
 
 ## In the console, after enrolment
 

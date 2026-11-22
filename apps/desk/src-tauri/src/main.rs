@@ -10,10 +10,11 @@ mod gateway_client;
 mod gateway_manager;
 mod idle;
 mod info;
+mod instance;
 mod versions;
 
-use std::sync::Arc;
-use tauri::Emitter;
+use std::sync::{Arc, Mutex};
+use tauri::{Emitter, Manager};
 
 /// Seconds since the last keyboard/mouse input in this Windows session (idle lock, F3).
 #[tauri::command]
@@ -203,7 +204,61 @@ async fn update_apply(
     .unwrap_or_else(|_| Err(crashed()))
 }
 
+/// "Ask Off Manual" requests from Explorer waiting for the UI (ADR-059).
+#[derive(Default)]
+struct InboxState(Mutex<Vec<instance::Request>>);
+
+/// The UI takes waiting requests on start and after each `om-inbox` signal.
+#[tauri::command]
+fn inbox_take(state: tauri::State<'_, Arc<InboxState>>) -> Vec<instance::Request> {
+    state
+        .0
+        .lock()
+        .map(|mut v| std::mem::take(&mut *v))
+        .unwrap_or_default()
+}
+
+/// A later launch in this session: bring the window forward and queue "ask" requests.
+fn deliver(app: &tauri::AppHandle, reqs: Vec<instance::Request>) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    let asks: Vec<_> = reqs
+        .into_iter()
+        .filter(|r| matches!(r, instance::Request::Ask { .. }))
+        .collect();
+    if asks.is_empty() {
+        return;
+    }
+    if let Some(st) = app.try_state::<Arc<InboxState>>() {
+        if let Ok(mut v) = st.0.lock() {
+            v.extend(asks);
+        }
+    }
+    let _ = app.emit(instance::INBOX_SIGNAL, ());
+}
+
 fn main() {
+    // One Desk per Windows session (ADR-059): a second launch hands its request over and exits.
+    let request = instance::request_from_args(std::env::args().skip(1));
+    let inbox =
+        std::env::var_os("LOCALAPPDATA").map(|d| instance::inbox_dir(std::path::Path::new(&d)));
+    let _instance = match instance::claim() {
+        instance::Claim::Second => {
+            if let Some(dir) = &inbox {
+                let _ = instance::forward(dir, &request);
+            }
+            return;
+        }
+        instance::Claim::First(h) => Some(h),
+        instance::Claim::Unknown => None,
+    };
+    let first = InboxState::default();
+    if let (Ok(mut v), instance::Request::Ask { .. }) = (first.0.lock(), &request) {
+        v.push(request.clone());
+    }
     // Every gateway Desk starts dies with Desk (OPENCLAW_NOTES §2: the gateway doesn't follow its parent).
     if !gateway::job::contain_self() {
         eprintln!("offmanual-desk: could not create the process job; gateways are stopped on exit instead");
@@ -211,6 +266,14 @@ fn main() {
     let result = tauri::Builder::default()
         .manage(Arc::new(gateway_manager::GatewayState::default()))
         .manage(Arc::new(chat::ChatState::default()))
+        .manage(Arc::new(first))
+        .setup(move |app| {
+            let handle = app.handle().clone();
+            if let Some(dir) = inbox {
+                instance::listen(dir, move |reqs| deliver(&handle, reqs));
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             app_info,
             idle_seconds,
@@ -223,7 +286,8 @@ fn main() {
             review_list,
             review_decide,
             update_status,
-            update_apply
+            update_apply,
+            inbox_take
         ])
         .run(tauri::generate_context!());
     if let Err(err) = result {

@@ -5,6 +5,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { AccessRequests, DenialCards } from "./AccessRequests";
 import { callAgent, type AgentCall } from "./agent";
 import { Chat, type QueuedMessage } from "./Chat";
+import { askPrompt, latestAsk, tauriInbox, type InboxApi } from "./inbox";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
 import { Notices } from "./Notices";
 import { ReportProblem } from "./ReportProblem";
@@ -48,6 +49,7 @@ export function Assistant({
   agent = callAgent,
   updates,
   control,
+  inbox = tauriInbox,
 }: {
   start?: StartGateway;
   api?: GatewayApi;
@@ -55,6 +57,8 @@ export function Assistant({
   updates?: UpdateApi;
   /** stop/status for the keeper; start comes from `start`. */
   control?: Omit<GatewayControl, "start">;
+  /** Explorer "Ask Off Manual" requests handed over by a second launch (ADR-059). */
+  inbox?: InboxApi;
 }) {
   const [state, setState] = useState<State>({ kind: "starting" });
   const [keeperState, setKeeperState] = useState<KeeperState>("running");
@@ -74,6 +78,7 @@ export function Assistant({
   const [tab, setTab] = useState<"chat" | "tasks" | "review" | "access" | "telegram" | "help">("chat");
   // After each reply, look for folders the assistant was refused (Request access, ADR-058).
   const [denialsSince, setDenialsSince] = useState<number | null>(null);
+  const [prefill, setPrefill] = useState<QueuedMessage | null>(null);
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -106,6 +111,34 @@ export function Assistant({
     const id = window.setInterval(() => void keeper.tick(), KEEPER_TICK_MS);
     return () => window.clearInterval(id);
   }, [ready, keeper, agent]);
+
+  useEffect(() => {
+    if (!ready) return;
+    let live = true;
+    let off: (() => void) | undefined;
+    const take = () =>
+      inbox
+        .take()
+        .then((reqs) => {
+          const path = latestAsk(reqs);
+          if (live && path) {
+            setTab("chat");
+            setPrefill((p) => ({ id: (p?.id ?? 0) + 1, text: askPrompt(path) }));
+          }
+        })
+        .catch(() => undefined);
+    void take();
+    void inbox
+      .onSignal(() => void take())
+      .then((u) => {
+        if (live) off = u;
+        else u();
+      });
+    return () => {
+      live = false;
+      off?.();
+    };
+  }, [ready, inbox]);
 
   switch (state.kind) {
     case "starting":
@@ -147,7 +180,7 @@ export function Assistant({
           {tab === "chat" && denialsSince !== null && (
             <DenialCards key={denialsSince} agent={agent} since={denialsSince} />
           )}
-          {tab === "chat" && <Chat api={kept} queued={queued} onRunEnd={setDenialsSince} />}
+          {tab === "chat" && <Chat api={kept} queued={queued} prefill={prefill} onRunEnd={setDenialsSince} />}
           {tab === "tasks" && (
             <TaskButtons
               onRun={(text) => {
