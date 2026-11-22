@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Invite emails: adding an employee emails them how to start (when email is configured), with a "Send invite again" button.
 - Console pages for firms: employees (add, switch off), skill packs, firm settings, server enrolment codes and invoices.
 - Updates: Desk shows "Off Manual <version> is ready. Restart to update." Each person switches when it suits them; if the new version fails, Desk goes back to the previous one with their data restored. Security updates install themselves after their deadline.
 - Firms can require today's authenticator code before anyone approves an item in the Review tab.

@@ -67,7 +67,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M3 Console core
 - [x] Auth for superadmin / staff / firm admin with mandatory TOTP (OIDC Google/Microsoft via openid-client, server-side sessions, encrypted TOTP secrets, role + firm scoping; ADR-037). Live sign-in needs Dwahnil's OAuth apps
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
-- [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; [ ] invite delivery (Resend email; WhatsApp v2), billing actions UI for superadmin
+- [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; invite email on add (Resend, `lib/email.ts`; invites.sent_at; failure never undoes the add) + "Send invite again"; [ ] WhatsApp invites (v2), billing actions UI for superadmin
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
 - [x] Agent API: bind (`POST /api/agent/bind`, ADR-044); [ ] usage, support bundle, notices
 - [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 13:10: Invite emails (M3)
+- Changed: `lib/email.ts` (Mailer interface, Resend sender verified against resend.com docs: POST /emails, Bearer key, from/to/subject/text, Idempotency-Key; status-only errors; `mailerFromEnv` off until `RESEND_API_KEY` + `OM_EMAIL_FROM`; invite text with the `/bind` link, names only), `addEmployee` sends and records `sent_at` and returns `inviteSent`, `resendInvite` + route `POST .../employees/[employeeId]/invite` (firm-scoped, only for people not yet signed in), UI message + button.
+- Tests: console 105/105 (request shape, error status, env gating, invite text; add sends once with an idempotency key, failure keeps the employee, no mailer → not sent, resend after a failure, cross-firm refused, already signed in refused); `next build` lists the route.
+- Half-done / next: superadmin billing UI; WhatsApp invites (v2).
 
 ### 2026-11-23 12:40: Console admin pages (M3)
 - Changed: `lib/admin.ts` `firmOverview` (firm, policy, grants, pack catalogue; firm-scoped), pages `app/firms/page.tsx`, `app/firms/[firmId]/page.tsx`, client forms `app/firms/forms.tsx` (JSON to the existing admin APIs, plain messages, confirm before switching someone off), `app/firms/session.ts` (sign-in redirect, 403 page), home page redirect by role. Also fixed CI E0308 in the restart-to-update slice (`.into()` for StartFailure); CI run 45031941156 green.

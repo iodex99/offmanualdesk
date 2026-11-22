@@ -17,7 +17,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 | `enrolment_codes` | firm_id, server_name, code_hash (sha256 of the upper-cased code; unique), expires_at, used_at, server_id |
 | `agent_nonces` | (server_id, nonce) PK, expires_at: replay protection for signed agent requests (ADR-035) |
 | `employees` | firm_id, name, email, windows_sid, windows_username, role_label, oauth_provider, oauth_subject, bound_at, totp_secret_enc, totp_enrolled_at, telegram_linked (bool only), status (`invited`/`active`/`disabled`), enabled_from, disabled_at |
-| `invites` | employee_id, channel (`email`/`whatsapp`), sent_at, accepted_at (set when the employee binds) |
+| `invites` | employee_id, channel (`email`/`whatsapp`), sent_at (set when Resend accepted the invite email), accepted_at (set when the employee binds) |
 | `bind_codes` | employee_id, code_hash (sha256 of `bind:` + normalised code; unique), oauth_provider, oauth_subject, expires_at (10 min), used_at. One live code per employee; redeemed once by a Server Agent of the employee's firm (migration 0002, ADR-044) |
 
 ### Capabilities and policy
