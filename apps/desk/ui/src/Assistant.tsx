@@ -1,6 +1,6 @@
 // Starts the employee's assistant (gateway) after unlock and shows its status
 // (ARCHITECTURE F4). The token never reaches the UI; Rust keeps it.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { callAgent, type AgentCall } from "./agent";
 import { Chat } from "./Chat";
@@ -8,6 +8,13 @@ import { tauriGateway, type GatewayApi } from "./gatewayApi";
 import { Review } from "./Review";
 import { TelegramLink } from "./TelegramLink";
 import { UpdateNotice, type UpdateApi } from "./UpdateNotice";
+import {
+  DEFAULT_IDLE_STOP_HOURS,
+  GatewayKeeper,
+  keptGateway,
+  type GatewayControl,
+  type KeeperState,
+} from "./keeper";
 
 export interface GatewayStatus {
   running: boolean;
@@ -21,6 +28,14 @@ export const startGateway: StartGateway = async () => {
   return invoke<GatewayStatus>("gateway_start");
 };
 
+const stopGateway = async () => {
+  if (isTauri()) await invoke("gateway_stop");
+};
+const gatewayStatus = async (): Promise<GatewayStatus> =>
+  isTauri() ? invoke<GatewayStatus>("gateway_status") : { running: true, port: null };
+
+export const KEEPER_TICK_MS = 30_000;
+
 type State = { kind: "starting" } | { kind: "ready" } | { kind: "failed"; message: string };
 
 export function Assistant({
@@ -28,13 +43,29 @@ export function Assistant({
   api = tauriGateway,
   agent = callAgent,
   updates,
+  control,
 }: {
   start?: StartGateway;
   api?: GatewayApi;
   agent?: AgentCall;
   updates?: UpdateApi;
+  /** stop/status for the keeper; start comes from `start`. */
+  control?: Omit<GatewayControl, "start">;
 }) {
   const [state, setState] = useState<State>({ kind: "starting" });
+  const [keeperState, setKeeperState] = useState<KeeperState>("running");
+  // Idle stop, start-on-use and crash restart (F4 step 5).
+  const keeper = useMemo(
+    () =>
+      new GatewayKeeper(
+        { start, stop: control?.stop ?? stopGateway, status: control?.status ?? gatewayStatus },
+        DEFAULT_IDLE_STOP_HOURS * 3_600_000,
+        Date.now,
+        setKeeperState,
+      ),
+    [start, control],
+  );
+  const kept = useMemo(() => keptGateway(api, keeper), [api, keeper]);
   const [tab, setTab] = useState<"chat" | "review" | "telegram">("chat");
 
   const run = useCallback(async () => {
@@ -57,13 +88,33 @@ export function Assistant({
     void run();
   }, [run]);
 
+  const ready = state.kind === "ready";
+  useEffect(() => {
+    if (!ready) return;
+    agent("policy.get")
+      .then((p) =>
+        keeper.setIdleStopHours(Number((p as { gatewayIdleStopHours?: unknown }).gatewayIdleStopHours)),
+      )
+      .catch(() => undefined); // keep the default
+    const id = window.setInterval(() => void keeper.tick(), KEEPER_TICK_MS);
+    return () => window.clearInterval(id);
+  }, [ready, keeper, agent]);
+
   switch (state.kind) {
     case "starting":
       return <p className="hint">Starting your assistant… this takes a few seconds.</p>;
     case "ready":
       return (
         <div className="assistant">
-          <p className="hint">Your assistant is ready.</p>
+          <p className="hint">
+            {keeperState === "resting"
+              ? "Your assistant is resting to save memory. It starts again when you send a message."
+              : keeperState === "starting"
+                ? "Starting your assistant…"
+                : keeperState === "crashed"
+                  ? "Your assistant stopped. It starts again when you send a message."
+                  : "Your assistant is ready."}
+          </p>
           <UpdateNotice {...(updates ? { api: updates } : {})} />
           <nav className="tabs" role="tablist">
             <button role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>
@@ -76,8 +127,8 @@ export function Assistant({
               Telegram
             </button>
           </nav>
-          {tab === "chat" && <Chat api={api} />}
-          {tab === "review" && <Review api={api} agent={agent} />}
+          {tab === "chat" && <Chat api={kept} />}
+          {tab === "review" && <Review api={kept} agent={agent} />}
           {tab === "telegram" && <TelegramLink agent={agent} />}
         </div>
       );
