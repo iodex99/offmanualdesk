@@ -132,7 +132,10 @@ func Dial(ctx context.Context, o Options) (*Client, error) {
 	if o.Platform == "" {
 		o.Platform = "windows"
 	}
-	ws, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://127.0.0.1:%d", o.Port), nil)
+	ws, resp, err := websocket.Dial(ctx, fmt.Sprintf("ws://127.0.0.1:%d", o.Port), nil)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close() // handshake response; the connection itself lives on in ws
+	}
 	if err != nil {
 		return nil, err
 	}
