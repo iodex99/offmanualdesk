@@ -219,15 +219,13 @@ export async function grantPack(deps: AdminDeps, s: SessionState | null, firmId:
       .where(and(eq(employees.id, g.employeeId), eq(employees.firmId, firmId)));
     if (own.length === 0) throw new AuthError(403, "You don't have access to this employee.");
   }
-  await deps.db
-    .insert(packGrants)
-    .values({
-      id: uuidv7(),
-      firmId,
-      packKey: g.packKey,
-      employeeId: g.employeeId ?? null,
-      adGroup: g.adGroup ?? null,
-    });
+  await deps.db.insert(packGrants).values({
+    id: uuidv7(),
+    firmId,
+    packKey: g.packKey,
+    employeeId: g.employeeId ?? null,
+    adGroup: g.adGroup ?? null,
+  });
   await bumpPolicy(deps.db, firmId);
   return { ok: true };
 }

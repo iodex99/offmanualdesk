@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { formatDate } from "@offmanual/shared-schema/format";
 import type { AppInfo } from "./appInfo";
+import { callAgent, type AgentCall } from "./agent";
+import { Unlock } from "./Unlock";
 
 type State = { kind: "loading" } | { kind: "ready"; info: AppInfo } | { kind: "error" };
 
 export function App({
   loadInfo,
   now = () => new Date(),
+  agent = callAgent,
 }: {
   loadInfo: () => Promise<AppInfo>;
   now?: () => Date;
+  agent?: AgentCall;
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
 
@@ -43,7 +47,7 @@ export function App({
       )}
       {state.kind === "ready" && (
         <>
-          <p>Sign-in and your assistant arrive in the next update.</p>
+          <Unlock agent={agent} />
           <p className="panel__version">
             Version {state.info.version}
             {state.info.runtime === "browser" ? " (preview)" : ""}

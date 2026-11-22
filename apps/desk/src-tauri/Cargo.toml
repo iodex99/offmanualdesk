@@ -14,6 +14,9 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Pipes", "Win32_System_Threading"] }
+
 [profile.release]
 codegen-units = 1
 lto = true
@@ -22,7 +25,8 @@ panic = "abort"
 strip = true
 
 [lints.rust]
-unsafe_code = "forbid"
+# deny (not forbid) so the one FFI module (agent_client::platform) can opt in with SAFETY comments.
+unsafe_code = "deny"
 
 [lints.clippy]
 unwrap_used = "deny"

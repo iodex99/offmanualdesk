@@ -5,11 +5,15 @@ import { App } from "./App";
 afterEach(cleanup);
 
 const fixedNow = () => new Date("2026-11-22T06:00:00Z");
+const offlineAgent = async () => {
+  throw { code: -1, message: "Off Manual's server service isn't running. Please tell your admin." };
+};
 
 describe("App", () => {
   it("shows the version once loaded, with the date in DD-MM-YYYY", async () => {
     render(
       <App
+        agent={offlineAgent}
         now={fixedNow}
         loadInfo={() => Promise.resolve({ name: "Off Manual Desk", version: "1.2.3", runtime: "tauri" })}
       />,
@@ -22,6 +26,7 @@ describe("App", () => {
   it("marks the browser preview", async () => {
     render(
       <App
+        agent={offlineAgent}
         now={fixedNow}
         loadInfo={() => Promise.resolve({ name: "x", version: "dev", runtime: "browser" })}
       />,
@@ -32,9 +37,13 @@ describe("App", () => {
   it("shows a plain-language error with a next step, never a stack trace", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     render(
-      <App now={fixedNow} loadInfo={() => Promise.reject(new Error("TypeError at invoke (core.js:12)"))} />,
+      <App
+        agent={offlineAgent}
+        now={fixedNow}
+        loadInfo={() => Promise.reject(new Error("TypeError at invoke (core.js:12)"))}
+      />,
     );
-    const alert = await screen.findByRole("alert");
+    const alert = (await screen.findAllByRole("alert"))[0]!;
     expect(alert.textContent).toContain("Close it and open it again");
     expect(alert.textContent).not.toContain("TypeError");
     spy.mockRestore();
