@@ -379,3 +379,10 @@ Template:
 - Context: An employee who loses both the phone and the recovery codes (ADR-046) needs a way back that doesn't involve Off Manual staff touching the server.
 - Decision: A firm admin (or Off Manual staff) presses "Reset authenticator" for an active employee. The console stores `employees.totp_reset_at` and bumps the policy version; the policy carries `totpResetAt` for that employee. At the next sync the Server Agent clears the TOTP secret, enrolment, counter, recovery codes and day grant if the request is newer than the last one it applied (`totp_reset_applied_at`), so the same request never wipes a newly enrolled phone. Re-enrolment happens in Desk from the employee's own Windows session.
 - Consequences: Up to 15 minutes until the reset reaches the server. A malicious admin can force a re-enrolment but can't enrol on the employee's behalf without their Windows session.
+
+## ADR-050: Problem reports carry metadata only, shown in full first; no screenshots in v1
+- Date: 2026-11-23
+- Status: Accepted
+- Context: F11 planned a bundle plus an optional screenshot. Rule 10 forbids client data reaching Off Manual's cloud; a screenshot of a CA's desktop almost always shows client names or numbers, and free text can too.
+- Decision: The bundle is built by the Server Agent (agent and staged versions, licence state, policy ETag, pre-flight results bounded to the console's limits, last 200 lines of its own log, which never contains client content) plus a small flat map of Desk facts (versions, gateway state). Desk shows the whole bundle before sending. The only free text is the employee's description (≤ 500, with a visible warning). The Server Agent rebuilds the server part at submit time (Desk can't change it). The console accepts only this exact shape (strict schema), caps reports at 20 per server per day, and returns a short reference. No screenshots in v1.
+- Consequences: Some problems will need a phone call to understand. If screenshots are added later they need on-device redaction and an explicit per-report consent.

@@ -14,6 +14,7 @@ Client financial data (books, statements, returns, notices), client identifiers 
 | Spoofed identity over the pipe | Identity from OS client token only; ACL on pipe |
 | Agent works around Access Denied | Guard stops the turn on access errors; no alternate path, no copy; audit |
 | Prompt injection from a document or email makes the agent act | Review queue for irreversible/external actions; skill packs limit tools (guard allowlist from the signed `packs.json`, fail closed; ADR-043); Telegram text-only; no portal submission |
+| Client data leaks through a problem report | Bundle is metadata only and shown in full before sending; strict console schema rejects any other field; free text limited to 500 characters with a warning; no screenshots in v1 (ADR-050) |
 | Client data leaks to Off Manual | Console receives counts/versions/health only; audit summaries without paths |
 | Client data leaks via Telegram | Text-only default; files only if firm enables; Server Agent enforces (incoming files refused without downloading; replies are plain text, no parse mode) |
 | Server Agent holds every employee's gateway token (relay) | It runs as SYSTEM, which already controls the host; tokens are DPAPI machine-scope in the SYSTEM/Admins-only agent.db, used only to relay a linked employee's own Telegram messages to their own gateway (ADR-040) |

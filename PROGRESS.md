@@ -69,7 +69,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
 - [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; invite email on add (Resend, `lib/email.ts`; invites.sent_at; failure never undoes the add) + "Send invite again"; superadmin `/billing` page (make drafts, issue with confirm, record payments in rupees, override with reason and date, refresh statuses); [ ] WhatsApp invites (v2)
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
-- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044); [ ] usage, support bundle, notices
+- [x] Agent API: bind (`POST /api/agent/bind`, ADR-044), support (`POST /api/agent/support`, ADR-050); [ ] usage, notices
 - [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
 - [x] Fleet board v0 (`/fleet`: firm, server, health with 1 h staleness → red, last seen, version, seats)
 
@@ -138,7 +138,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [ ] Admin agent tools
 - [ ] Setup wizard (pre-flight → import users → invites → client scan)
 - [ ] Weekly partner digest
-- [ ] Report a problem → support queue
+- [x] Report a problem → support queue (ADR-050): Desk tab with preview of exactly what is sent, `support.bundle`/`support.submit` (agent rebuilds the server part; pre-flight + log tail, bounded), `POST /api/agent/support` (strict schema, 20/server/day, ticket ref OM-XXXXXX), staff `/support` page
 - [ ] Fleet board v1
 
 ### M11 Pilot hardening
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 15:45: Report a problem (F11)
+- Changed: agent `support.go` (bundle preview, submit with description ≤ 500 UTF-16 units, desk info flat and small, plain errors, audit), app `support.go` (pre-flight bounded to 20 s and to the console's limits, last 200 log lines, rune-safe cuts, empty array instead of null), console client `SubmitSupport`; IPC schema + Desk allowlist `support.submit`; console migration 0005 (`support_tickets.ref`, `description`, `bundle`), `lib/support.ts` (strict zod schema, daily cap, unique ref, employee linked only within the firm), route, `/support` page; Desk `ReportProblem.tsx` tab. ADR-050.
+- Tests: Go agent (preview, desk validation, rebuilt server part, user/network errors, limits, unknown caller), app (tail, bundle shape matches the console, cut), console client; console 115/115 (ref, staff-only list, unknown fields/oversize/paths field refused, cross-firm employee not linked, daily cap); desk 47/47; golangci-lint both OSes 0. Caught before shipping: pre-flight `skip` status and a null log tail would have been refused by the console.
+- Half-done / next: usage reporting (needs OpenClaw usage source verified), notices.
 
 ### 2026-11-23 15:05: Admin authenticator reset (ADR-049)
 - Changed: console `employees.totp_reset_at` (migration 0004), `resetAuthenticator` (firm-scoped, active employees only, bumps the policy), route `POST .../employees/[employeeId]/reset-authenticator`, firm page button with confirm; agent policy includes `totpResetAt`; Server Agent migration 0005 (`employees.totp_reset_applied_at`), `store.ApplyTOTPReset` (clears secret, enrolment, counter, recovery codes, day grant; only for a newer request), ApplyPolicy applies it.

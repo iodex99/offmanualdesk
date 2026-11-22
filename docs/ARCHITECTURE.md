@@ -176,7 +176,7 @@ See UPDATES.md. Server Agent stages; Desk shows notice; employee restarts; gatew
 Console disable → policy push → Server Agent stops gateway (signals Desk / kills process tree for that SID), wipes Telegram link, revokes tokens, archives `openclaw-state` to `backups\` for the firm's retention period, frees port lease.
 
 ### F11 Report a problem
-Desk → `support.bundle` → versions, health, last 200 log lines (metadata only), policy hash, pre-flight → preview shown to employee → optional screenshot (employee crops) → upload → console ticket.
+Desk → `support.bundle` → versions, licence, policy ETag, pre-flight, last 200 Server Agent log lines (metadata only) → preview shown to employee → employee's short description (warned: no client details) → `support.submit` (the Server Agent rebuilds the server part) → signed `POST /api/agent/support` → console ticket with a reference. Screenshots are not part of v1 (ADR-050).
 
 ## 7. Repository layout
 
