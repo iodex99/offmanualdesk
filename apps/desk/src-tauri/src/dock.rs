@@ -17,7 +17,7 @@ pub struct Rect {
 /// The docked rectangle in physical pixels for a work area and DPI scale. The width is
 /// the panel width scaled, never more than half the work area, never less than the
 /// minimum (unless the work area itself is smaller).
-pub fn docked(work: Rect, scale: f64) -> Rect {
+pub fn docked(work: Rect, scale: f64, side: crate::settings::Side) -> Rect {
     let scale = if scale.is_finite() && scale > 0.0 {
         scale
     } else {
@@ -26,7 +26,10 @@ pub fn docked(work: Rect, scale: f64) -> Rect {
     let half = f64::from(work.width) / 2.0;
     let want = (PANEL_WIDTH * scale).min(half).max(MIN_WIDTH * scale);
     let width = (want.round() as u32).min(work.width);
-    let x = work.x + i32::try_from(work.width - width).unwrap_or(0);
+    let x = match side {
+        crate::settings::Side::Right => work.x + i32::try_from(work.width - width).unwrap_or(0),
+        crate::settings::Side::Left => work.x,
+    };
     Rect {
         x,
         y: work.y,
@@ -38,6 +41,20 @@ pub fn docked(work: Rect, scale: f64) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::Side;
+    const R: Side = Side::Right;
+
+    #[test]
+    fn left_side() {
+        let work = Rect {
+            x: 1920,
+            y: 0,
+            width: 1280,
+            height: 984,
+        };
+        let r = docked(work, 1.0, Side::Left);
+        assert_eq!((r.x, r.width), (1920, 420));
+    }
 
     #[test]
     fn right_edge_full_height() {
@@ -48,7 +65,7 @@ mod tests {
             height: 1040,
         };
         assert_eq!(
-            docked(work, 1.0),
+            docked(work, 1.0, R),
             Rect {
                 x: 1500,
                 y: 0,
@@ -58,7 +75,7 @@ mod tests {
         );
         // 150 % scaling: 630 physical pixels wide.
         assert_eq!(
-            docked(work, 1.5),
+            docked(work, 1.5, R),
             Rect {
                 x: 1290,
                 y: 0,
@@ -77,7 +94,7 @@ mod tests {
             height: 984,
         };
         assert_eq!(
-            docked(work, 1.0),
+            docked(work, 1.0, R),
             Rect {
                 x: 2780,
                 y: 40,
@@ -97,7 +114,7 @@ mod tests {
             height: 480,
         };
         assert_eq!(
-            docked(work, 1.0),
+            docked(work, 1.0, R),
             Rect {
                 x: 280,
                 y: 0,
@@ -112,10 +129,10 @@ mod tests {
             width: 300,
             height: 200,
         };
-        assert_eq!(docked(tiny, 1.0).width, 300);
-        assert_eq!(docked(tiny, 1.0).x, 0);
+        assert_eq!(docked(tiny, 1.0, R).width, 300);
+        assert_eq!(docked(tiny, 1.0, R).x, 0);
         // Nonsense scale falls back to 1.
-        assert_eq!(docked(work, f64::NAN).width, 360);
+        assert_eq!(docked(work, f64::NAN, R).width, 360);
         assert_eq!(
             docked(
                 Rect {
@@ -124,7 +141,8 @@ mod tests {
                     width: 1920,
                     height: 1080
                 },
-                0.0
+                0.0,
+                R
             )
             .width,
             420

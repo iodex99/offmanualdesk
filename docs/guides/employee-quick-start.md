@@ -34,6 +34,8 @@ opens what your Windows account can open, and anything that can't be undone wait
 
 - **Files stay in the office.** Your files, chats and prompts never go to Off Manual. Only numbers (how many
   questions, which version) do.
+- **Settings**: choose the left or right side of the screen and, if you like, a shorter lock time than your
+  firm's limit.
 - **Open Off Manual from anywhere**: press **Ctrl+Alt+O**. Desk sits on the right side of your screen; drag it
   wherever you like.
 - **Ask about a file or folder**: right-click it in Explorer → **Ask Off Manual**. Desk comes forward with the

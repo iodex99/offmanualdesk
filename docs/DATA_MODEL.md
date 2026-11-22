@@ -84,7 +84,7 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 
 - `openclaw-state\`: OpenClaw's own state (sessions, memory, plugin data). Format owned by OpenClaw; see OPENCLAW_NOTES.md.
 - `openclaw-state\plugins\offmanual-guard\review.json` (path from `api.runtime.state.resolveStateDir()`): review queue `{ version: 1, nextId, items: [{ id, kind, params, summary, status (pending/approved/rejected/done/failed), createdAt, sessionKey?, decidedAt?, finishedAt?, result? }] }`. Written whole via temp file + rename; the last 200 finished items are kept; an item found `approved` at load (interrupted) becomes `failed` and is never re-run (ADR-041).
-- `desk\settings.json`: hotkey, panel side, lock timeout (≤ firm max), language.
+- `desk\settings.json`: `{side: "right"|"left", lockMinutes: 1–480 | null}` (Rust `settings.rs`, unknown fields or invalid values → defaults; written via temp + rename). The lock time applies only when shorter than the firm's `lockTimeoutMax` (ADR-066). Hotkey (fixed Ctrl+Alt+O, ADR-064) and language are not settings yet.
 - `desk\version.json`: `{active, previous}` release versions this employee's gateway runs (ADR-048); absent = `current`.
 - `backups\state-<unix seconds>`: copies of `openclaw-state` taken before Doctor runs (ADR-025); the newest 3 are kept.
 - `desk\device.key`: the Desk gateway client's Ed25519 seed, DPAPI CurrentUser with app entropy (ADR-021). The gateway token itself is never written to disk; it lives in Desk's memory and the gateway's environment (and DPAPI machine-scope in agent.db for the relay, ADR-040).

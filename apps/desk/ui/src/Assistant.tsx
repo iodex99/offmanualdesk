@@ -9,6 +9,7 @@ import { askPrompt, latestAsk, tauriInbox, type InboxApi } from "./inbox";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
 import { Notices } from "./Notices";
 import { ReportProblem } from "./ReportProblem";
+import { SettingsTab } from "./SettingsTab";
 import { TaskButtons } from "./TaskButtons";
 import { Review } from "./Review";
 import { TelegramLink } from "./TelegramLink";
@@ -75,7 +76,9 @@ export function Assistant({
     [start, control],
   );
   const kept = useMemo(() => keptGateway(api, keeper), [api, keeper]);
-  const [tab, setTab] = useState<"chat" | "tasks" | "review" | "access" | "telegram" | "help">("chat");
+  const [tab, setTab] = useState<"chat" | "tasks" | "review" | "access" | "telegram" | "settings" | "help">(
+    "chat",
+  );
   // After each reply, look for folders the assistant was refused (Request access, ADR-058).
   const [denialsSince, setDenialsSince] = useState<number | null>(null);
   const [prefill, setPrefill] = useState<QueuedMessage | null>(null);
@@ -180,6 +183,9 @@ export function Assistant({
             <button role="tab" aria-selected={tab === "telegram"} onClick={() => setTab("telegram")}>
               Telegram
             </button>
+            <button role="tab" aria-selected={tab === "settings"} onClick={() => setTab("settings")}>
+              Settings
+            </button>
             <button role="tab" aria-selected={tab === "help"} onClick={() => setTab("help")}>
               Report a problem
             </button>
@@ -200,6 +206,7 @@ export function Assistant({
           {tab === "review" && <Review api={kept} agent={agent} />}
           {tab === "access" && <AccessRequests agent={agent} />}
           {tab === "telegram" && <TelegramLink agent={agent} />}
+          {tab === "settings" && <SettingsTab agent={agent} />}
           {tab === "help" && <ReportProblem agent={agent} />}
         </div>
       );

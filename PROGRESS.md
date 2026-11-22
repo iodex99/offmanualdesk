@@ -9,7 +9,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 ## Next step
 
 1. `main` = `m4-desk` at 2d97076; watch CI by commit (`gh run list --commit <sha>`) and fast-forward after each green run.
-2. Next: Desk settings (hotkey, side, shorter lock); UPI AutoPay / e-mandate; MSI once the WiX decision is made; live Razorpay check once test keys exist.
+2. Next: UPI AutoPay / e-mandate; MSI once the WiX decision is made; live Razorpay check once test keys exist.
 3. When lab output arrives: `/lab-result L<n>` for each; promote/supersede the lab-dependent ADRs (020, 021, 022, 024, 040 session key, 041 tool registration, 043 tool list); flip [A] markers in ARCHITECTURE.md.
 
 ## Waiting on Dwahnil
@@ -85,7 +85,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Gateway: early exit detected during startup; exit code 78 → state snapshot (ADR-025, newest 3 kept) → `doctor --fix --yes --non-interactive` without the token (≤ 5 min) → retry once; lease released on failure; start holds the lock (no double start), status non-blocking; idle stop after the firm's `gatewayIdleStopHours` + start on the next message/review action + crash restart (≤ 3/hour) in `ui/src/keeper.ts`; [ ] listener check (ADR-020, lab)
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
-- [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); docked panel (right edge of the work area at start) + global hotkey Ctrl+Alt+O (ADR-064); [ ] L8 on the RDS host
+- [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); docked panel (right edge of the work area at start) + global hotkey Ctrl+Alt+O (ADR-064); Settings tab: dock side + own shorter lock time (ADR-066); [ ] L8 on the RDS host
 - [x] Explorer right-click "Ask Off Manual": `--ask <path>` handled (forwarded to the running Desk, path put in the chat box, ADR-059); [ ] verb registered by the MSI (manual `reg add` in the install runbook)
 - [x] Notifications area: licence banner/paused screen (ADR-042), update notice (ADR-048), notices from Off Manual and the firm with Dismiss (ADR-052)
 
@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 03:10: Desk settings (M4, ADR-066)
+- Changed: Rust `settings.rs` (side + optional lock minutes, deny unknown fields, invalid → defaults, atomic save), commands `settings_get`/`settings_set` (save docks the panel again at once), `dock::docked` takes the side; UI `settings.ts` (`effectiveLockMinutes`: own only when shorter than the firm's maximum; `lockChoices`), `SettingsTab.tsx`, idle lock reads the own time on every check.
+- Tests: desk 72/72 (helpers, firm limit wins, tab saves side and lock and clears at the limit, plain error, idle lock uses a shorter own time and ignores a longer one); Rust settings (defaults on missing/junk/invalid/unknown, round trip, refused save leaves the file) and left-side dock in CI; cargo fmt. CI for Razorpay green; `main` at 3aa85e6.
 
 ### 2026-11-24 02:40: Razorpay payment links and webhook (M9, ADR-065)
 - Changed: console `lib/billing/razorpay.ts` (client with Basic auth and the verified request shape; RazorpayError with status + code only; `ensurePaymentLinks` for issued invoices without one; `signatureOk` constant-time hex HMAC; `razorpayWebhook`), issue action and daily cron create links (cron JSON gains `paymentLinks`), route `POST /api/razorpay/webhook`, firm page *Pay online*, invoice list `paymentLinkUrl` (issued only), `.env.example` keys. API facts verified in Razorpay docs and razorpay-node v2.9.8 (research agent).

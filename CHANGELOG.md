@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Desk Settings: dock on the left or right, and lock sooner than the firm's limit if you like.
 - Invoices get a Razorpay payment link ("Pay online" on the firm page); payments arrive by webhook and mark the invoice paid.
 - Desk opens docked on the right edge of the screen, and Ctrl+Alt+O brings it forward from any app.
 - The console firm page shows which Off Manual release each person's assistant runs.

@@ -18,6 +18,7 @@ function Harness(props: {
   onLocked: () => void;
   readIdle: ReadIdle;
   now: () => number;
+  readOwnMinutes?: () => Promise<number | null>;
 }) {
   useIdleLock(props);
   return null;
@@ -95,5 +96,43 @@ describe("useIdleLock", () => {
     await tick();
     expect(onLocked).not.toHaveBeenCalled();
     expect(calls).toEqual([]);
+  });
+  it("uses the employee's own shorter lock time, never a longer one (ADR-066)", async () => {
+    const { agent } = agentWith(15);
+    let idle = 0;
+    let own: number | null = 5;
+    const onLocked = vi.fn();
+    render(
+      <Harness
+        active
+        agent={agent}
+        onLocked={onLocked}
+        readIdle={async () => idle}
+        now={Date.now}
+        readOwnMinutes={async () => own}
+      />,
+    );
+    idle = 5 * 60;
+    await tick();
+    expect(onLocked).toHaveBeenCalledTimes(1);
+    cleanup();
+    const again = vi.fn();
+    own = 60; // longer than the firm allows: the firm's 15 minutes apply
+    render(
+      <Harness
+        active
+        agent={agent}
+        onLocked={again}
+        readIdle={async () => idle}
+        now={Date.now}
+        readOwnMinutes={async () => own}
+      />,
+    );
+    idle = 14 * 60;
+    await tick();
+    expect(again).not.toHaveBeenCalled();
+    idle = 15 * 60;
+    await tick();
+    expect(again).toHaveBeenCalledTimes(1);
   });
 });

@@ -13,6 +13,7 @@ mod hotkey;
 mod idle;
 mod info;
 mod instance;
+mod settings;
 mod versions;
 
 use std::sync::{Arc, Mutex};
@@ -242,7 +243,28 @@ fn deliver(app: &tauri::AppHandle, reqs: Vec<instance::Request>) {
     let _ = app.emit(instance::INBOX_SIGNAL, ());
 }
 
-/// Docked panel at start (ADR-064): right edge of the current monitor's work area.
+fn settings_path() -> Option<std::path::PathBuf> {
+    std::env::var_os("LOCALAPPDATA").map(|d| settings::path_in(std::path::Path::new(&d)))
+}
+
+/// The employee's Desk settings (ADR-066); defaults when none are saved.
+#[tauri::command]
+fn settings_get() -> settings::Settings {
+    settings_path()
+        .map(|p| settings::load(&p))
+        .unwrap_or_default()
+}
+
+/// Saves the settings and docks the panel to the chosen side straight away.
+#[tauri::command]
+fn settings_set(app: tauri::AppHandle, value: settings::Settings) -> Result<(), String> {
+    let p = settings_path().ok_or("Your Windows profile folder couldn't be found.")?;
+    settings::save(&p, &value)?;
+    dock_main_window(&app);
+    Ok(())
+}
+
+/// Docked panel (ADR-064/066): the chosen edge of the current monitor's work area.
 fn dock_main_window(app: &tauri::AppHandle) {
     let Some(w) = app.get_webview_window("main") else {
         return;
@@ -259,6 +281,7 @@ fn dock_main_window(app: &tauri::AppHandle) {
             height: area.size.height,
         },
         m.scale_factor(),
+        settings_get().side,
     );
     let _ = w.set_size(tauri::PhysicalSize::new(r.width, r.height));
     let _ = w.set_position(tauri::PhysicalPosition::new(r.x, r.y));
@@ -319,7 +342,9 @@ fn main() {
             review_decide,
             update_status,
             update_apply,
-            inbox_take
+            inbox_take,
+            settings_get,
+            settings_set
         ])
         .run(tauri::generate_context!());
     if let Err(err) = result {

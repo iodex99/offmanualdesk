@@ -4,6 +4,7 @@
 import { useEffect, useRef } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { AgentCall } from "./agent";
+import { effectiveLockMinutes, tauriSettings } from "./settings";
 
 export const POLL_MS = 30_000;
 export const DEFAULT_TIMEOUT_MIN = 15;
@@ -16,6 +17,8 @@ export const readSessionIdle: ReadIdle = async () => {
   const v = await invoke<number | null>("idle_seconds");
   return typeof v === "number" ? v : null;
 };
+
+const readOwnLockMinutes = async () => (await tauriSettings.get()).lockMinutes;
 
 /** Lock timeout in minutes from policy.get (firm maximum), defaulting to 15. */
 export function timeoutFrom(policy: unknown): number {
@@ -35,8 +38,17 @@ export function useIdleLock(opts: {
   onLocked: () => void;
   readIdle?: ReadIdle;
   now?: () => number;
+  /** The employee's own shorter lock time (ADR-066); read on every check so a change applies at once. */
+  readOwnMinutes?: () => Promise<number | null>;
 }) {
-  const { active, agent, onLocked, readIdle = readSessionIdle, now = Date.now } = opts;
+  const {
+    active,
+    agent,
+    onLocked,
+    readIdle = readSessionIdle,
+    now = Date.now,
+    readOwnMinutes = readOwnLockMinutes,
+  } = opts;
   const lastActivity = useRef(now());
   const timeoutMin = useRef(DEFAULT_TIMEOUT_MIN);
 
@@ -60,7 +72,8 @@ export function useIdleLock(opts: {
       if (cancelled || locking) return;
       let idleSec = await readIdle().catch(() => null);
       if (idleSec === null) idleSec = Math.floor((now() - lastActivity.current) / 1000);
-      if (idleSec >= timeoutMin.current * 60) {
+      const own = await readOwnMinutes().catch(() => null);
+      if (idleSec >= effectiveLockMinutes(timeoutMin.current, own) * 60) {
         locking = true;
         try {
           await agent("lock.set", { locked: true });
@@ -79,5 +92,5 @@ export function useIdleLock(opts: {
       for (const ev of ["mousemove", "keydown", "mousedown", "wheel"] as const)
         window.removeEventListener(ev, touch);
     };
-  }, [active, agent, onLocked, readIdle, now]);
+  }, [active, agent, onLocked, readIdle, now, readOwnMinutes]);
 }
