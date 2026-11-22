@@ -1,3 +1,4 @@
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Unlock } from "./Unlock";
@@ -219,5 +220,46 @@ describe("Unlock flow", () => {
     render(<Unlock agent={down.agent} />);
     expect(await screen.findByText(/isn't running/)).toBeTruthy();
     expect(screen.getByText("Try again")).toBeTruthy();
+  });
+});
+
+describe("offboarding", () => {
+  it("stops the assistant and shows a plain message when access is switched off", async () => {
+    const stop = vi.fn(async () => undefined);
+    const { agent } = fakeAgent({ "session.hello": [{ ...base, locked: false, status: "disabled" }] });
+    render(
+      <Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} stopGateway={stop} />,
+    );
+    expect(await screen.findByText(/access is switched off/)).toBeTruthy();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks every minute while unlocked", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const stop = vi.fn(async () => undefined);
+      const { agent, calls } = fakeAgent({
+        "session.hello": [
+          { ...base, locked: false },
+          { ...base, locked: false, status: "disabled" },
+        ],
+      });
+      render(
+        <Unlock
+          agent={agent}
+          startGateway={async () => ({ running: true, port: 18800 })}
+          stopGateway={stop}
+        />,
+      );
+      expect(await screen.findByText(/You're signed in, Asha/)).toBeTruthy();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
+      expect(await screen.findByText(/access is switched off/)).toBeTruthy();
+      expect(stop).toHaveBeenCalledTimes(1);
+      expect(calls.filter((c) => c[0] === "session.hello").length).toBeGreaterThanOrEqual(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

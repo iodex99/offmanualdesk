@@ -3,6 +3,7 @@
 // only shows what it says.
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { isAgentError, type AgentCall } from "./agent";
 import { Assistant, type StartGateway } from "./Assistant";
 import { useIdleLock, type ReadIdle } from "./idleLock";
@@ -32,7 +33,14 @@ type Screen =
   | { kind: "pin" }
   | { kind: "unlock"; usePin: boolean }
   | { kind: "ready"; name: string; notice?: string }
-  | { kind: "paused"; message: string };
+  | { kind: "paused"; message: string }
+  | { kind: "disabled" };
+
+export const OFFBOARD_CHECK_MS = 60_000;
+
+const defaultStopGateway = async () => {
+  if (isTauri()) await invoke("gateway_stop");
+};
 
 const message = (e: unknown) => (isAgentError(e) ? e.message : "Something went wrong. Try again.");
 
@@ -41,10 +49,13 @@ export function Unlock({
   onLock,
   startGateway,
   readIdle,
+  stopGateway = defaultStopGateway,
 }: {
   agent: AgentCall;
   onLock?: () => void;
   startGateway?: StartGateway;
+  /** Stops this employee's gateway (offboarding). */
+  stopGateway?: () => Promise<void>;
   readIdle?: ReadIdle;
 }) {
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
@@ -61,6 +72,11 @@ export function Unlock({
       setError(null);
       setValue("");
       setCode("");
+      if (h.known && h.status === "disabled") {
+        // Offboarded (F10): the assistant stops; nothing else is possible from here.
+        await stopGateway().catch(() => undefined);
+        return setScreen({ kind: "disabled" });
+      }
       if (!h.known) {
         // F2: sign in on the console (here or on a phone), then type the code shown there.
         try {
@@ -89,7 +105,7 @@ export function Unlock({
     } catch (e) {
       setScreen({ kind: "unavailable", message: message(e) });
     }
-  }, [agent]);
+  }, [agent, stopGateway]);
 
   useEffect(() => {
     void refresh();
@@ -99,6 +115,14 @@ export function Unlock({
     void refresh();
     onLock?.();
   }, [refresh, onLock]);
+  // While unlocked, check every minute whether the employee was switched off (F10).
+  const ready = screen.kind === "ready";
+  useEffect(() => {
+    if (!ready) return;
+    const id = window.setInterval(() => void refresh(), OFFBOARD_CHECK_MS);
+    return () => window.clearInterval(id);
+  }, [ready, refresh]);
+
   useIdleLock({
     active: screen.kind === "ready",
     agent,
@@ -299,6 +323,12 @@ export function Unlock({
           </button>
           {error && <p role="alert">{error}</p>}
         </form>
+      );
+    case "disabled":
+      return (
+        <p role="alert">
+          Your Off Manual access is switched off. If this is a mistake, please contact your admin.
+        </p>
       );
     case "paused":
       return (
