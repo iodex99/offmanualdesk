@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"offmanual/desk/server-agent/internal/agent"
 	"offmanual/desk/server-agent/internal/console"
 	"offmanual/desk/server-agent/internal/preflight"
 	"offmanual/desk/server-agent/internal/secrets"
@@ -121,15 +122,16 @@ func loadIdentity(ctx context.Context, st *store.Store, prot secrets.Protector) 
 }
 
 // startSync launches the console loop if enrolled.
-func startSync(ctx context.Context, st *store.Store, prot secrets.Protector, log *slog.Logger, dataDir string) {
+// startSync starts the console loop and returns the console client (nil when not enrolled).
+func startSync(ctx context.Context, st *store.Store, prot secrets.Protector, log *slog.Logger, dataDir string) *console.Client {
 	c, err := loadIdentity(ctx, st, prot)
 	if err != nil {
 		log.Error("console identity unavailable", "error", err.Error())
-		return
+		return nil
 	}
 	if c == nil {
 		log.Info("not enrolled with the console yet; run: server-agent enroll -console URL CODE")
-		return
+		return nil
 	}
 	keys, err := manifest.TrustedKeys()
 	if err != nil {
@@ -151,6 +153,25 @@ func startSync(ctx context.Context, st *store.Store, prot secrets.Protector, log
 			return n
 		}}
 	go s.Run(ctx)
+	return c
+}
+
+// binderFor redeems bind codes at the console (ADR-044). Console 4xx messages are
+// already plain sentences for the employee.
+func binderFor(c *console.Client) agent.Binder {
+	return func(ctx context.Context, code, sid string) (agent.BoundEmployee, error) {
+		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		r, err := c.Bind(ctx, code, sid)
+		var api *console.APIError
+		if errors.As(err, &api) && api.Status >= 400 && api.Status < 500 && api.Message != "" && api.Status != 401 {
+			return agent.BoundEmployee{}, agent.UserMessage(api.Message)
+		}
+		if err != nil {
+			return agent.BoundEmployee{}, err
+		}
+		return agent.BoundEmployee{EmployeeID: r.EmployeeID, Name: r.Name, Status: r.Status, Packs: r.Packs}, nil
+	}
 }
 
 // installRoot is C:\Program Files\OffManual (OFFMANUAL_INSTALL_ROOT overrides for development).

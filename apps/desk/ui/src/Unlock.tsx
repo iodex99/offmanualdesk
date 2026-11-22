@@ -24,7 +24,7 @@ interface Hello {
 type Screen =
   | { kind: "loading" }
   | { kind: "unavailable"; message: string }
-  | { kind: "signup" }
+  | { kind: "signup"; url?: string; qr?: string }
   | { kind: "enrol"; qr: string; secret: string }
   | { kind: "pin" }
   | { kind: "unlock"; usePin: boolean }
@@ -46,6 +46,7 @@ export function Unlock({
   const [hello, setHello] = useState<Hello | null>(null);
   const [value, setValue] = useState("");
   const [code, setCode] = useState("");
+  const [bindCode, setBindCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -55,7 +56,18 @@ export function Unlock({
       setError(null);
       setValue("");
       setCode("");
-      if (!h.known) return setScreen({ kind: "signup" });
+      if (!h.known) {
+        // F2: sign in on the console (here or on a phone), then type the code shown there.
+        try {
+          const b = (await agent("auth.bindStart")) as { url?: unknown };
+          if (typeof b.url === "string" && b.url.startsWith("https://")) {
+            return setScreen({ kind: "signup", url: b.url, qr: await QRCode.toDataURL(b.url) });
+          }
+        } catch {
+          // Not activated yet: fall through to the plain explanation.
+        }
+        return setScreen({ kind: "signup" });
+      }
       if (!h.totpEnrolled) {
         const e = (await agent("auth.totpEnrolStart", {})) as { secret: string; uri: string };
         return setScreen({ kind: "enrol", secret: e.secret, qr: await QRCode.toDataURL(e.uri) });
@@ -107,11 +119,39 @@ export function Unlock({
         </div>
       );
     case "signup":
+      if (!screen.url) {
+        return (
+          <p>
+            This Windows account isn't set up for Off Manual yet. Use the invite your admin sent you, or ask
+            them to add you.
+          </p>
+        );
+      }
       return (
-        <p>
-          This Windows account isn't set up for Off Manual yet. Use the invite your admin sent you, or ask
-          them to add you.
-        </p>
+        <form onSubmit={submit(() => agent("auth.bindComplete", { code: bindCode.trim() }))}>
+          <p>Sign in to get started.</p>
+          <ol>
+            <li>
+              Open <code>{screen.url}</code> in your browser, or scan this with your phone.
+            </li>
+            <li>Sign in with the work email your firm invited.</li>
+            <li>Type the code it shows here.</li>
+          </ol>
+          {screen.qr && <img src={screen.qr} alt="QR code for the sign-in page" width={160} height={160} />}
+          <label>
+            Code{" "}
+            <input
+              autoComplete="off"
+              maxLength={9}
+              value={bindCode}
+              onChange={(e) => setBindCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
+            />
+          </label>
+          <button type="submit" disabled={bindCode.replace(/-/g, "").length !== 8}>
+            Continue
+          </button>
+          {error && <p role="alert">{error}</p>}
+        </form>
       );
     case "enrol":
       return (

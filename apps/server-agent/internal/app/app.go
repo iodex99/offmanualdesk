@@ -80,10 +80,13 @@ func Run(ctx context.Context, o Options) error {
 	if err != nil {
 		return err
 	}
-	startSync(ctx, st, prot, log, o.DataDir)
+	cc := startSync(ctx, st, prot, log, o.DataDir)
 	srv := rpc.NewServer(log)
 	ag := agent.New(st, prot, o.Agent, log)
 	ag.Register(srv)
+	if cc != nil {
+		ag.SetBinder(binderFor(cc))
+	}
 	startTelegram(ctx, st, prot, ag, log)
 
 	l, err := listen(o.PipeName)

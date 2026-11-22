@@ -30,6 +30,7 @@ type fakeConsole struct {
 	audits   map[string][]AuditCount
 	beats    []Heartbeat
 	validKey string // enrolment code
+	bindSID  string
 }
 
 func newFake() *fakeConsole {
@@ -81,6 +82,19 @@ func (f *fakeConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("ETag", f.etag)
 		_ = json.NewEncoder(w).Encode(f.policy)
+	case "/api/agent/bind":
+		var in struct {
+			Code string `json:"code"`
+			SID  string `json:"sid"`
+		}
+		_ = json.Unmarshal(body, &in)
+		f.bindSID = in.SID
+		if in.Code != "ABCD-EFGH" {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"That code isn't valid or has expired. Sign in again to get a new one."}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"employeeId":"e-1","name":"Asha","status":"active","packs":["core"]}`))
 	case "/api/agent/audit-summary":
 		var in struct {
 			Date   string       `json:"date"`
@@ -193,5 +207,21 @@ func TestReplayedRequestIsRefusedByContract(t *testing.T) {
 	}
 	if _, err := c.SendHeartbeat(context.Background(), Heartbeat{AgentVersion: "1.0.0", Health: "green"}); err != nil {
 		t.Fatalf("second heartbeat (fresh nonce) refused: %v", err)
+	}
+}
+
+func TestBind(t *testing.T) {
+	f, c, _ := setup(t)
+	r, err := c.Bind(context.Background(), "ABCD-EFGH", "S-1-5-21-1-2-3-1101")
+	if err != nil || r.EmployeeID != "e-1" || r.Status != "active" || len(r.Packs) != 1 {
+		t.Fatalf("bind: %+v %v", r, err)
+	}
+	if f.bindSID != "S-1-5-21-1-2-3-1101" {
+		t.Fatalf("sid sent %q", f.bindSID)
+	}
+	_, err = c.Bind(context.Background(), "WRONG", "S-1-5-21-1-2-3-1101")
+	var api *APIError
+	if !errors.As(err, &api) || api.Status != 404 || !strings.Contains(api.Message, "isn't valid") {
+		t.Fatalf("bad code: %v", err)
 	}
 }

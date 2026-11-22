@@ -173,6 +173,24 @@ export const invites = pgTable("invites", {
   createdAt: createdAt(),
 });
 
+/**
+ * One-time codes that bind an employee's Windows account (SID) to their console
+ * identity (ARCHITECTURE F2). Shown once after employee OIDC sign-in, typed into Desk,
+ * redeemed by the Server Agent with the caller's OS-derived SID (rule 4).
+ */
+export const bindCodes = pgTable("bind_codes", {
+  id: uuid("id").primaryKey(),
+  employeeId: uuid("employee_id")
+    .notNull()
+    .references(() => employees.id),
+  codeHash: text("code_hash").notNull().unique(),
+  oauthProvider: text("oauth_provider").notNull(),
+  oauthSubject: text("oauth_subject").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
 // ---- capabilities and policy ----
 
 export const skillPacks = pgTable("skill_packs", {

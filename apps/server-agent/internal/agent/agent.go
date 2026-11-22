@@ -50,6 +50,9 @@ type Agent struct {
 
 	mu      sync.Mutex
 	stepUps map[string]stepUpGrant // grant ID → grant (in memory; restart clears)
+
+	binder    Binder
+	bindTries map[string][]time.Time // SID → recent bindComplete attempts
 }
 
 type stepUpGrant struct {
@@ -84,6 +87,8 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("audit.append", a.auditAppend)
 	srv.Handle("policy.get", a.policyGet)
 	srv.Handle("telegram.linkStart", a.telegramLinkStart)
+	srv.Handle("auth.bindStart", a.bindStart)
+	srv.Handle("auth.bindComplete", a.bindComplete)
 }
 
 // ---- errors in plain words ----

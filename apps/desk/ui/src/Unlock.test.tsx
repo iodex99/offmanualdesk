@@ -77,6 +77,38 @@ describe("licence", () => {
 });
 
 describe("Unlock flow", () => {
+  it("binds a new Windows account with the code from the console sign-in", async () => {
+    const { agent, calls } = fakeAgent({
+      "session.hello": [
+        { known: false, locked: true, totpEnrolled: false, pinSet: false, dayUnlocked: false },
+        { ...base, totpEnrolled: false, pinSet: false },
+      ],
+      "auth.bindStart": [{ url: "https://console.offmanual.in/bind" }],
+      "auth.bindComplete": (p) => {
+        if (p.code !== "ABCD-EFGH")
+          throw {
+            code: -32001,
+            message: "That code isn't valid or has expired. Sign in again to get a new one.",
+          };
+        return { bound: true, name: "Asha" };
+      },
+      "auth.totpEnrolStart": [{ secret: "S", uri: "otpauth://x" }],
+    });
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
+    expect(await screen.findByText("https://console.offmanual.in/bind")).toBeTruthy();
+    const input = screen.getByLabelText(/Code/);
+    fireEvent.change(input, { target: { value: "wxyz-2345" } });
+    fireEvent.click(screen.getByText("Continue"));
+    expect(await screen.findByText(/isn't valid or has expired/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Code/), { target: { value: "abcd-efgh" } });
+    fireEvent.click(screen.getByText("Continue"));
+    expect(await screen.findByAltText(/authenticator app/)).toBeTruthy();
+    expect(calls.filter((c) => c[0] === "auth.bindComplete").map((c) => c[1])).toEqual([
+      { code: "WXYZ-2345" },
+      { code: "ABCD-EFGH" },
+    ]);
+  });
+
   it("explains what to do when the Windows account isn't set up", async () => {
     const { agent } = fakeAgent({
       "session.hello": [

@@ -236,3 +236,23 @@ func (c *Client) FetchRelease(ctx context.Context) (*AssignedRelease, error) {
 	}
 	return out.Release, nil
 }
+
+// BindReply is the console's answer to a bind (ADR-044).
+type BindReply struct {
+	EmployeeID string   `json:"employeeId"`
+	Name       string   `json:"name"`
+	Status     string   `json:"status"`
+	Packs      []string `json:"packs"`
+}
+
+// Bind redeems an employee's one-time code for sid, the caller SID the pipe read
+// from the OS (rule 4).
+func (c *Client) Bind(ctx context.Context, code, sid string) (BindReply, error) {
+	_, _, body, err := c.do(ctx, c.ServerID, c.Key, http.MethodPost, "/api/agent/bind",
+		map[string]string{"code": code, "sid": sid}, nil)
+	if err != nil {
+		return BindReply{}, err
+	}
+	var r BindReply
+	return r, json.Unmarshal(body, &r)
+}

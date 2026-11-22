@@ -21,6 +21,7 @@ import type { DB } from "./db";
 import { canonical, HEADERS, verifyAgentRequest, verifySignature, type NonceStore } from "./agent-auth";
 import { serverPublicId, serverUuid, uuidv7 } from "./ids";
 import { assignedRelease } from "./releases";
+import { BindError, redeemBindCode } from "./bind";
 
 export interface Deps {
   db: DB;
@@ -359,4 +360,26 @@ export async function auditSummary(deps: Deps, req: Request): Promise<Response> 
       });
   }
   return json(200, { stored: input.counts.length });
+}
+
+// ---- POST /api/agent/bind (ARCHITECTURE F2, ADR-044) ----
+
+const bindSchema = z
+  .object({
+    code: z.string().min(1).max(20),
+    sid: z.string().max(100), // the caller's SID as the Server Agent read it from the pipe client token
+  })
+  .strict();
+
+export async function agentBind(deps: Deps, req: Request): Promise<Response> {
+  const a = await authenticate(deps, req);
+  if (!a.ok) return a.res;
+  const input = parseJson(bindSchema, a.body);
+  if (!input) return fail(400, "invalid request");
+  try {
+    return json(200, await redeemBindCode(deps, a.firmId, input.code, input.sid));
+  } catch (e) {
+    if (e instanceof BindError) return fail(e.status, e.message);
+    throw e;
+  }
 }

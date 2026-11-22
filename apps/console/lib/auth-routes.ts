@@ -13,7 +13,7 @@ import {
   totpVerify,
   type AuthDeps,
 } from "./auth";
-import type { IdentityProvider, ProviderName } from "./oidc";
+import type { IdentityProvider, ProviderName, VerifiedIdentity } from "./oidc";
 
 export const OIDC_COOKIE = "om_oidc";
 
@@ -23,7 +23,7 @@ export interface RouteDeps extends AuthDeps {
   secureCookies: boolean;
 }
 
-function cookie(name: string, value: string, maxAgeSec: number, secure: boolean): string {
+export function cookie(name: string, value: string, maxAgeSec: number, secure: boolean): string {
   return [
     `${name}=${value}`,
     "Path=/",
@@ -44,7 +44,7 @@ export function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
-const redirect = (to: string, cookies: string[] = []) => {
+export const redirect = (to: string, cookies: string[] = []) => {
   const h = new Headers({ location: to, "cache-control": "no-store" });
   for (const c of cookies) h.append("set-cookie", c);
   return new Response(null, { status: 303, headers: h });
@@ -56,11 +56,15 @@ const json = (status: number, body: unknown, cookies: string[] = []) => {
   return new Response(JSON.stringify(body), { status, headers: h });
 };
 
-/** GET /auth/login/[provider] */
-export async function startLogin(deps: RouteDeps, provider: string): Promise<Response> {
+/** GET /auth/login/[provider] (also /bind/login/[provider] with its own callback and error page). */
+export async function startLogin(
+  deps: RouteDeps,
+  provider: string,
+  paths: { callback: string; errorPage: string } = { callback: "/auth/callback", errorPage: "/sign-in" },
+): Promise<Response> {
   const p = deps.providers[provider as ProviderName];
-  if (!p) return redirect(`${deps.baseUrl}/sign-in?error=provider`);
-  const s = await p.start(`${deps.baseUrl}/auth/callback/${p.name}`);
+  if (!p) return redirect(`${deps.baseUrl}${paths.errorPage}?error=provider`);
+  const s = await p.start(`${deps.baseUrl}${paths.callback}/${p.name}`);
   const payload = Buffer.from(JSON.stringify({ p: p.name, s: s.state, n: s.nonce, v: s.verifier })).toString(
     "base64url",
   );
@@ -80,18 +84,34 @@ function parseOidcCookie(raw: string | undefined): z.infer<typeof oidcCookie> | 
   }
 }
 
+/**
+ * Completes the OIDC callback: state/nonce/PKCE from the short-lived cookie, verified
+ * email from the provider. Returns the identity or an error code for the page.
+ */
+export async function verifyCallback(
+  deps: RouteDeps,
+  provider: string,
+  req: Request,
+): Promise<{ ok: true; identity: VerifiedIdentity } | { ok: false; error: "expired" | "provider" }> {
+  const saved = parseOidcCookie(readCookie(req, OIDC_COOKIE));
+  const p = deps.providers[provider as ProviderName];
+  if (!saved || !p || saved.p !== p.name) return { ok: false, error: "expired" };
+  try {
+    return {
+      ok: true,
+      identity: await p.finish(new URL(req.url), { state: saved.s, nonce: saved.n, verifier: saved.v }),
+    };
+  } catch {
+    return { ok: false, error: "provider" };
+  }
+}
+
 /** GET /auth/callback/[provider] */
 export async function finishLogin(deps: RouteDeps, provider: string, req: Request): Promise<Response> {
   const clear = cookie(OIDC_COOKIE, "", 0, deps.secureCookies);
-  const saved = parseOidcCookie(readCookie(req, OIDC_COOKIE));
-  const p = deps.providers[provider as ProviderName];
-  if (!saved || !p || saved.p !== p.name) return redirect(`${deps.baseUrl}/sign-in?error=expired`, [clear]);
-  let identity;
-  try {
-    identity = await p.finish(new URL(req.url), { state: saved.s, nonce: saved.n, verifier: saved.v });
-  } catch {
-    return redirect(`${deps.baseUrl}/sign-in?error=provider`, [clear]);
-  }
+  const v = await verifyCallback(deps, provider, req);
+  if (!v.ok) return redirect(`${deps.baseUrl}/sign-in?error=${v.error}`, [clear]);
+  const identity = v.identity;
   const principal = await principalByEmail(deps.db, identity.email);
   if (!principal) return redirect(`${deps.baseUrl}/sign-in?error=not-registered`, [clear]);
   const token = await createSession(deps, principal);
