@@ -1,0 +1,13 @@
+{
+  "$comment": "Golden vector for the agent request signature (ADR-013/035). TEST KEY ONLY: seed is bytes 1..32. Checked by apps/server-agent/internal/console and apps/console.",
+  "body": "{\"agentVersion\":\"1.2.3\",\"activeSeats\":4}",
+  "canonical": "OM-AGENT-1\nPOST\n/api/agent/heartbeat?v=1\nsrv_0193a1b2c3d4\n1795300000\n0f1e2d3c4b5a69788796a5b4c3d2e1f0\n3c07c8cd8c1104b285449795f8e247f246dfcffcd0f157844b574a77071b828e",
+  "method": "POST",
+  "nonce": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+  "pathAndQuery": "/api/agent/heartbeat?v=1",
+  "publicKeyBase64": "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=",
+  "seedBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
+  "serverId": "srv_0193a1b2c3d4",
+  "signatureBase64": "gSZgEcqqvFRsBTRgtYO3xUdlUxCzpTwKDQ3w+Y2rrtcIdLdl/DfYI0BRmR6QM07oubCJKUVIlqrlfs3J/U9fAw==",
+  "timestamp": 1795300000
+}

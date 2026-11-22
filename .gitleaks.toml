@@ -1,0 +1,7 @@
+# Gitleaks configuration: default rules plus a narrow allowlist for test vectors.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Deterministic TEST keys in shared fixtures (seed = bytes 1..32); never used outside tests"
+paths = ['''packages/shared-schema/fixtures/agent-signature\.json''']
