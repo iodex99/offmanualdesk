@@ -436,6 +436,19 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// Reads the whole request head before answering: replying after a partial read
+    /// and closing with unread bytes makes Windows reset the connection (flaky test).
+    fn read_request_head(s: &mut std::net::TcpStream) {
+        let mut head = Vec::new();
+        let mut buf = [0u8; 256];
+        while !head.windows(4).any(|w| w == b"\r\n\r\n") && head.len() < 8192 {
+            match s.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => head.extend_from_slice(&buf[..n]),
+            }
+        }
+    }
+
     #[test]
     fn readiness_poll_against_a_local_server() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -443,8 +456,7 @@ mod tests {
         std::thread::spawn(move || {
             for (i, stream) in listener.incoming().enumerate() {
                 let mut s = stream.unwrap();
-                let mut buf = [0u8; 256];
-                let _ = s.read(&mut buf);
+                read_request_head(&mut s);
                 let status = if i == 0 {
                     "503 Service Unavailable"
                 } else {
@@ -492,8 +504,7 @@ mod tests {
         std::thread::spawn(move || {
             for stream in listener.incoming() {
                 let mut s = stream.unwrap();
-                let mut buf = [0u8; 256];
-                let _ = s.read(&mut buf);
+                read_request_head(&mut s);
                 let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
             }
         });
