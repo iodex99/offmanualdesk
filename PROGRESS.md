@@ -67,7 +67,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M3 Console core
 - [x] Auth for superadmin / staff / firm admin with mandatory TOTP (OIDC Google/Microsoft via openid-client, server-side sessions, encrypted TOTP secrets, role + firm scoping; ADR-037). Live sign-in needs Dwahnil's OAuth apps
 - [x] Firms, enrolment codes, employees (+ invite records, offboarding), skill-pack grants (employee or `OM-*` AD group), firm policy: `lib/admin.ts` + JSON APIs `/api/admin/*` (session, strict input, CSRF guard, firm scoping)
-- [ ] Invite delivery (Resend email; WhatsApp v2) and admin UI pages beyond the fleet board
+- [x] Admin UI pages: `/` sends staff to `/fleet` and firm admins to their firm; `/firms` (list; staff add firms), `/firms/[firmId]` (employees + add + switch off/on, skill packs to an employee or `OM-*` AD group, firm settings incl. step-up for approvals, enrolment codes for staff, invoices with ₹ and DD-MM-YYYY); every loader is firm-scoped on the server; [ ] invite delivery (Resend email; WhatsApp v2), billing actions UI for superadmin
 - [x] Agent API v1: enroll, heartbeat, policy (ETag), audit-summary (`lib/agent-api.ts`, signed, strict bodies, PGlite-tested)
 - [x] Agent API: bind (`POST /api/agent/bind`, ADR-044); [ ] usage, support bundle, notices
 - [x] Employee OAuth sign-in (`/bind`, `/bind/login|callback/[provider]`, same OIDC client, no console session) → one-time code page → SID binding endpoint (ADR-044)
@@ -126,7 +126,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 
 ### M9 Billing
 - [x] Billing engine (pure, `apps/console/lib/billing/`): all 5 line types, both seat modes, tiered/volume bands with fractional seats, mid-month proration, versioned per-seat lines, adjustments, usage with quota + markup (ADR-038)
-- [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; [ ] admin UI pages
+- [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; invoice list on the firm page; [ ] superadmin billing actions UI
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
 - [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); [ ] PDF
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 12:40: Console admin pages (M3)
+- Changed: `lib/admin.ts` `firmOverview` (firm, policy, grants, pack catalogue; firm-scoped), pages `app/firms/page.tsx`, `app/firms/[firmId]/page.tsx`, client forms `app/firms/forms.tsx` (JSON to the existing admin APIs, plain messages, confirm before switching someone off), `app/firms/session.ts` (sign-in redirect, 403 page), home page redirect by role. Also fixed CI E0308 in the restart-to-update slice (`.into()` for StartFailure); CI run 45031941156 green.
+- Tests: console 99/99 (firmOverview: own admin and staff see it, other firm's admin refused, pre-MFA 401, unknown firm); `next build` lists `/firms` and `/firms/[firmId]`. Not exercised in a browser (no database here).
+- Half-done / next: superadmin billing UI (run/issue/payment/override), invite email.
 
 ### 2026-11-23 12:00: Restart to update (M8)
 - Changed: agent migration 0004 (`updates.severity`, `deadline_at`), store `SetUpdateMeta`/`StagedRelease`, Syncer records severity + deadline (console already sends `deadlineAt`), pipe `update.status`; Desk Rust `versions.rs` (strict version strings, install base, installed check, root_for, version_of via the `current` junction, choice load/save atomically), `gateway_manager` (start from the chosen version; StartFailure carries the Doctor snapshot; `apply_update` with rollback; `update_status`), `gateway::restore_backup` (failed state kept once), commands `update_status`/`update_apply`; UI `UpdateNotice.tsx` in the Assistant. Fixed a stray control character in ARCHITECTURE F4. ADR-048.
