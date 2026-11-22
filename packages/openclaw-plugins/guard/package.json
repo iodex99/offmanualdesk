@@ -1,0 +1,33 @@
+{
+  "name": "@offmanual/openclaw-guard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenClaw plugin: lock, licence, skill packs, review queue, access-denied handling, Telegram policy, audit",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/plugin.js"
+    ],
+    "install": {
+      "minHostVersion": ">=2026.11.6"
+    },
+    "compat": {
+      "pluginApi": ">=2026.11.6"
+    },
+    "build": {
+      "openclawVersion": "2026.11.6",
+      "pluginSdkVersion": "2026.11.6"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "openclaw": "2026.11.6"
+  }
+}

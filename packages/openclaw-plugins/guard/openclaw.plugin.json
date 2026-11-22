@@ -1,0 +1,15 @@
+{
+  "id": "offmanual-guard",
+  "name": "Off Manual Guard",
+  "description": "Lock, policy, review queue and access-denied enforcement for Off Manual Desk.",
+  "activation": { "onStartup": true },
+  "contracts": { "agentToolResultMiddleware": ["openclaw"] },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "pipeName": { "type": "string" },
+      "policyPath": { "type": "string" }
+    }
+  }
+}
