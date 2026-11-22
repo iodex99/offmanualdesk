@@ -5,9 +5,7 @@
       "id": "offmanual/client-directory",
       "version": "0.1.0",
       "path": "offmanual/client-directory",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -21,9 +19,7 @@
       "id": "offmanual/compliance-calendar",
       "version": "0.1.0",
       "path": "offmanual/compliance-calendar",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -37,9 +33,7 @@
       "id": "offmanual/ledger-scrutiny",
       "version": "0.1.0",
       "path": "offmanual/ledger-scrutiny",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -53,9 +47,7 @@
       "id": "offmanual/gstr2b-vs-books",
       "version": "0.1.0",
       "path": "offmanual/gstr2b-vs-books",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -69,9 +61,7 @@
       "id": "offmanual/ais-26as-vs-books",
       "version": "0.1.0",
       "path": "offmanual/ais-26as-vs-books",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -85,9 +75,7 @@
       "id": "offmanual/tds-checks",
       "version": "0.1.0",
       "path": "offmanual/tds-checks",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -101,9 +89,7 @@
       "id": "offmanual/notice-reply-draft",
       "version": "0.1.0",
       "path": "offmanual/notice-reply-draft",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -117,9 +103,7 @@
       "id": "offmanual/doc-chaser",
       "version": "0.1.0",
       "path": "offmanual/doc-chaser",
-      "packs": [
-        "core"
-      ],
+      "packs": ["core"],
       "review": {
         "status": "pending",
         "reviewer": "",
@@ -133,9 +117,7 @@
       "id": "offmanual/tally-mis",
       "version": "0.1.0",
       "path": "offmanual/tally-mis",
-      "packs": [
-        "tally-read"
-      ],
+      "packs": ["tally-read"],
       "review": {
         "status": "pending",
         "reviewer": "",

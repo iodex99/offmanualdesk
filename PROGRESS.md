@@ -110,7 +110,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Registry tooling: `tools/skill-vet` (static checks: binaries, install scripts, git deps block; network/shell/eval/blobs/absolute paths/credentials warn; review checklist; `lock` emits pending entries) + `verify-skills` with `pending` status; release ships approved only (ADR-039)
 - [ ] Starter pack imported and reviewed (SKILLS.md §3)
 - [x] Client directory skill (pending review); [ ] admin scan task button
-- [ ] Task buttons v1 (SKILLS.md §5)
+- [x] Task buttons v1 (SKILLS.md §5): Desk Tasks tab (`tasks.ts`, `TaskButtons.tsx`) with client/month/FY/period/file inputs; each sends one request naming the skill and the §5 output file through the chat; [ ] role defaults (needs role from the console), Purchase bills to vouchers (needs the Tally-post pack)
 - [x] India pack v1 written (all `pending` CA review, never shipped until approved): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
 
 ### M8 Updates
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 16:35: Task buttons (M7) + CI flake fix
+- Changed: Desk `tasks.ts` (9 tasks, file-safe client names, FY list, plain missing-input message), `TaskButtons.tsx`, Chat `queued` prop (a task's request is sent once as if typed), Tasks tab; skills' output names aligned with SKILLS.md §5 (hashes refreshed); Desk Rust test servers read the full request head before replying (a Windows reset made `readiness_poll_against_a_local_server` flaky in CI run 45036423222).
+- Tests: desk 50/50 (prompts name skill + file, helpers, Assistant end to end: missing inputs, then one chat request).
+- Half-done / next: role-based defaults; usage reporting.
 
 ### 2026-11-23 16:05: India pack skills (M7)
 - Changed: six skills `skills/offmanual/{gstr2b-vs-books,ais-26as-vs-books,tds-checks,notice-reply-draft,doc-chaser,tally-mis}/SKILL.md` (instruction-only, read-only, outputs in the client's folder with the naming rule, ₹ Indian grouping and DD-MM-YYYY, stop on Access Denied, never touch portals or contact anyone; tax rates and limits come from the firm's own reviewed tables, not from the model's memory); lock entries `pending`.

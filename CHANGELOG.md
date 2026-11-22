@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Desk Tasks tab: one-click jobs (GSTR-2B vs books, 26AS/AIS vs books, ledger scrutiny, notice reply draft, missing documents, month-end MIS, bank reco, summarise a document, due this week) that ask for the client and period.
 - India pack drafts (waiting for review): GSTR-2B vs books, AIS/26AS vs books, TDS checks, notice reply draft, document chaser, Tally MIS.
 - Report a problem: Desk shows exactly what will be sent (versions, server checks, the Server Agent's own log lines; never files or chats), adds the employee's short description and returns a reference number.
 - Firm admins can reset an employee's authenticator from the console when the phone and recovery codes are both lost; the employee sets it up again in Desk.
