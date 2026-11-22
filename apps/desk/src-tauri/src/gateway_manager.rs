@@ -108,7 +108,8 @@ fn start_inner(state: &GatewayState, correlation_id: &str) -> Result<GatewayStat
     if !layout.node.exists() || !layout.openclaw_entry.exists() {
         return Err(err(
             "The assistant isn't installed on this server yet. Please tell your admin.",
-        ));
+        )
+        .into());
     }
     gateway::write_config(&layout, port)
         .map_err(|_| err("Couldn't prepare your assistant's settings."))?;
