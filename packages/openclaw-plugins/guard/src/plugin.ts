@@ -35,10 +35,12 @@ import {
 import { PLUGIN_ID } from "./index.js";
 import { deleteFiles, MAX_DELETE_FILES } from "./delete-files.js";
 import { handleDecide, stepUpActionsFrom } from "./review-api.js";
+import { flushUsage, UsageMeter, type UsageCounts } from "./usage.js";
 import { ReviewQueue, ReviewStore, bypassBlockReason, queuedText, type ActionKind } from "./review.js";
 
 export const INSTALL_BLOCK_REASON = "Installs are managed by Off Manual. Ask your admin.";
 export const DELETE_TOOL = "offmanual_delete_files";
+export const USAGE_FLUSH_MS = 60_000;
 export const DEFAULT_PACKS = String.raw`C:\Program Files\OffManual\current\skills\packs.json`;
 export const DEFAULT_BRIDGE = String.raw`C:\Program Files\OffManual\current\server-agent.exe`;
 
@@ -60,6 +62,7 @@ export default definePluginEntry({
     const lockCache = new LockCache(5000);
     const stopped = new StoppedRuns();
     const policyCache = new PolicyCache(30_000);
+    const usage = new UsageMeter();
     let packs: Packs | null = null;
     try {
       packs = loadPacks(cfg.packsPath || DEFAULT_PACKS);
@@ -198,14 +201,29 @@ export default definePluginEntry({
 
     api.on("agent_end", (event) => {
       stopped.end(event.runId);
+      usage.addTurn();
+    });
+
+    // Usage counts for billing and seat activity (ADR-051): tokens only, never text.
+    api.on("llm_output", (event) => {
+      usage.addUsage(event.usage);
     });
 
     api.on("before_install", () => ({ block: true, blockReason: INSTALL_BLOCK_REASON }));
 
+    const sendUsage = (c: UsageCounts) => bridge.call("usage.add", { ...c });
+    let usageTimer: ReturnType<typeof setInterval> | undefined;
     api.registerService({
       id: "offmanual-guard-bridge",
-      start: async () => undefined,
-      stop: async () => bridge.close(),
+      start: async () => {
+        usageTimer = setInterval(() => void flushUsage(usage, sendUsage), USAGE_FLUSH_MS);
+        usageTimer.unref?.();
+      },
+      stop: async () => {
+        if (usageTimer) clearInterval(usageTimer);
+        await flushUsage(usage, sendUsage);
+        await bridge.close();
+      },
     });
   },
 });

@@ -8,7 +8,13 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 
 /** Methods the guard may call. */
-export const GUARD_METHODS = ["lock.get", "policy.get", "audit.append", "auth.stepUpCheck"] as const;
+export const GUARD_METHODS = [
+  "lock.get",
+  "policy.get",
+  "audit.append",
+  "auth.stepUpCheck",
+  "usage.add",
+] as const;
 export type GuardMethod = (typeof GUARD_METHODS)[number];
 
 export class AgentUnavailable extends Error {}

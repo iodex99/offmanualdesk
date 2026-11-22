@@ -1,8 +1,8 @@
 import { generateKeyPairSync, sign as cryptoSign, type KeyObject } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { employees, enrolmentCodes, firms, supportTickets } from "@/db/schema";
+import { employees, enrolmentCodes, firms, supportTickets, usageDaily } from "@/db/schema";
 import { canonical, HEADERS } from "@/lib/agent-auth";
-import { agentSupport, ENROLMENT_SERVER_ID, enroll, hashCode } from "@/lib/agent-api";
+import { agentSupport, agentUsage, ENROLMENT_SERVER_ID, enroll, hashCode } from "@/lib/agent-api";
 import type { SessionState } from "@/lib/auth";
 import type { DB } from "@/lib/db";
 import { uuidv7 } from "@/lib/ids";
@@ -179,5 +179,49 @@ describe("POST /api/agent/support", () => {
     );
     expect(r.status).toBe(429);
     expect(((await r.json()) as { error: string }).error).toMatch(/Too many reports/);
+  });
+});
+
+describe("POST /api/agent/usage", () => {
+  it("stores complete days per employee of the firm; a retry replaces, never adds", async () => {
+    const a = await firmWithServer("Mehta", "OMA-0001");
+    const b = await firmWithServer("Shah", "OMB-0001");
+    const asha = uuidv7();
+    const other = uuidv7();
+    await db.insert(employees).values([
+      { id: asha, firmId: a.firmId, name: "Asha", email: "asha@mehta.in", status: "active" },
+      { id: other, firmId: b.firmId, name: "X", email: "x@shah.in", status: "active" },
+    ]);
+    const send = (body: unknown) => agentUsage(deps(), signed(a.priv, a.serverId, "/api/agent/usage", body));
+    const day = {
+      date: "2026-11-22",
+      employees: [
+        { employeeId: asha, turns: 12, inputTokens: 50000, outputTokens: 8000 },
+        { employeeId: other, turns: 99, inputTokens: 1, outputTokens: 1 },
+      ],
+    };
+    const r = await send(day);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ stored: 1 });
+    await send(day); // retried upload
+    const rows = await db.select().from(usageDaily);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      employeeId: asha,
+      firmId: a.firmId,
+      turns: 12,
+      inputTokens: 50000,
+      outputTokens: 8000,
+    });
+    expect((await send({ date: "2026-11-23", employees: [] })).status).toBe(400); // today (IST) isn't complete
+    expect((await send({ ...day, extra: 1 })).status).toBe(400);
+    expect(
+      (
+        await send({
+          date: "2026-11-21",
+          employees: [{ employeeId: asha, turns: -1, inputTokens: 0, outputTokens: 0 }],
+        })
+      ).status,
+    ).toBe(400);
   });
 });

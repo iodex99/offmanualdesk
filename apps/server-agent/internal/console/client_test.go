@@ -31,10 +31,11 @@ type fakeConsole struct {
 	beats    []Heartbeat
 	validKey string // enrolment code
 	bindSID  string
+	usage    map[string][]UsageCount
 }
 
 func newFake() *fakeConsole {
-	return &fakeConsole{keys: map[string]ed25519.PublicKey{}, nonces: map[string]bool{}, audits: map[string][]AuditCount{}, validKey: "OMLAB-0001-ABCD", etag: `"p1"`}
+	return &fakeConsole{keys: map[string]ed25519.PublicKey{}, nonces: map[string]bool{}, audits: map[string][]AuditCount{}, usage: map[string][]UsageCount{}, validKey: "OMLAB-0001-ABCD", etag: `"p1"`}
 }
 
 func (f *fakeConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +83,14 @@ func (f *fakeConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("ETag", f.etag)
 		_ = json.NewEncoder(w).Encode(f.policy)
+	case "/api/agent/usage":
+		var in struct {
+			Date      string       `json:"date"`
+			Employees []UsageCount `json:"employees"`
+		}
+		_ = json.Unmarshal(body, &in)
+		f.usage[in.Date] = in.Employees
+		_, _ = w.Write([]byte(`{"stored":1}`))
 	case "/api/agent/support":
 		var in struct {
 			EmployeeID  string         `json:"employeeId"`
@@ -292,5 +301,34 @@ func TestSubmitSupport(t *testing.T) {
 	}
 	if _, err := c.SubmitSupport(context.Background(), "e-1", "", map[string]any{}); err == nil {
 		t.Fatal("empty report accepted")
+	}
+}
+
+func TestUsageUploadSendsCompleteDaysOnce(t *testing.T) {
+	f, c, st := setup(t)
+	ctx := context.Background()
+	sid := "S-1-5-21-1-2-3-1101"
+	_ = st.UpsertEmployee(ctx, store.Employee{SID: sid, EmployeeID: "e1", Name: "Asha", Status: "active"})
+	yesterday := time.Now().In(ist).AddDate(0, 0, -1).Format("2006-01-02")
+	today := time.Now().In(ist).Format("2006-01-02")
+	_ = st.AddUsage(ctx, sid, yesterday, 4, 1000, 200)
+	_ = st.AddUsage(ctx, sid, today, 9, 9, 9) // today isn't complete: not sent yet
+	s := &Syncer{Client: c, Store: st, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), AgentVersion: "1.0.0"}
+	if err := s.uploadUsage(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got := f.usage[yesterday]
+	if len(got) != 1 || got[0] != (UsageCount{EmployeeID: "e1", Turns: 4, InputTokens: 1000, OutputTokens: 200}) {
+		t.Fatalf("yesterday %+v", got)
+	}
+	if _, ok := f.usage[today]; ok {
+		t.Fatal("today was sent")
+	}
+	delete(f.usage, yesterday)
+	if err := s.uploadUsage(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := f.usage[yesterday]; ok {
+		t.Fatal("a sent day was sent again")
 	}
 }

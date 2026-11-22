@@ -99,6 +99,7 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("update.status", a.updateStatus)
 	srv.Handle("support.bundle", a.supportBundle)
 	srv.Handle("support.submit", a.supportSubmit)
+	srv.Handle("usage.add", a.usageAdd)
 }
 
 // ---- errors in plain words ----

@@ -275,3 +275,21 @@ func (c *Client) SubmitSupport(ctx context.Context, employeeID, description stri
 	}
 	return r.Ticket, nil
 }
+
+// UsageCount is one employee's counts for a day (ADR-051). No text, ever.
+type UsageCount struct {
+	EmployeeID   string `json:"employeeId"`
+	Turns        int64  `json:"turns"`
+	InputTokens  int64  `json:"inputTokens"`
+	OutputTokens int64  `json:"outputTokens"`
+}
+
+// SendUsage uploads one day's per-employee usage counts.
+func (c *Client) SendUsage(ctx context.Context, date string, counts []UsageCount) error {
+	if counts == nil {
+		counts = []UsageCount{}
+	}
+	_, _, _, err := c.do(ctx, c.ServerID, c.Key, http.MethodPost, "/api/agent/usage",
+		map[string]any{"date": date, "employees": counts}, nil)
+	return err
+}

@@ -5,7 +5,7 @@
 // strict bodies (unknown fields rejected); never accept client content: only
 // versions, health, counts.
 import { createHash } from "node:crypto";
-import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   agentNonces,
@@ -16,6 +16,7 @@ import {
   firms,
   packGrants,
   servers,
+  usageDaily,
 } from "@/db/schema";
 import type { DB } from "./db";
 import { canonical, HEADERS, verifyAgentRequest, verifySignature, type NonceStore } from "./agent-auth";
@@ -400,4 +401,67 @@ export async function agentSupport(deps: Deps, req: Request): Promise<Response> 
     if (e instanceof SupportLimit) return fail(429, e.message);
     throw e;
   }
+}
+
+// ---- POST /api/agent/usage (ADR-051): complete-day counts per employee ----
+
+const usageSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    employees: z
+      .array(
+        z
+          .object({
+            employeeId: z.string().uuid(),
+            turns: z.number().int().min(0).max(1_000_000),
+            inputTokens: z.number().int().min(0).max(1e12),
+            outputTokens: z.number().int().min(0).max(1e12),
+          })
+          .strict(),
+      )
+      .max(5000),
+  })
+  .strict();
+
+export async function agentUsage(deps: Deps, req: Request): Promise<Response> {
+  const a = await authenticate(deps, req);
+  if (!a.ok) return a.res;
+  const input = parseJson(usageSchema, a.body);
+  if (!input) return fail(400, "invalid usage");
+  // Only complete days, not in the future (IST).
+  const todayIst = new Date(deps.now().getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  if (input.date >= todayIst) return fail(400, "only complete days");
+  const ids = input.employees.map((e) => e.employeeId);
+  const mine =
+    ids.length === 0
+      ? new Set<string>()
+      : new Set(
+          (
+            await deps.db
+              .select({ id: employees.id })
+              .from(employees)
+              .where(and(eq(employees.firmId, a.firmId), inArray(employees.id, ids)))
+          ).map((r) => r.id),
+        );
+  let stored = 0;
+  for (const e of input.employees) {
+    if (!mine.has(e.employeeId)) continue; // another firm's employee: ignored, never stored
+    // A day's totals replace earlier ones, so a retried upload never double-counts.
+    await deps.db
+      .insert(usageDaily)
+      .values({
+        firmId: a.firmId,
+        employeeId: e.employeeId,
+        date: input.date,
+        turns: e.turns,
+        inputTokens: e.inputTokens,
+        outputTokens: e.outputTokens,
+      })
+      .onConflictDoUpdate({
+        target: [usageDaily.employeeId, usageDaily.date],
+        set: { turns: e.turns, inputTokens: e.inputTokens, outputTokens: e.outputTokens },
+      });
+    stored++;
+  }
+  return json(200, { stored });
 }

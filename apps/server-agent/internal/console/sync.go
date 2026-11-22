@@ -21,6 +21,7 @@ const (
 	MetaFirmStatus = "firm_status"
 	MetaLastAck    = "last_console_contact_at"
 	MetaAuditSent  = "audit_summary_sent_through" // last date (YYYY-MM-DD IST) uploaded
+	MetaUsageSent  = "usage_sent_through"         // last complete usage day uploaded (ADR-051)
 )
 
 // Syncer runs the heartbeat/policy/audit loop (ARCHITECTURE §3.3).
@@ -75,6 +76,9 @@ func (s *Syncer) Once(ctx context.Context) {
 	}
 	if err := s.uploadAudit(ctx); err != nil {
 		s.Log.Warn("audit summary upload failed", "error", err.Error())
+	}
+	if err := s.uploadUsage(ctx); err != nil {
+		s.Log.Warn("usage upload failed", "error", err.Error())
 	}
 	s.maybeStage(ctx)
 }
@@ -177,6 +181,39 @@ func (s *Syncer) uploadAudit(ctx context.Context) error {
 			return err
 		}
 		if err := s.Store.SetMeta(ctx, MetaAuditSent, day.Format("2006-01-02")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// uploadUsage sends complete days (yesterday and earlier, IST) of per-employee usage
+// counts not yet sent, at most a week of backlog (ADR-051).
+func (s *Syncer) uploadUsage(ctx context.Context) error {
+	today := time.Now().In(ist)
+	yesterday := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, ist).AddDate(0, 0, -1)
+	sent, _ := s.Store.Meta(ctx, MetaUsageSent)
+	day := yesterday.AddDate(0, 0, -6)
+	if t, err := time.ParseInLocation("2006-01-02", sent, ist); err == nil && t.After(day) {
+		day = t.AddDate(0, 0, 1)
+	}
+	for ; !day.After(yesterday); day = day.AddDate(0, 0, 1) {
+		date := day.Format("2006-01-02")
+		rows, err := s.Store.UsageForDate(ctx, date)
+		if err != nil {
+			return err
+		}
+		out := make([]UsageCount, 0, len(rows))
+		for _, r := range rows {
+			if r.EmployeeID == "" {
+				continue
+			}
+			out = append(out, UsageCount{EmployeeID: r.EmployeeID, Turns: r.Turns, InputTokens: r.InputTokens, OutputTokens: r.OutputTokens})
+		}
+		if err := s.Client.SendUsage(ctx, date, out); err != nil {
+			return err
+		}
+		if err := s.Store.SetMeta(ctx, MetaUsageSent, date); err != nil {
 			return err
 		}
 	}
