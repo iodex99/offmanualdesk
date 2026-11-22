@@ -26,6 +26,7 @@ import {
 } from "@/lib/billing/run";
 import type { SessionState } from "@/lib/auth";
 import { billingAction, listInvoices } from "@/lib/billing/admin";
+import { dailyBilling, previousMonth } from "@/lib/billing/cron";
 import type { DB } from "@/lib/db";
 import { uuidv7 } from "@/lib/ids";
 import { testDb } from "./helpers/db";
@@ -395,5 +396,30 @@ describe("billing API operations", () => {
 
   it("a firm admin can't read another firm's invoices", async () => {
     await expect(listInvoices(deps(), adminOf(uuidv7()), firmId)).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe("daily billing cron", () => {
+  const SECRET = "0123456789abcdef-cron";
+  const req = (auth?: string) =>
+    new Request("https://c.test/api/cron/billing", auth ? { headers: { authorization: auth } } : {});
+
+  it("needs the secret; on the 1st makes last month's drafts; refreshes statuses", async () => {
+    await contract(1, "2026-10-01", null, [AMC]);
+    expect((await dailyBilling(deps(), cfg, SECRET, req())).status).toBe(401);
+    expect((await dailyBilling(deps(), cfg, SECRET, req("Bearer wrong-secret-xxxxx"))).status).toBe(401);
+    expect((await dailyBilling(deps(), cfg, undefined, req(`Bearer ${SECRET}`))).status).toBe(401);
+    now = new Date("2026-11-30T20:00:00Z"); // 01:30 IST on 1 December
+    const r = await dailyBilling(deps(), cfg, SECRET, req(`Bearer ${SECRET}`));
+    expect(await r.json()).toEqual({ date: "2026-12-01", drafts: 1, firmsChecked: 1, firmsWithContract: 1 });
+    now = new Date("2026-12-02T20:00:00Z");
+    expect(await (await dailyBilling(deps(), cfg, SECRET, req(`Bearer ${SECRET}`))).json()).toMatchObject({
+      drafts: 0,
+    });
+  });
+
+  it("previous month wraps the year", () => {
+    expect(previousMonth("2027-01-01")).toEqual({ year: 2026, month: 12 });
+    expect(previousMonth("2026-12-01")).toEqual({ year: 2026, month: 11 });
   });
 });
