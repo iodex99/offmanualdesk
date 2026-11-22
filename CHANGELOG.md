@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Firm admins can reset an employee's authenticator from the console when the phone and recovery codes are both lost; the employee sets it up again in Desk.
 - Desk stops an unused assistant after the firm's idle hours to save server memory, starts it again on the next message, and restarts it if it crashes.
 - Invoice PDFs with both GSTINs, place of supply, SAC codes, the GST split and the total in words.
 - Console billing page for Off Manual: make monthly drafts, issue invoices, record payments and override a firm's status with a reason.

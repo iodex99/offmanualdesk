@@ -372,3 +372,10 @@ Template:
 - Options: A move `current` when the Server Agent stages / B per-employee choice recorded by Desk; `current` moves later when nobody runs the old version
 - Decision: B. Desk stores `{active, previous}` per employee and starts that employee's gateway from `versions\<active>` when it is installed (node + OpenClaw entry present), else from `current`. "Restart to update" stops the gateway, records the new version, and starts it; the start path's exit-78 handling takes the snapshot and runs Doctor. On any failure Desk restores the snapshot, restores the previous choice, starts again and shows a plain message. Security releases with a passed deadline are applied when Desk opens the assistant. Version strings are strict (no path characters).
 - Consequences: Several versions can run side by side on one host for a while; the console should show who is on which version (heartbeat per-employee versions: to build). The `current` junction, Desk itself and the Server Agent binary still need the self-update step.
+
+## ADR-049: Admin authenticator reset travels in the firm policy and is applied once
+- Date: 2026-11-23
+- Status: Accepted
+- Context: An employee who loses both the phone and the recovery codes (ADR-046) needs a way back that doesn't involve Off Manual staff touching the server.
+- Decision: A firm admin (or Off Manual staff) presses "Reset authenticator" for an active employee. The console stores `employees.totp_reset_at` and bumps the policy version; the policy carries `totpResetAt` for that employee. At the next sync the Server Agent clears the TOTP secret, enrolment, counter, recovery codes and day grant if the request is newer than the last one it applied (`totp_reset_applied_at`), so the same request never wipes a newly enrolled phone. Re-enrolment happens in Desk from the employee's own Windows session.
+- Consequences: Up to 15 minutes until the reset reaches the server. A malicious admin can force a re-enrolment but can't enrol on the employee's behalf without their Windows session.

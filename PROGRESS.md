@@ -161,6 +161,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Half-done / next: …
 -->
 
+### 2026-11-23 15:05: Admin authenticator reset (ADR-049)
+- Changed: console `employees.totp_reset_at` (migration 0004), `resetAuthenticator` (firm-scoped, active employees only, bumps the policy), route `POST .../employees/[employeeId]/reset-authenticator`, firm page button with confirm; agent policy includes `totpResetAt`; Server Agent migration 0005 (`employees.totp_reset_applied_at`), `store.ApplyTOTPReset` (clears secret, enrolment, counter, recovery codes, day grant; only for a newer request), ApplyPolicy applies it.
+- Tests: console 112/112 (roles, cross-firm, invited refused, policy bump, policy carries the timestamp); Go sync test (applied once, a re-enrolled phone isn't reset again by the same request, a newer request resets, bad timestamps ignored), schema version 5; golangci-lint both OSes 0. A first attempt put the column on `firm_admins` (anchor matched the wrong table); caught by typecheck, migration regenerated.
+- Half-done / next: Report a problem (F11).
+
 ### 2026-11-23 14:35: Gateway keeper: idle stop, start on use, crash restart (M4, F4 step 5)
 - Changed: Desk UI `keeper.ts` (GatewayKeeper with injectable start/stop/status and clock; `keptGateway` wraps chat/review calls so a resting or crashed gateway starts first; one shared start for concurrent uses), Assistant ticks it every 30 s, reads `gatewayIdleStopHours` from policy.get, shows resting/starting/stopped notes.
 - Tests: desk 44/44 (rest after idle, activity postpones, start on send, crash restarts capped at 3/hour then still startable by a message, failed start message, shared start, policy bounds; Assistant end to end with fake timers).

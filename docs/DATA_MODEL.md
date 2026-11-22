@@ -16,7 +16,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 | `servers` | firm_id, hostname, public_key (unique, base64 ed25519), enrolled_at, revoked_at, last_heartbeat_at, agent_version, openclaw_version, desk_version, staged_version, health (`green`/`amber`/`red`), active_seats, preflight_json |
 | `enrolment_codes` | firm_id, server_name, code_hash (sha256 of the upper-cased code; unique), expires_at, used_at, server_id |
 | `agent_nonces` | (server_id, nonce) PK, expires_at: replay protection for signed agent requests (ADR-035) |
-| `employees` | firm_id, name, email, windows_sid, windows_username, role_label, oauth_provider, oauth_subject, bound_at, totp_secret_enc, totp_enrolled_at, telegram_linked (bool only), status (`invited`/`active`/`disabled`), enabled_from, disabled_at |
+| `employees` | firm_id, name, email, windows_sid, windows_username, role_label, oauth_provider, oauth_subject, bound_at, totp_secret_enc, totp_enrolled_at, telegram_linked (bool only), status (`invited`/`active`/`disabled`), enabled_from, disabled_at, totp_reset_at (admin-requested authenticator reset, migration 0004, ADR-049) |
 | `invites` | employee_id, channel (`email`/`whatsapp`), sent_at (set when Resend accepted the invite email), accepted_at (set when the employee binds) |
 | `bind_codes` | employee_id, code_hash (sha256 of `bind:` + normalised code; unique), oauth_provider, oauth_subject, expires_at (10 min), used_at. One live code per employee; redeemed once by a Server Agent of the employee's firm (migration 0002, ADR-044) |
 
@@ -62,7 +62,7 @@ Schema: `apps/server-agent/internal/store/migrations/0001_init.sql` (STRICT tabl
 | Table | Key columns |
 | --- | --- |
 | `meta` | server_id, key_id, policy_etag, licence_expires_at, last_console_contact_at |
-| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, totp_last_counter (highest accepted TOTP step; replay protection, ADR-030), totp_enrolled_at (migration 0002), pin_hash (argon2id), recovery_codes_hash (JSON array of sha256("om-recovery:" + code) for unused codes; ADR-046). Rows come from console policy sync; employees missing from the policy are set `disabled` with their day grant and lease removed |
+| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, totp_last_counter (highest accepted TOTP step; replay protection, ADR-030), totp_enrolled_at (migration 0002), totp_reset_applied_at (migration 0005; newest console reset applied, ADR-049), pin_hash (argon2id), recovery_codes_hash (JSON array of sha256("om-recovery:" + code) for unused codes; ADR-046). Rows come from console policy sync; employees missing from the policy are set `disabled` with their day grant and lease removed |
 | `meta` keys | server_id, server_key_dpapi, console_url, policy_etag, policy_json, firm_status, last_console_contact_at, audit_summary_sent_through, telegram_bot_username, telegram_bot_token_dpapi, telegram_offset, relay_device_key_dpapi |
 | `day_grants` | sid, granted_at, expires_at |
 | `lock_state` | sid, desk_locked, telegram_unlocked_until, failed_pins, failed_codes, lockout_until |
