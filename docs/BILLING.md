@@ -2,6 +2,8 @@
 
 Every firm can have its own deal. A contract is a versioned list of line items; invoices are computed from the active contract version for the period. Amounts are in paise, displayed as ₹ with Indian grouping.
 
+Implemented as pure functions in `apps/console/lib/billing/` (engine.ts, money.ts, ladder.ts; ADR-038). Rules that the text below leaves open are fixed in ADR-038.
+
 ## 1. Line types
 
 | Type | Fields | Invoice calculation |

@@ -36,6 +36,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Desk: first-run authenticator set-up with a QR code, PIN set-up, unlock with PIN or today's code, and lock; it talks to the Server Agent only after confirming the service is genuine.
 - Guard plugin: refuses every turn while Off Manual is locked (and when it can't check), stops a task the moment Windows denies access to a file (no retries, no other paths), records the denial in the firm's local audit log, and blocks all skill/plugin installs.
 - Desk starts the employee's own assistant after unlock (on a leased port with a private token, locked-down settings) and stops it when Desk closes.
+- Billing engine: monthly invoice amounts for setup, AMC, per-seat (prorated or peak, with price bands), AI usage and discounts; GST split by state; totals in words; the overdue → restricted → suspended ladder with manual override.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed

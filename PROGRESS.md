@@ -124,11 +124,14 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] MSI (WiX v4) for first installs
 
 ### M9 Billing
-- [ ] Contracts with versioned line items
-- [ ] Monthly invoice run with GST split + PDF
+- [x] Billing engine (pure, `apps/console/lib/billing/`): all 5 line types, both seat modes, tiered/volume bands with fractional seats, mid-month proration, versioned per-seat lines, adjustments, usage with quota + markup (ADR-038)
+- [ ] Contracts/invoices tables + admin UI
+- [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
+- [ ] Monthly invoice run job + numbering per FY + PDF
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
 - [ ] Notification engine + Desk banners
-- [ ] Enforcement ladder + manual override
+- [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
+- [ ] Ladder wired to firm status, Desk banners, override UI
 
 ### M10 Admin and ease
 - [ ] Admin agent tools
@@ -156,6 +159,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 02:15: Billing engine (M9 core)
+- Changed: `apps/console/lib/billing/money.ts` (bigint paise, half-away-from-zero rounding, basis points, Indian amount in words), `engine.ts` (computeInvoice for one month, seatQuantity as exact fractions, seatAmount tiered/volume, recurring schedule, GST split), `ladder.ts` (state by oldest unpaid invoice, override, capabilities, offline grace). ADR-038.
+- Tests: billing 21/21 (all figures worked by hand from BILLING.md); console total 71/71; typecheck/lint/format clean.
+- Half-done / next: billing tables + invoice run + PDF + Razorpay (needs keys) + notifications.
 
 ### 2026-11-23 01:45: Desk gateway: CI fixes
 - Changed: CI (only place Rust compiles) found E0596 (mutable borrow in a match guard in `status`), an unread `Job` field (dead_code under -D warnings), and a real bug: the readiness probe assumed the HTTP status line arrives in one TCP read; it now reads to CRLF.
