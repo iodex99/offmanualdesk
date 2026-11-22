@@ -505,3 +505,13 @@ Template:
 - Context: BILLING §4 promises automatic receipts. Payments arrive from two places (superadmin manual entry, Razorpay webhook) and email can fail.
 - Decision: Each payment row gets `receipt_sent_at`. `emailReceipts` claims a payment (conditional update), emails the firm's active admins with the amount, date, method, invoice number, total, paid so far and balance, and releases the claim if no admin could be reached. It runs after both payment paths and daily, covering only payments from the last 30 days (so turning email on later doesn't send old receipts). Resend's idempotency key per payment and address makes a retry after a partial failure safe.
 - Consequences: Receipts are plain email, not a GST document (the invoice is). Amounts only; no client data.
+
+## ADR-068: Telegram "Approve" for Desk unlock: needs Dwahnil's decision
+- Date: 2026-11-23
+- Status: Proposed (weakens or changes an unlock factor: needs Dwahnil's explicit approval before any code)
+- Context: ARCHITECTURE F8 sketches Desk → "Approve on Telegram" → inline Approve/Deny → unlock. Rule 9 says TOTP is mandatory for everyone, and SECURITY lists "TOTP; daily code; lockouts" against a stolen password. A Telegram account is a weaker factor than a TOTP seed (SIM-swap or SMS takeover of the Telegram login, session theft), and an inline button invites approving by reflex ("push fatigue").
+- Options:
+  - (a) Don't build it. The daily code and PIN stay the only ways to unlock Desk; `/unlock <code>` on Telegram (already built) still needs the TOTP code.
+  - (b) Telegram Approve may replace the **PIN** only, i.e. after idle on a day the employee already unlocked with the authenticator code; never the daily code, never after a lockout, never when the firm turns it off. Approve shows the server name and time, expires in 60 seconds, and is audited.
+  - (c) As F8: Approve may replace the daily code. Rejected here because it removes TOTP from the daily unlock.
+- Recommendation: (b) if Dwahnil wants it, else (a). Until decided nothing is built and F8's first bullet stays unimplemented.

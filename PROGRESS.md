@@ -25,6 +25,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
 - [ ] **MSI tool licence (M8)**: WiX v4 is out of support; v7 (current) requires accepting the Open Source Maintenance Fee EULA, and organisations with annual revenue ≥ US$10,000 must sponsor `wixtoolset` on GitHub (fee is "not a license fee"; non-payment can suspend access to the binaries; building WiX from its MS-RL source avoids the EULA). Decide: (a) accept the EULA and sponsor if over the threshold, (b) build WiX from source in CI, or (c) another installer. Until then the MSI isn't built and the install runbook's manual steps apply.
+- [ ] **Telegram Approve for Desk unlock (ADR-068, Proposed)**: F8's button would replace the daily TOTP code, which weakens rule 9. Choose (a) don't build, or (b) allow it only in place of the PIN after the day's authenticator unlock (recommended if wanted). Nothing is built until you say.
 - [ ] Later (M8): Azure Trusted Signing account (or code-signing certificate) as GitHub secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`; release store (ADR-016) secrets `RELEASE_STORE_*`
 - [ ] Later (M9): Razorpay test keys (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` in Vercel), a webhook in the Razorpay dashboard to `<console>/api/razorpay/webhook` for `payment_link.paid` with its secret as `RAZORPAY_WEBHOOK_SECRET`; Off Manual GSTIN, state, SAC code confirmed with the CA
 
@@ -104,7 +105,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Server Agent long-polls the firm bot (Bot API getUpdates/sendMessage), routes by linked Telegram user ID, persists the offset, ignores groups/bots, text-only by default, 4096-char chunking (`internal/telegram`)
 - [x] Relay: Server Agent as gateway client (ADR-023/040) through `internal/gateway`; only to a gateway Desk started (fresh lease), else "Open Desk" (ADR-026)
 - [x] Link via deep link one-time code (`telegram.linkStart`, hashed, 10 min, single use; offboarding unlinks); Desk Telegram tab shows the link as a QR code for the phone (`TelegramLink.tsx`)
-- [x] `/unlock <code>` opens a Telegram-only window (firm `telegram_unlock_max_min`, default 60); [ ] inline Approve button for Desk unlock
+- [x] `/unlock <code>` opens a Telegram-only window (firm `telegram_unlock_max_min`, default 60); [ ] inline Approve button for Desk unlock: **Proposed ADR-068, waiting on Dwahnil** (would change an unlock factor)
 - [ ] ~~Wake stopped gateway on message~~ out of v1 if ADR-026 is accepted
 
 ### M7 Skills
@@ -162,6 +163,9 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 03:40: Telegram Approve held for a decision (ADR-068 Proposed)
+- Changed: docs only. F8's "Approve on Telegram" for Desk unlock would replace the daily TOTP code (rule 9); recorded options and a recommendation, marked F8 and M6 as waiting on Dwahnil. No code.
 
 ### 2026-11-24 03:30: Payment receipts (M9, ADR-067)
 - Changed: console `payments.receipt_sent_at` (migration 0012), `emailReceipts` in `lib/admin-mail.ts` (claim → send to active admins → release if none reached; 30-day window; amounts and dates only), called after a manual payment, the Razorpay webhook (route passes the mailer) and the daily cron (`receipts` in its JSON).

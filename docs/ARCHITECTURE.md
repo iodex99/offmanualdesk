@@ -168,7 +168,7 @@ C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM
 5. Unlinked senders get one "not linked" reply; nothing else.
 
 ### F8 Unlock from Telegram
-- Desk "Approve on Telegram" → bot sends inline Approve/Deny → callback → `lock.set(unlocked)` for Desk.
+- Desk "Approve on Telegram" → bot sends inline Approve/Deny → callback → `lock.set(unlocked)` for Desk. **Not built: Proposed ADR-068** (as written it would replace the daily TOTP code; awaiting Dwahnil's decision, recommended variant: replace the PIN only).
 - Away: `/unlock 123456` → TOTP check → Telegram-only unlock for the firm's window.
 
 ### F9 Update
