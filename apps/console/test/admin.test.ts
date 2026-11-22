@@ -8,6 +8,7 @@ import {
   packGrants,
   servers,
   skillPacks,
+  supportTickets,
 } from "@/db/schema";
 import {
   addEmployee,
@@ -196,6 +197,20 @@ describe("firm scoping", () => {
       ["RDS01", "green"],
       ["RDS02", "red"],
     ]);
+    expect(rows[0]).toMatchObject({ firmStatus: "trial", reports7d: 0 });
+    const rds01 = rows[0]!.serverId;
+    await db.insert(supportTickets).values([
+      { id: uuidv7(), firmId: a, serverId: rds01, ref: "OM-AAAAAA", description: "x", createdAt: NOW },
+      {
+        id: uuidv7(),
+        firmId: a,
+        serverId: rds01,
+        ref: "OM-BBBBBB",
+        description: "old",
+        createdAt: new Date(NOW.getTime() - 8 * 86400e3),
+      },
+    ]);
+    expect((await fleet(deps, staff))[0]!.reports7d).toBe(1);
     await expect(fleet(deps, adminOf(a))).rejects.toBeInstanceOf(AuthError);
   });
 });

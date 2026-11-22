@@ -2,7 +2,7 @@
 // authorises first (requireConsole / requireFirmAccess) and validates input strictly.
 // Firm admins can only touch their own firm (.claude/rules/console.md).
 import { randomBytes } from "node:crypto";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   employees,
@@ -13,6 +13,7 @@ import {
   packGrants,
   servers,
   skillPacks,
+  supportTickets,
 } from "@/db/schema";
 import { hashCode } from "./agent-api";
 import { AuthError, requireConsole, requireFirmAccess, type SessionState } from "./auth";
@@ -314,12 +315,19 @@ export async function updatePolicy(deps: AdminDeps, s: SessionState | null, firm
 
 export type FleetRow = {
   serverId: string;
+  firmId: string;
   firm: string;
+  firmStatus: string;
   hostname: string;
   health: "green" | "amber" | "red";
   lastHeartbeatAt: Date | null;
   agentVersion: string | null;
+  openclawVersion: string | null;
+  deskVersion: string | null;
+  stagedVersion: string | null;
   activeSeats: number;
+  /** Problem reports from this server in the last 7 days (F11). */
+  reports7d: number;
 };
 
 /** Servers with effective health: red when no heartbeat for over an hour. */
@@ -328,11 +336,16 @@ export async function fleet(deps: AdminDeps, s: SessionState | null): Promise<Fl
   const rows = await deps.db
     .select({
       serverId: servers.id,
+      firmId: firms.id,
       firm: firms.name,
+      firmStatus: firms.status,
       hostname: servers.hostname,
       health: servers.health,
       lastHeartbeatAt: servers.lastHeartbeatAt,
       agentVersion: servers.agentVersion,
+      openclawVersion: servers.openclawVersion,
+      deskVersion: servers.deskVersion,
+      stagedVersion: servers.stagedVersion,
       activeSeats: servers.activeSeats,
       revokedAt: servers.revokedAt,
     })
@@ -340,11 +353,19 @@ export async function fleet(deps: AdminDeps, s: SessionState | null): Promise<Fl
     .innerJoin(firms, eq(firms.id, servers.firmId))
     .orderBy(asc(firms.name), asc(servers.hostname));
   const stale = deps.now().getTime() - 3600e3;
+  const weekAgo = new Date(deps.now().getTime() - 7 * 86400e3);
+  const reports = await deps.db
+    .select({ serverId: supportTickets.serverId, n: sql<number>`count(*)::int` })
+    .from(supportTickets)
+    .where(gte(supportTickets.createdAt, weekAgo))
+    .groupBy(supportTickets.serverId);
+  const reportsBy = new Map(reports.map((r) => [r.serverId, r.n]));
   return rows
     .filter((r) => !r.revokedAt)
     .map(({ revokedAt: _r, ...r }) => ({
       ...r,
       health: !r.lastHeartbeatAt || r.lastHeartbeatAt.getTime() < stale ? "red" : r.health,
+      reports7d: reportsBy.get(r.serverId) ?? 0,
     }));
 }
 
