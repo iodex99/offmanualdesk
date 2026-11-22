@@ -4,10 +4,12 @@
 
 mod agent_client;
 mod chat;
+mod dock;
 mod dpapi;
 mod gateway;
 mod gateway_client;
 mod gateway_manager;
+mod hotkey;
 mod idle;
 mod info;
 mod instance;
@@ -240,6 +242,28 @@ fn deliver(app: &tauri::AppHandle, reqs: Vec<instance::Request>) {
     let _ = app.emit(instance::INBOX_SIGNAL, ());
 }
 
+/// Docked panel at start (ADR-064): right edge of the current monitor's work area.
+fn dock_main_window(app: &tauri::AppHandle) {
+    let Some(w) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(Some(m)) = w.current_monitor() else {
+        return;
+    };
+    let area = m.work_area();
+    let r = dock::docked(
+        dock::Rect {
+            x: area.position.x,
+            y: area.position.y,
+            width: area.size.width,
+            height: area.size.height,
+        },
+        m.scale_factor(),
+    );
+    let _ = w.set_size(tauri::PhysicalSize::new(r.width, r.height));
+    let _ = w.set_position(tauri::PhysicalPosition::new(r.x, r.y));
+}
+
 fn main() {
     // One Desk per Windows session (ADR-059): a second launch hands its request over and exits.
     let request = instance::request_from_args(std::env::args().skip(1));
@@ -268,9 +292,17 @@ fn main() {
         .manage(Arc::new(chat::ChatState::default()))
         .manage(Arc::new(first))
         .setup(move |app| {
+            dock_main_window(app.handle());
             let handle = app.handle().clone();
             if let Some(dir) = inbox {
                 instance::listen(dir, move |reqs| deliver(&handle, reqs));
+            }
+            let hk = app.handle().clone();
+            if !hotkey::spawn(move || deliver(&hk, vec![instance::Request::Show])) {
+                eprintln!(
+                    "offmanual-desk: {} is taken by another app; open Desk from the taskbar",
+                    hotkey::LABEL
+                );
             }
             Ok(())
         })

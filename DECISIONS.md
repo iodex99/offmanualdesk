@@ -477,3 +477,10 @@ Template:
 - Context: UPDATES §4 says the firm admin sees who is still on the old version. Each employee's gateway version lives in their own profile (`desk\version.json`, ADR-048), which the Server Agent doesn't read.
 - Decision: Desk sends `update.report {version}` (strict semver; the SID comes from the pipe) after each update check and after a switch. The Server Agent keeps it per employee and adds `employeeVersions` (active employees, ≤ 1000) to the heartbeat. The console accepts it with a strict schema and updates only employees of the sending server's firm; the firm page shows a Version column.
 - Consequences: A version number is not client data. The value is as fresh as the person's last Desk session.
+
+## ADR-064: Docked panel at start; Ctrl+Alt+O via RegisterHotKey, no plugin
+- Date: 2026-11-23
+- Status: Accepted (L8 confirms over RDP)
+- Context: PRODUCT v1 lists a docked panel and a global hotkey. Options: Tauri's global-shortcut plugin (new dependency, per-session behaviour unverified) or RegisterHotKey directly (one small audited FFI module like the other native pieces).
+- Decision: At start Desk positions its window along the right edge of the current monitor's work area, full height, 420 logical pixels wide (at most half the area, at least 360), in physical pixels using the monitor's scale. Ctrl+Alt+O is registered with RegisterHotKey (NULL window, MOD_NOREPEAT) on a dedicated thread that runs GetMessageW; a press brings Desk forward exactly like a second launch. If another app holds the hotkey, Desk logs it and carries on.
+- Consequences: The employee can move or resize the panel; it docks again at the next start. A configurable hotkey and side (desk\settings.json) can follow. Hotkeys are per desktop, so each RDS session has its own (L8).

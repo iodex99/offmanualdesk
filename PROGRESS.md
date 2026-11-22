@@ -85,7 +85,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Gateway: early exit detected during startup; exit code 78 → state snapshot (ADR-025, newest 3 kept) → `doctor --fix --yes --non-interactive` without the token (≤ 5 min) → retry once; lease released on failure; start holds the lock (no double start), status non-blocking; idle stop after the firm's `gatewayIdleStopHours` + start on the next message/review action + crash restart (≤ 3/hour) in `ui/src/keeper.ts`; [ ] listener check (ADR-020, lab)
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
-- [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); [ ] docked window + global hotkey
+- [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); docked panel (right edge of the work area at start) + global hotkey Ctrl+Alt+O (ADR-064); [ ] L8 on the RDS host
 - [x] Explorer right-click "Ask Off Manual": `--ask <path>` handled (forwarded to the running Desk, path put in the chat box, ADR-059); [ ] verb registered by the MSI (manual `reg add` in the install runbook)
 - [x] Notifications area: licence banner/paused screen (ADR-042), update notice (ADR-048), notices from Off Manual and the firm with Dismiss (ADR-052)
 
@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 01:50: Docked panel and Ctrl+Alt+O (M4, ADR-064)
+- Changed: Rust `dock.rs` (pure: right edge of the work area, full height, 420 logical px, ≤ half the area, ≥ 360), `hotkey.rs` (RegisterHotKey with a NULL window on its own thread + GetMessageW; fifth audited unsafe module; verified in windows-sys 0.61.2; Tauri `current_monitor`/`work_area`/`scale_factor`/`set_size`/`set_position` verified in tauri 2.12.7), `main.rs` docks at start and brings Desk forward on the hotkey; windows-sys feature `Win32_UI_WindowsAndMessaging`.
+- Tests: dock math (1080p, 150 %, second monitor with a top taskbar, narrow RDP window, tiny, bad scale) in CI; cargo fmt. CI for running versions pending.
 
 ### 2026-11-24 01:30: Who runs which release (M8, ADR-063)
 - Changed: agent migration 0011 (`employees.running_version`), pipe `update.report` (strict semver, SID from the pipe; shared IPC list, Desk allowlist), heartbeat `employeeVersions` (active employees only); console `employees.running_version` (migration 0010), heartbeat schema accepts it (≤ 1000, uuid + semver, strict) and updates only this firm's employees, firm page Version column; Desk UpdateNotice reports the running release after each check and the new one after a switch. Also ticked the stale ladder "override UI" item (the `/billing` page has it).

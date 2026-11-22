@@ -34,6 +34,8 @@ opens what your Windows account can open, and anything that can't be undone wait
 
 - **Files stay in the office.** Your files, chats and prompts never go to Off Manual. Only numbers (how many
   questions, which version) do.
+- **Open Off Manual from anywhere**: press **Ctrl+Alt+O**. Desk sits on the right side of your screen; drag it
+  wherever you like.
 - **Ask about a file or folder**: right-click it in Explorer → **Ask Off Manual**. Desk comes forward with the
   path in the message box; finish your question and press Send.
 - **"You are not authorised to open …"** means your Windows account can't open that folder. Off Manual won't look
