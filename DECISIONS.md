@@ -229,3 +229,11 @@ Template:
 - Decision: B. Caller identity stays OS-derived (rule 4): `GetNamedPipeClientProcessId` → process token SID + session ID; impersonation fails at `SECURITY_ANONYMOUS` (L7: OpenThreadToken error 1347), so the process-token method is primary.
 - Consequences: Squatting needs SYSTEM. Desk and the guard implement the server check (`GetNamedPipeServerProcessId` → token SID S-1-5-18). M2 pipe package gets tests for both.
 - Depends on: L7
+
+## ADR-030: TOTP parameters and replay protection
+- Date: 2026-11-22
+- Status: Accepted
+- Context: ADR-006 makes TOTP mandatory and verified locally by the Server Agent; parameters weren't fixed.
+- Options: A SHA-1 / 6 digits / 30 s (what every authenticator app supports) / B SHA-256 or 8 digits (several apps ignore these URI parameters and show wrong codes)
+- Decision: A, with ±1 step tolerance and replay protection: the highest accepted step is stored per employee (`totp_last_counter`) and any code at or below it is refused. 160-bit random secrets. Comparison is constant-time and checks every window step. HMAC-SHA-1 is not affected by SHA-1 collision attacks. Code: `apps/server-agent/internal/auth/totp.go`, checked against RFC 4226/6238 vectors.
+- Consequences: A code typed for the daily unlock can't be reused for step-up within the same 30 s; Desk asks for the next code (plain message).

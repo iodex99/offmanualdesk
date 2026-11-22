@@ -55,7 +55,7 @@ IDs are UUIDv7. All tables have `created_at`, `updated_at`. Money in paise as `b
 | Table | Key columns |
 | --- | --- |
 | `meta` | server_id, key_id, policy_etag, licence_expires_at, last_console_contact_at |
-| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, pin_hash (argon2id), recovery_codes_hash |
+| `employees` | sid, employee_id, name, status, packs (json), totp_secret_dpapi, totp_last_counter (highest accepted TOTP step; replay protection, ADR-030), pin_hash (argon2id), recovery_codes_hash |
 | `day_grants` | sid, granted_at, expires_at |
 | `lock_state` | sid, desk_locked, telegram_unlocked_until, failed_pins, failed_codes, lockout_until |
 | `leases` | sid, port, token_hash, pid, started_at, last_seen_at |

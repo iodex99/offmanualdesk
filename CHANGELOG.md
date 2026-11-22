@@ -18,6 +18,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Release workflow: tag-triggered build, pinned Node + OpenClaw with hash checks, skills-lock check, Authenticode (when configured), signed manifest, GitHub pre-release, optional release store and console registration; dry-run mode.
 - Lab validation scripts L1–L10 with a runbook for the Windows Server 2022 RDS lab.
 - Automated tests for the Claude Code memory hooks.
+- Server Agent TOTP verification (RFC 6238; one-step clock tolerance; each code usable once).
 
 ### Changed
 - OpenClaw pinned to 2026.11.6 and Node runtime to 24.22.3 (ADR-019).

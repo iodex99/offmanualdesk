@@ -17,7 +17,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 ## Waiting on Dwahnil
 
 - [x] GitHub repo: `https://github.com/iodex99/offmanualdesk` (created 2026-11-22; `main` + `m0-scaffold` pushed). Note the name has no hyphen; docs that say `offmanual-desk` mean this repo.
-- [ ] Let Claude read CI results: install GitHub CLI (`winget install GitHub.cli`, then `gh auth login`), or paste failing job logs.
+- [x] GitHub CLI installed (winget, 2026-11-22).
+- [ ] Approve the `gh` login: open https://github.com/login/device and enter the code Claude gave you (new code needed if it expired: ask Claude to restart `gh auth login --web`).
 - [ ] **Decide Proposed ADRs** (one line each is enough), DECISIONS.md: ADR-023 (Telegram via Server Agent, no channel plugin in v1), ADR-026 (no logged-off gateways in v1), ADR-027 (guard protects against the agent, not the employee), ADR-016 (release store: Cloudflare R2 recommended), ADR-019 (production on OpenClaw `extended-stable`). The others wait for lab results.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
@@ -53,7 +54,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL)
 - [ ] Enrollment with console (keypair, signed requests), heartbeat
 - [ ] Policy fetch → `policy.json` (read-only to users)
-- [ ] Daily code (TOTP) + PIN verification, lock state, lockout
+- [x] TOTP verification (RFC 6238, ±1 step, replay protection) in `internal/auth` (ADR-030)
+- [ ] PIN hashing (argon2id) + verification, lock state, lockout
 - [ ] Port + token leases for gateways (ADR-020)
 - [ ] Audit log append + summary upload
 - [ ] Pre-flight check command
@@ -141,6 +143,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 17:30: M2 slice 1: TOTP verification
+- Changed: branch `m2-server-agent` (from `m0-scaffold`); `apps/server-agent/internal/auth/totp.go` (HOTP/TOTP, Verify with skew + replay protection, secret generation, otpauth URI); ADR-030; DATA_MODEL §2 `employees.totp_last_counter`.
+- Tests: `go test ./apps/server-agent/internal/auth/` → pass, 94.5% cover; all RFC 4226 + RFC 6238 (SHA1/256/512) vectors.
+- Half-done / next: PIN hashing needs `golang.org/x/crypto/argon2` (first external Go dependency). CI review waits on `gh` login approval.
 
 ### 2026-11-22 17:00: Pushed to GitHub
 - Changed: remote `origin` = https://github.com/iodex99/offmanualdesk.git; pushed `main` (kit) and `m0-scaffold` (13 commits).
