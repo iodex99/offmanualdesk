@@ -25,6 +25,7 @@
     "createdAt": { "type": "string", "format": "date-time" },
     "severity": { "enum": ["normal", "security"] },
     "deadlineAt": { "type": "string", "format": "date-time" },
+    "authenticode": { "type": "boolean" },
     "minAgentVersion": { "$ref": "#/$defs/semver" },
     "openclawVersion": { "type": "string", "minLength": 1 },
     "nodeVersion": { "type": "string", "minLength": 1 },

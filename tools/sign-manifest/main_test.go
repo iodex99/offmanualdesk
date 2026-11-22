@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,5 +109,31 @@ func TestBuildRejectsBadSeverityDeadline(t *testing.T) {
 		"-severity", "security"}
 	if code := run(args, &o, &e, env{}.get); code == 0 {
 		t.Fatal("security release without deadline accepted")
+	}
+}
+
+func TestBuildRecordsAuthenticode(t *testing.T) {
+	tmp := t.TempDir()
+	payload := filepath.Join(tmp, "p")
+	_ = os.MkdirAll(payload, 0o755)
+	_ = os.WriteFile(filepath.Join(payload, "a.exe"), []byte("MZ"), 0o644)
+	for _, signed := range []bool{true, false} {
+		out := filepath.Join(tmp, "m.json")
+		args := []string{"build", "-dir", payload, "-version", "1.0.0", "-commit", "c", "-openclaw", "x", "-node", "22",
+			"-min-agent", "1.0.0", "-key-id", "om-test-1", "-zip", filepath.Join(tmp, "p.zip"), "-out", out}
+		if signed {
+			args = append(args, "-authenticode=true")
+		}
+		var o, e bytes.Buffer
+		if code := run(args, &o, &e, env{}.get); code != 0 {
+			t.Fatalf("build: %s", e.String())
+		}
+		body, _ := os.ReadFile(out)
+		var m struct {
+			Authenticode bool `json:"authenticode"`
+		}
+		if err := json.Unmarshal(body, &m); err != nil || m.Authenticode != signed {
+			t.Fatalf("signed=%v manifest %s (%v)", signed, body, err)
+		}
 	}
 }

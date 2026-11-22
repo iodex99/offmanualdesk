@@ -67,8 +67,11 @@ type Manifest struct {
 	OpenClawVersion string     `json:"openclawVersion"`
 	NodeVersion     string     `json:"nodeVersion"`
 	KeyID           string     `json:"keyId"`
-	Payload         Payload    `json:"payload"`
-	Files           []File     `json:"files"`
+	// Authenticode is true when the release workflow signed every .exe/.dll; the
+	// Server Agent then requires a valid signature on each (ADR-055).
+	Authenticode bool    `json:"authenticode,omitempty"`
+	Payload      Payload `json:"payload"`
+	Files        []File  `json:"files"`
 }
 
 // Signature is the body of manifest.sig.json.

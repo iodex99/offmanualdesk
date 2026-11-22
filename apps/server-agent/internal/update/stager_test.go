@@ -42,7 +42,7 @@ type releaseServer struct {
 	pub       ed25519.PublicKey
 }
 
-func newRelease(t *testing.T, version, minAgent string) *releaseServer {
+func newRelease(t *testing.T, version, minAgent string, opts ...func(*manifest.Manifest)) *releaseServer {
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	dir := t.TempDir()
@@ -63,6 +63,9 @@ func newRelease(t *testing.T, version, minAgent string) *releaseServer {
 	m := &manifest.Manifest{Schema: 1, Version: version, Commit: "c", CreatedAt: time.Date(2026, 11, 23, 0, 0, 0, 0, time.UTC),
 		Severity: manifest.SeverityNormal, MinAgentVersion: minAgent, OpenClawVersion: "2026.11.6", NodeVersion: "24.22.3",
 		KeyID: "om-test-1", Payload: manifest.Payload{Name: filepath.Base(zipPath), SHA256: sum, Size: size}, Files: files}
+	for _, o := range opts {
+		o(m)
+	}
 	body, err := manifest.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
@@ -215,5 +218,42 @@ func TestSibling(t *testing.T) {
 		if _, err := sibling("https://r.example/x/manifest.json", bad); err == nil {
 			t.Errorf("accepted %q", bad)
 		}
+	}
+}
+
+func TestStageRequiresAuthenticodeWhenTheManifestSaysSo(t *testing.T) {
+	signed := func(m *manifest.Manifest) { m.Authenticode = true }
+	r := newRelease(t, "1.3.0", "1.0.0", signed)
+	var checked []string
+	s := stager(t, r, &states{})
+	s.Authenticode = func(path string) error {
+		checked = append(checked, filepath.Base(path))
+		if filepath.Base(path) == "offmanual-desk.exe" {
+			return errors.New("TRUST_E_NOSIGNATURE")
+		}
+		return nil
+	}
+	err := s.Stage(context.Background(), r.release("1.3.0"))
+	if !errors.Is(err, ErrUntrustedBinary) || !strings.Contains(err.Error(), "desk/offmanual-desk.exe") {
+		t.Fatalf("unsigned desk accepted: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(s.VersionsDir, "1.3.0")); !os.IsNotExist(statErr) {
+		t.Fatal("an untrusted release was left in versions")
+	}
+	s.Authenticode = func(path string) error { checked = append(checked, filepath.Base(path)); return nil }
+	checked = nil
+	if err := s.Stage(context.Background(), r.release("1.3.0")); err != nil {
+		t.Fatal(err)
+	}
+	if len(checked) != 2 { // server-agent.exe and offmanual-desk.exe; package.json isn't a binary
+		t.Fatalf("checked %v", checked)
+	}
+
+	// Releases without the flag (dev, ring 0) don't call the check at all.
+	plain := newRelease(t, "1.4.0", "1.0.0")
+	s2 := stager(t, plain, &states{})
+	s2.Authenticode = func(string) error { t.Fatal("check called for an unsigned release"); return nil }
+	if err := s2.Stage(context.Background(), plain.release("1.4.0")); err != nil {
+		t.Fatal(err)
 	}
 }

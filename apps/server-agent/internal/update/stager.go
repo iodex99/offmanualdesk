@@ -42,11 +42,14 @@ type Stager struct {
 	AgentVersion string
 	HTTP         *http.Client
 	States       StateRecorder
+	// Authenticode checks one binary; defaults to VerifyAuthenticode (WinVerifyTrust).
+	Authenticode func(path string) error
 }
 
 // Errors callers can match.
 var (
 	ErrNeedsNewerAgent = errors.New("release needs a newer Server Agent")
+	ErrUntrustedBinary = errors.New("a release binary has no valid Authenticode signature")
 	ErrMismatch        = errors.New("release does not match what the console assigned")
 )
 
@@ -131,6 +134,10 @@ func (s *Stager) Stage(ctx context.Context, rel Release) (err error) {
 		return err
 	}
 	if err := manifest.VerifyDir(tmp, m); err != nil {
+		_ = os.RemoveAll(tmp)
+		return err
+	}
+	if err := s.checkAuthenticode(tmp, m); err != nil {
 		_ = os.RemoveAll(tmp)
 		return err
 	}
@@ -226,4 +233,29 @@ func sibling(manifestURL, name string) (string, error) {
 	}
 	u.Path = path.Join(path.Dir(u.Path), name)
 	return u.String(), nil
+}
+
+// checkAuthenticode requires a valid signature on every .exe and .dll when the signed
+// manifest says the release was Authenticode-signed (ADR-055).
+func (s *Stager) checkAuthenticode(dir string, m *manifest.Manifest) error {
+	if !m.Authenticode {
+		return nil
+	}
+	verify := s.Authenticode
+	if verify == nil {
+		verify = VerifyAuthenticode
+	}
+	for _, f := range m.Files {
+		ext := strings.ToLower(filepath.Ext(f.Path))
+		if ext != ".exe" && ext != ".dll" {
+			continue
+		}
+		if err := verify(filepath.Join(dir, filepath.FromSlash(f.Path))); err != nil {
+			if errors.Is(err, ErrUntrustedBinary) {
+				return fmt.Errorf("%w (%s)", err, f.Path)
+			}
+			return fmt.Errorf("%w (%s): %w", ErrUntrustedBinary, f.Path, err)
+		}
+	}
+	return nil
 }

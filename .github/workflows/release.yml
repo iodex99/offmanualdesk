@@ -206,6 +206,8 @@ jobs:
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
           KEY_ID: ${{ vars.RELEASE_KEY_ID }}
+          # Agents require valid Authenticode on every .exe/.dll when this is true (ADR-055).
+          AUTHENTICODE: ${{ steps.authenticode.outputs.enabled == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p out
@@ -231,7 +233,8 @@ jobs:
           fi
           "$SM" build -dir payload -version "$VERSION" -commit "$COMMIT" -openclaw "$OPENCLAW_VERSION" \
             -node "$NODE_VERSION" -min-agent "$MIN_AGENT_VERSION" -severity "$SEVERITY" "${deadline_args[@]}" \
-            -key-id "$KEY_ID" -zip "out/offmanual-$VERSION.zip" -out out/manifest.json
+            -key-id "$KEY_ID" -zip "out/offmanual-$VERSION.zip" -out out/manifest.json \
+            -authenticode="$AUTHENTICODE"
           "$SM" sign -manifest out/manifest.json -out out/manifest.sig.json
           "$SM" verify -manifest out/manifest.json -sig out/manifest.sig.json -pubkey-file "$pubfile" -zip "out/offmanual-$VERSION.zip"
           node tools/release/cli.mjs notes "$VERSION" > out/RELEASE_NOTES.md

@@ -96,6 +96,7 @@ func cmdBuild(args []string, stdout io.Writer) error {
 	minAgent := fs.String("min-agent", "", "minimum Server Agent version that may stage this release")
 	severity := fs.String("severity", "normal", "normal|security")
 	deadline := fs.String("deadline", "", "RFC3339 deadline (security releases only)")
+	authenticode := fs.Bool("authenticode", false, "binaries were Authenticode-signed (agents then require it)")
 	keyID := fs.String("key-id", "", "signing key ID")
 	zipOut := fs.String("zip", "", "payload zip output path")
 	out := fs.String("out", "", "manifest.json output path")
@@ -131,8 +132,9 @@ func cmdBuild(args []string, stdout io.Writer) error {
 		Schema: manifest.SchemaVersion, Version: strings.TrimPrefix(*ver, "v"), Commit: *commit,
 		CreatedAt: createdAt, Severity: manifest.Severity(*severity), MinAgentVersion: *minAgent,
 		OpenClawVersion: *openclaw, NodeVersion: *node, KeyID: *keyID,
-		Payload: manifest.Payload{Name: filepath.Base(*zipOut), SHA256: sum, Size: size},
-		Files:   files,
+		Payload:      manifest.Payload{Name: filepath.Base(*zipOut), SHA256: sum, Size: size},
+		Files:        files,
+		Authenticode: *authenticode,
 	}
 	if *deadline != "" {
 		t, err := time.Parse(time.RFC3339, *deadline)
