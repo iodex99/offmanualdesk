@@ -31,6 +31,8 @@ Admins' seats can be marked free via an `adjustment` line.
 
 Implemented (ADR-045): `lib/billing/run.ts`. A draft per firm and month is created or refreshed in place by `runMonth`; issued, paid and void invoices are never recomputed. Seats per day come from employee records (from binding or `enabled_from` until the day before `disabled_at`); "active" means at least one turn that day in `usage_daily`. Issuing needs `OFFMANUAL_GSTIN`; the number comes from a per-FY counter in the same transaction; due date = issue date + contract payment terms; one-time lines are marked billed. `refreshFirmStatus` applies §6 to issued invoices and writes `firms.status`. Schedule: Vercel Cron calls `GET /api/cron/billing` daily at 01:00 IST (`apps/console/vercel.json`, bearer `CRON_SECRET`): statuses every day, last month's drafts on the 1st.
 
+PDF (implemented): `lib/billing/pdf.ts` renders A4 with standard fonts (amounts as "Rs.", unsupported characters replaced); firm admins download issued/paid invoices from their firm page; drafts are staff-only and marked "not valid for tax".
+
 ## 4. Payments
 
 - Razorpay: payment link on every invoice; UPI AutoPay or e-mandate for recurring lines when the firm opts in; webhook marks `paid`.

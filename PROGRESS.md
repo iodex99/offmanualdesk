@@ -128,7 +128,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Billing engine (pure, `apps/console/lib/billing/`): all 5 line types, both seat modes, tiered/volume bands with fractional seats, mid-month proration, versioned per-seat lines, adjustments, usage with quota + markup (ADR-038)
 - [x] Contracts/invoices tables (migration 0003: contracts, contract_lines (engine spec jsonb), invoices, invoice_lines, payments, invoice_counters, ladder_overrides); superadmin API `POST /api/admin/billing` (run/issue/payment/refresh/override) and firm-scoped `GET /api/admin/firms/[firmId]/invoices`; invoice list on the firm page; superadmin `/billing` page
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
-- [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); [ ] PDF
+- [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); invoice PDF (`lib/billing/pdf.ts`, pdf-lib 1.17.1: both GSTINs, place of supply, SAC, CGST/SGST or IGST, total in words; drafts marked; route `GET .../invoices/[invoiceId]/pdf`, drafts staff-only)
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
 - [ ] Notification engine + Desk banners
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 14:10: Invoice PDF (M9)
+- Changed: dependency pdf-lib 1.17.1 (pure JS, no install scripts; API checked in its .d.ts), `lib/billing/pdf.ts` (pure `invoiceLayout` + `renderInvoicePdf`; WinAnsi-safe text, "Rs." amounts), `invoicePdf` loader (firm-scoped; firm admins only issued/paid), PDF route, links on the firm and billing pages, seller name/address config (`OFFMANUAL_LEGAL_NAME`, `OFFMANUAL_ADDRESS`).
+- Tests: console 111/111 (content: GSTINs, place of supply, SAC, split, dates DD-MM-YYYY, words; IGST; draft wording; unregistered buyer; Devanagari name doesn't break rendering, PDF loads back with 1 page and title; access: draft staff-only, issued for own admin, cross-firm 403, unknown firm).
+- Half-done / next: Razorpay payment links (keys); invoice email to firm admins.
 
 ### 2026-11-23 13:40: Superadmin billing page (M9)
 - Changed: `billingBoard` (superadmin; invoices across firms with names, money as strings), `app/billing/page.tsx` + `forms.tsx` (run month, issue, payment with strict rupee → paise conversion, override, refresh), link from `/firms`.

@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Invoice PDFs with both GSTINs, place of supply, SAC codes, the GST split and the total in words.
 - Console billing page for Off Manual: make monthly drafts, issue invoices, record payments and override a firm's status with a reason.
 - Invite emails: adding an employee emails them how to start (when email is configured), with a "Send invite again" button.
 - Console pages for firms: employees (add, switch off), skill packs, firm settings, server enrolment codes and invoices.
