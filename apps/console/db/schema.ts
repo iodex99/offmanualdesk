@@ -439,6 +439,9 @@ export const invoices = pgTable(
     totalPaise: bigint("total_paise", { mode: "bigint" }).notNull(),
     status: invoiceStatus("status").notNull().default("draft"),
     pdfUrl: text("pdf_url"),
+    /** Razorpay payment link made when the invoice is issued (ADR-065). */
+    paymentLinkId: text("payment_link_id").unique(),
+    paymentLinkUrl: text("payment_link_url"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -457,19 +460,24 @@ export const invoiceLines = pgTable("invoice_lines", {
   amountPaise: bigint("amount_paise", { mode: "bigint" }).notNull(),
 });
 
-export const payments = pgTable("payments", {
-  id: uuid("id").primaryKey(),
-  invoiceId: uuid("invoice_id")
-    .notNull()
-    .references(() => invoices.id),
-  provider: paymentProvider("provider").notNull(),
-  providerRef: text("provider_ref"),
-  amountPaise: bigint("amount_paise", { mode: "bigint" }).notNull(),
-  paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
-  method: text("method"),
-  recordedBy: uuid("recorded_by").references(() => consoleUsers.id),
-  createdAt: createdAt(),
-});
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id),
+    provider: paymentProvider("provider").notNull(),
+    providerRef: text("provider_ref"),
+    amountPaise: bigint("amount_paise", { mode: "bigint" }).notNull(),
+    paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
+    method: text("method"),
+    recordedBy: uuid("recorded_by").references(() => consoleUsers.id),
+    createdAt: createdAt(),
+  },
+  // A provider's payment is recorded once, however often its webhook arrives (ADR-065).
+  (t) => [uniqueIndex("payments_provider_ref").on(t.provider, t.providerRef)],
+);
 
 /** Invoice number series per financial year (BILLING §2). */
 export const invoiceCounters = pgTable("invoice_counters", {

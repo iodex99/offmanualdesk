@@ -4,12 +4,12 @@
 
 ## Current focus
 
-Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee binding; M4 Desk (pipe client, unlock, binding, gateway lifecycle, Rust gateway client, chat, Review tab, Telegram link, idle lock, licence banner); M5 guard (lock, licence, packs, review queue, access denied); M6 Telegram relay; M8 staging; M9 billing engine + run + ladder. Lab-dependent items wait for M1.
+Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green run). Built and unit/CI-tested: Server Agent (M2), console core, admin pages, billing (M3/M9), Desk core incl. chat, review, tasks, Request access, single instance, hotkey (M4), guard (M5), Telegram (M6), skills tooling + India pack pending review (M7), release staging, `current` switch, releases page (M8), setup, digest, support, fleet (M10), security review, backups, offboarding archive (M11). Lab-dependent items wait for M1. In progress: Razorpay payment links + webhook (M9).
 
 ## Next step
 
-1. `main` = `m4-desk` at 9501d19 (fast-forwarded 2026-11-23 after CI green); keep working on `m4-desk` and fast-forward after each green run.
-2. Unblocked next: `update.status/switch` + restart-to-update (ADR-025; Doctor + backup pieces exist in Desk); gateway idle stop + crash restart; admin UI pages (employees, invites, billing, policy incl. `stepUpActions`, authenticator reset); invoice PDF; invite email behind an injectable sender (Resend key later); remaining India-pack skills (pending CA review).
+1. `main` = `m4-desk` at 2d97076; watch CI by commit (`gh run list --commit <sha>`) and fast-forward after each green run.
+2. Now: Razorpay payment links on issue + `payment_link.paid` webhook (schema prepared in console migration 0011; API facts being verified from Razorpay docs before coding; keys later). Then: MSI once the WiX decision is made; Desk settings (hotkey, side); UPI AutoPay / e-mandate.
 3. When lab output arrives: `/lab-result L<n>` for each; promote/supersede the lab-dependent ADRs (020, 021, 022, 024, 040 session key, 041 tool registration, 043 tool list); flip [A] markers in ARCHITECTURE.md.
 
 ## Waiting on Dwahnil
@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 02:05: Razorpay slice started (M9)
+- Changed: console schema only: `invoices.payment_link_id` (unique) + `payment_link_url`, unique index `payments(provider, provider_ref)`; migration 0011. No code uses them yet; the Razorpay client and webhook follow once the API is verified.
+- Tests: `tsc --noEmit` clean; migration generated.
 
 ### 2026-11-24 01:50: Docked panel and Ctrl+Alt+O (M4, ADR-064)
 - Changed: Rust `dock.rs` (pure: right edge of the work area, full height, 420 logical px, ≤ half the area, ≥ 360), `hotkey.rs` (RegisterHotKey with a NULL window on its own thread + GetMessageW; fifth audited unsafe module; verified in windows-sys 0.61.2; Tauri `current_monitor`/`work_area`/`scale_factor`/`set_size`/`set_position` verified in tauri 2.12.7), `main.rs` docks at start and brings Desk forward on the hotkey; windows-sys feature `Win32_UI_WindowsAndMessaging`.

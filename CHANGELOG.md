@@ -81,6 +81,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed
+- Console database: invoices can hold a payment link, and a provider's payment can only be recorded once (prepares Razorpay).
 - OpenClaw pinned to 2026.11.6 and Node runtime to 24.22.3 (ADR-019).
 - ARCHITECTURE flows F4–F7 rewritten from verified OpenClaw behaviour; several assumptions now carry Proposed ADRs (020–028).
 

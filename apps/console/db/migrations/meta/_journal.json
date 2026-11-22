@@ -78,6 +78,13 @@
       "when": 1795367837567,
       "tag": "0010_pale_bastion",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795368431236,
+      "tag": "0011_low_veda",
+      "breakpoints": true
     }
   ]
 }
