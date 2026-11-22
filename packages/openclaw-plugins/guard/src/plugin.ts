@@ -8,9 +8,18 @@
 //  * review queue (ADR-028, ADR-041): proposal tool offmanual_delete_files, Desk-only
 //    gateway methods offmanual.review.list / offmanual.review.decide, and a
 //    before_tool_call check that blocks built-in deletes that would skip the queue.
-//
-// Skill packs are next in M5.
+//  * skill packs (ADR-043): before_tool_call allows only tools listed by the employee's
+//    granted packs in the release's skills/packs.json (Telegram: firm-allowed packs only).
 import { join } from "node:path";
+import {
+  PolicyCache,
+  allowedTools,
+  loadPacks,
+  packBlockReason,
+  packPolicyFrom,
+  type PackPolicy,
+  type Packs,
+} from "./packs.js";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { AgentBridge } from "./agent-bridge.js";
 import {
@@ -29,6 +38,7 @@ import { ReviewQueue, ReviewStore, bypassBlockReason, queuedText, type ActionKin
 
 export const INSTALL_BLOCK_REASON = "Installs are managed by Off Manual. Ask your admin.";
 export const DELETE_TOOL = "offmanual_delete_files";
+export const DEFAULT_PACKS = String.raw`C:\Program Files\OffManual\current\skills\packs.json`;
 export const DEFAULT_BRIDGE = String.raw`C:\Program Files\OffManual\current\server-agent.exe`;
 
 /** Telegram turns arrive on a dedicated session key from the Server Agent (ADR-023). */
@@ -44,10 +54,29 @@ export default definePluginEntry({
   name: "Off Manual Guard",
   description: "Lock, policy, review queue and access-denied enforcement for Off Manual Desk.",
   register(api) {
-    const cfg = (api.pluginConfig ?? {}) as { bridgeCommand?: string };
+    const cfg = (api.pluginConfig ?? {}) as { bridgeCommand?: string; packsPath?: string };
     const bridge = new AgentBridge(cfg.bridgeCommand || DEFAULT_BRIDGE);
     const lockCache = new LockCache(5000);
     const stopped = new StoppedRuns();
+    const policyCache = new PolicyCache(30_000);
+    let packs: Packs | null = null;
+    try {
+      packs = loadPacks(cfg.packsPath || DEFAULT_PACKS);
+    } catch {
+      api.logger.error("offmanual-guard: skills/packs.json unreadable; every tool call will be refused");
+    }
+    const packPolicy = async (): Promise<PackPolicy | null> => {
+      const now = Date.now();
+      const cached = policyCache.get(now);
+      if (cached) return cached;
+      try {
+        const p = packPolicyFrom(await bridge.call("policy.get"));
+        if (p) policyCache.set(p, now);
+        return p;
+      } catch {
+        return null; // fail closed
+      }
+    };
     const audit = (category: string, action: string, result: string, target = "") =>
       bridge.call("audit.append", { category, action, target, result }).catch(() => undefined);
     const queue = new ReviewQueue(
@@ -154,8 +183,16 @@ export default definePluginEntry({
       { runtimes: ["openclaw"] },
     );
 
-    api.on("before_tool_call", (event) => {
+    api.on("before_tool_call", async (event, ctx) => {
       if (stopped.isStopped(event.runId)) return { block: true, blockReason: STOPPED_BLOCK_REASON };
+      const policy = packs ? await packPolicy() : null;
+      const allowed =
+        packs && policy ? allowedTools(packs, policy, channelOf(ctx.sessionKey, ctx.channelId)) : null;
+      const notInPack = packBlockReason(event.toolName, allowed);
+      if (notInPack) {
+        void audit("tool_blocked", "not_in_pack", "blocked");
+        return { block: true, blockReason: notInPack };
+      }
       const bypass = bypassBlockReason(event.toolName, event.params);
       if (bypass) {
         void audit("tool_blocked", "delete_without_review", "blocked");

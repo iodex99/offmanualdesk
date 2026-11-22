@@ -174,7 +174,9 @@ jobs:
               fs.copyFileSync(path.join("skills", s.path, rel), dst);
             }
             const shipped = { schema: 1, skills: lock.skills.filter((x) => x.review.status === "approved") };
-            fs.writeFileSync("payload/skills/registry.lock.json", JSON.stringify(shipped, null, 2));'
+            fs.writeFileSync("payload/skills/registry.lock.json", JSON.stringify(shipped, null, 2));
+            // Pack → tool definitions (ADR-043), signed with the rest of the payload.
+            fs.copyFileSync("skills/packs.json", "payload/skills/packs.json");'
 
       - name: Authenticode (Azure Trusted Signing)
         id: authenticode

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "packs": {
+    "core": {
+      "name": "Core",
+      "tools": [
+        "read",
+        "write",
+        "edit",
+        "exec",
+        "process",
+        "pdf",
+        "view_image",
+        "web_search",
+        "web_fetch",
+        "memory_search",
+        "memory_get",
+        "ask_user",
+        "progress_card",
+        "session_status",
+        "offmanual_delete_files"
+      ]
+    },
+    "tally-read": { "name": "Tally (read only)", "tools": [] },
+    "tally-post": { "name": "Tally (post vouchers, with review)", "tools": [] },
+    "email-send": { "name": "Send client emails (with review)", "tools": [] },
+    "portals": { "name": "Portal downloads", "tools": [] },
+    "admin": { "name": "Firm admin tools", "tools": [] }
+  }
+}

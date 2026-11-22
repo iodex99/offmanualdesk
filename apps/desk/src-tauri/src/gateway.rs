@@ -79,7 +79,10 @@ pub fn config(port: u16, layout: &Layout) -> Value {
                 "offmanual-guard": {
                     "enabled": true,
                     "hooks": { "allowConversationAccess": true },
-                    "config": { "bridgeCommand": path(&layout.bridge) }
+                    "config": {
+                        "bridgeCommand": path(&layout.bridge),
+                        "packsPath": path(&layout.skills_dir.join("packs.json"))
+                    }
                 }
             }
         },
@@ -268,6 +271,11 @@ mod tests {
             .collect();
         assert!(deny.contains(&"telegram") && deny.contains(&"browser"));
         assert_eq!(c["skills"]["allowBundled"], json!([]));
+        // The guard reads pack → tool definitions from the signed release (ADR-043).
+        let packs = c["plugins"]["entries"]["offmanual-guard"]["config"]["packsPath"]
+            .as_str()
+            .unwrap();
+        assert!(packs.ends_with("packs.json") && packs.contains("skills"));
         assert_eq!(c["skills"]["workshop"]["autonomous"]["mode"], "off");
         assert!(c["tools"]["deny"]
             .as_array()

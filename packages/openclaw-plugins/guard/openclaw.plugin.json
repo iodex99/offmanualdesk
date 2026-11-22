@@ -21,6 +21,9 @@
       },
       "bridgeCommand": {
         "type": "string"
+      },
+      "packsPath": {
+        "type": "string"
       }
     }
   }

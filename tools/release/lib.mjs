@@ -192,6 +192,31 @@ export function verifySkillsLock(root) {
         problems.push(`unlisted file ${relative(skillsDir, f).split(sep).join("/")}`);
     }
   }
+  // Pack definitions ship with the release (ADR-043): every pack a skill names must exist.
+  let packKeys = new Set();
+  try {
+    const packs = JSON.parse(readFileSync(join(skillsDir, "packs.json"), "utf8"));
+    if (packs.schema !== 1 || !packs.packs || typeof packs.packs !== "object")
+      problems.push("packs.json: bad schema");
+    else {
+      packKeys = new Set(Object.keys(packs.packs));
+      if (!packKeys.has("core")) problems.push("packs.json: core pack missing");
+      for (const [k, d] of Object.entries(packs.packs)) {
+        if (!/^[a-z][a-z0-9-]{1,30}$/.test(k)) problems.push(`packs.json: bad pack key ${k}`);
+        if (
+          typeof d?.name !== "string" ||
+          !Array.isArray(d?.tools) ||
+          !d.tools.every((t) => /^[a-z][a-z0-9_]{1,63}$/.test(t))
+        )
+          problems.push(`packs.json: bad pack ${k}`);
+      }
+    }
+  } catch {
+    problems.push("packs.json missing or not JSON");
+  }
+  for (const s of lock.skills) {
+    for (const p of s.packs ?? []) if (!packKeys.has(p)) problems.push(`${s.id}: unknown pack ${p}`);
+  }
   if (problems.length) throw new Error(`skills lock check failed:\n- ${problems.join("\n- ")}`);
   const approved = lock.skills.filter((s) => s.review?.status === "approved").length;
   return { skills: lock.skills.length, approved, files: listed.size };

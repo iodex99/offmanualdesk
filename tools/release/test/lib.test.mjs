@@ -136,6 +136,13 @@ function skillsTree() {
     ],
   };
   writeFileSync(join(s, "registry.lock.json"), JSON.stringify(lock));
+  writeFileSync(
+    join(s, "packs.json"),
+    JSON.stringify({
+      schema: 1,
+      packs: { core: { name: "Core", tools: ["read"] }, "tally-read": { name: "T", tools: [] } },
+    }),
+  );
   return { root, s, lock };
 }
 
@@ -203,4 +210,31 @@ test("cli prepare + check-tag + notes on a copy of the repo's versioned files", 
   assert.notEqual(cli(root, "check-tag", "v0.2.1").status, 0);
   assert.notEqual(cli(root, "bogus").status, 0);
   rmSync(root, { recursive: true, force: true });
+});
+
+test("verifySkillsLock checks packs.json and the packs skills name", () => {
+  const t1 = skillsTree();
+  writeFileSync(
+    join(t1.s, "packs.json"),
+    JSON.stringify({ schema: 1, packs: { core: { name: "Core", tools: [] } } }),
+  );
+  assert.throws(() => verifySkillsLock(t1.root), /acme\/tally: unknown pack tally-read/);
+  const t2 = skillsTree();
+  writeFileSync(
+    join(t2.s, "packs.json"),
+    JSON.stringify({ schema: 1, packs: { "tally-read": { name: "T", tools: [] } } }),
+  );
+  assert.throws(() => verifySkillsLock(t2.root), /core pack missing/);
+  const t3 = skillsTree();
+  writeFileSync(
+    join(t3.s, "packs.json"),
+    JSON.stringify({
+      schema: 1,
+      packs: { core: { name: "Core", tools: ["Rm -rf"] }, "tally-read": { name: "T", tools: [] } },
+    }),
+  );
+  assert.throws(() => verifySkillsLock(t3.root), /bad pack core/);
+  const t4 = skillsTree();
+  writeFileSync(join(t4.s, "packs.json"), "{nope");
+  assert.throws(() => verifySkillsLock(t4.root), /packs.json missing or not JSON/);
 });
