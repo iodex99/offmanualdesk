@@ -34,7 +34,8 @@
         "notices.ack",
         "update.status",
         "update.switch",
-        "support.bundle"
+        "support.bundle",
+        "support.submit"
       ]
     },
     "request": {

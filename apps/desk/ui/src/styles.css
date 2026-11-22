@@ -87,3 +87,10 @@ body {
   border-left: 3px solid var(--muted);
   padding-left: 0.5rem;
 }
+.bundle {
+  max-height: 40vh;
+  overflow: auto;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

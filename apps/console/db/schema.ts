@@ -343,6 +343,12 @@ export const supportTickets = pgTable("support_tickets", {
   serverId: uuid("server_id").references(() => servers.id),
   employeeId: uuid("employee_id").references(() => employees.id),
   bundleUrl: text("bundle_url"),
+  /** Short reference shown to the employee, e.g. OM-7KQ2PX (ADR-050). */
+  ref: text("ref").unique(),
+  /** The employee's own words (≤ 500 characters; they were asked not to include client details). */
+  description: text("description"),
+  /** Metadata-only bundle from the Server Agent: versions, licence, pre-flight, log tail. */
+  bundle: jsonb("bundle").$type<Record<string, unknown>>(),
   status: text("status").notNull().default("open"),
   notes: text("notes").notNull().default(""),
   createdAt: createdAt(),

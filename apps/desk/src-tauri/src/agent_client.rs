@@ -41,6 +41,7 @@ pub const DESK_METHODS: &[&str] = &[
     "update.status",
     "update.switch",
     "support.bundle",
+    "support.submit",
 ];
 
 /// Errors shown to the employee are plain words; details go to the log.

@@ -36,6 +36,13 @@
       "when": 1795358901491,
       "tag": "0004_thin_kabuki",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795359497544,
+      "tag": "0005_ancient_jimmy_woo",
+      "breakpoints": true
     }
   ]
 }

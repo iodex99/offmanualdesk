@@ -259,3 +259,19 @@ func (c *Client) Bind(ctx context.Context, code, sid string) (BindReply, error) 
 	var r BindReply
 	return r, json.Unmarshal(body, &r)
 }
+
+// SubmitSupport uploads a Report-a-problem bundle (ADR-050) and returns the ticket reference.
+func (c *Client) SubmitSupport(ctx context.Context, employeeID, description string, bundle map[string]any) (string, error) {
+	_, _, body, err := c.do(ctx, c.ServerID, c.Key, http.MethodPost, "/api/agent/support",
+		map[string]any{"employeeId": employeeID, "description": description, "bundle": bundle}, nil)
+	if err != nil {
+		return "", err
+	}
+	var r struct {
+		Ticket string `json:"ticket"`
+	}
+	if err := json.Unmarshal(body, &r); err != nil || r.Ticket == "" {
+		return "", errors.New("console returned no ticket")
+	}
+	return r.Ticket, nil
+}

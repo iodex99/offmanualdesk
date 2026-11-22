@@ -5,6 +5,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { callAgent, type AgentCall } from "./agent";
 import { Chat } from "./Chat";
 import { tauriGateway, type GatewayApi } from "./gatewayApi";
+import { ReportProblem } from "./ReportProblem";
 import { Review } from "./Review";
 import { TelegramLink } from "./TelegramLink";
 import { UpdateNotice, type UpdateApi } from "./UpdateNotice";
@@ -66,7 +67,7 @@ export function Assistant({
     [start, control],
   );
   const kept = useMemo(() => keptGateway(api, keeper), [api, keeper]);
-  const [tab, setTab] = useState<"chat" | "review" | "telegram">("chat");
+  const [tab, setTab] = useState<"chat" | "review" | "telegram" | "help">("chat");
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -126,10 +127,14 @@ export function Assistant({
             <button role="tab" aria-selected={tab === "telegram"} onClick={() => setTab("telegram")}>
               Telegram
             </button>
+            <button role="tab" aria-selected={tab === "help"} onClick={() => setTab("help")}>
+              Report a problem
+            </button>
           </nav>
           {tab === "chat" && <Chat api={kept} />}
           {tab === "review" && <Review api={kept} agent={agent} />}
           {tab === "telegram" && <TelegramLink agent={agent} />}
+          {tab === "help" && <ReportProblem agent={agent} />}
         </div>
       );
     case "failed":

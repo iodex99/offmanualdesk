@@ -55,6 +55,9 @@ type Agent struct {
 	bindTries map[string][]time.Time // SID → recent bindComplete attempts
 
 	recoverTries map[string][]time.Time // SID → recent auth.recover attempts
+
+	supportSource SupportSource
+	supportUpload SupportSubmitter
 }
 
 type stepUpGrant struct {
@@ -94,6 +97,8 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("auth.recover", a.authRecover)
 	srv.Handle("auth.stepUpCheck", a.stepUpCheck)
 	srv.Handle("update.status", a.updateStatus)
+	srv.Handle("support.bundle", a.supportBundle)
+	srv.Handle("support.submit", a.supportSubmit)
 }
 
 // ---- errors in plain words ----

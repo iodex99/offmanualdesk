@@ -68,6 +68,7 @@ export const PIPE_METHODS = [
   "update.status",
   "update.switch",
   "support.bundle",
+  "support.submit",
 ] as const;
 
 export type PipeMethod = (typeof PIPE_METHODS)[number];

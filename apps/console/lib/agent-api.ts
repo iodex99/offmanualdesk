@@ -22,6 +22,7 @@ import { canonical, HEADERS, verifyAgentRequest, verifySignature, type NonceStor
 import { serverPublicId, serverUuid, uuidv7 } from "./ids";
 import { assignedRelease } from "./releases";
 import { BindError, redeemBindCode } from "./bind";
+import { createTicket, supportBody, SupportLimit } from "./support";
 
 export interface Deps {
   db: DB;
@@ -382,6 +383,21 @@ export async function agentBind(deps: Deps, req: Request): Promise<Response> {
     return json(200, await redeemBindCode(deps, a.firmId, input.code, input.sid));
   } catch (e) {
     if (e instanceof BindError) return fail(e.status, e.message);
+    throw e;
+  }
+}
+
+// ---- POST /api/agent/support (ARCHITECTURE F11, ADR-050) ----
+
+export async function agentSupport(deps: Deps, req: Request): Promise<Response> {
+  const a = await authenticate(deps, req);
+  if (!a.ok) return a.res;
+  const input = parseJson(supportBody, a.body);
+  if (!input) return fail(400, "invalid report");
+  try {
+    return json(201, { ticket: await createTicket(deps, a.firmId, a.serverUuid, input) });
+  } catch (e) {
+    if (e instanceof SupportLimit) return fail(429, e.message);
     throw e;
   }
 }

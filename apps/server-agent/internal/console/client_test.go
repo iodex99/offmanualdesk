@@ -82,6 +82,19 @@ func (f *fakeConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("ETag", f.etag)
 		_ = json.NewEncoder(w).Encode(f.policy)
+	case "/api/agent/support":
+		var in struct {
+			EmployeeID  string         `json:"employeeId"`
+			Description string         `json:"description"`
+			Bundle      map[string]any `json:"bundle"`
+		}
+		_ = json.Unmarshal(body, &in)
+		if in.Description == "" || in.Bundle == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid report"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"ticket":"OM-0042"}`))
 	case "/api/agent/bind":
 		var in struct {
 			Code string `json:"code"`
@@ -269,4 +282,15 @@ func TestPolicyAppliesAuthenticatorResetOnce(t *testing.T) {
 		t.Fatal("newer reset not applied")
 	}
 	_ = ApplyPolicy(ctx, st, p("not a time"), `"e"`) // ignored, not an error
+}
+
+func TestSubmitSupport(t *testing.T) {
+	_, c, _ := setup(t)
+	ref, err := c.SubmitSupport(context.Background(), "e-1", "Desk is slow", map[string]any{"server": map[string]any{"agentVersion": "1.0.0"}})
+	if err != nil || ref != "OM-0042" {
+		t.Fatalf("submit: %q %v", ref, err)
+	}
+	if _, err := c.SubmitSupport(context.Background(), "e-1", "", map[string]any{}); err == nil {
+		t.Fatal("empty report accepted")
+	}
 }

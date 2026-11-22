@@ -86,6 +86,7 @@ func Run(ctx context.Context, o Options) error {
 	ag.Register(srv)
 	if cc != nil {
 		ag.SetBinder(binderFor(cc))
+		ag.SetSupport(supportSource(o.DataDir), supportUploader(cc))
 	}
 	startTelegram(ctx, st, prot, ag, log)
 
