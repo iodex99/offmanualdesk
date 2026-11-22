@@ -111,6 +111,14 @@ export const TASKS: TaskDef[] = [
       "name and tell me where it is.",
   },
   {
+    id: "client-list",
+    label: "Build client list",
+    inputs: [],
+    prompt: () =>
+      "Use the client-directory skill to build or update the firm's client list from the Clients share and " +
+      "Tally, and tell me which clients have no folder, no Tally company or no GSTIN on record.",
+  },
+  {
     id: "due-week",
     label: "Due this week",
     inputs: [],

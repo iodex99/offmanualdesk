@@ -245,6 +245,44 @@ export function NoticeForm({ firmId }: { firmId: string }) {
   );
 }
 
+export function ImportEmployeesForm({ firmId }: { firmId: string }) {
+  const { busy, message, run } = useAction();
+  return (
+    <form
+      onSubmit={form((f) =>
+        run(async () => {
+          const r = (await send(`/api/admin/firms/${firmId}/employees/import`, "POST", {
+            text: str(f, "text"),
+          })) as {
+            added?: { inviteSent: boolean }[];
+            skipped?: { line: number; reason: string }[];
+          };
+          const added = r.added ?? [];
+          const skipped = r.skipped ?? [];
+          const invites = added.filter((a) => a.inviteSent).length;
+          const parts = [`Added ${added.length}${invites ? ` (${invites} invite emails sent)` : ""}.`];
+          if (skipped.length)
+            parts.push(`Skipped: ${skipped.map((x) => `line ${x.line} (${x.reason})`).join("; ")}`);
+          return parts.join(" ");
+        }),
+      )}
+    >
+      <h3>Add many people at once</h3>
+      <p>One person per line: Name, work email. You can paste from Excel.</p>
+      <textarea
+        name="text"
+        rows={6}
+        cols={50}
+        placeholder={"Asha Mehta, asha@mehtaco.in\nRavi Shah, ravi@mehtaco.in"}
+      />
+      <div>
+        <button disabled={busy}>Add people</button>
+      </div>
+      <Note m={message} />
+    </form>
+  );
+}
+
 export function EnrolmentCodeForm({ firmId }: { firmId: string }) {
   const { busy, message, run } = useAction();
   return (

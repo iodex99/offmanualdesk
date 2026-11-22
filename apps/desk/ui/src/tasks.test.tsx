@@ -26,6 +26,13 @@ describe("task definitions", () => {
     ).toContain("Don't send or file anything.");
   });
 
+  it("client list task uses the client-directory skill", () => {
+    expect(task("client-list").inputs).toEqual([]);
+    expect(task("client-list").prompt({ client: "", month: "", fy: "", period: "", file: "" })).toContain(
+      "client-directory skill",
+    );
+  });
+
   it("helpers", () => {
     expect(monthLabel("2026-01")).toBe("Jan-2026");
     expect(monthLabel("bad")).toBe("bad");

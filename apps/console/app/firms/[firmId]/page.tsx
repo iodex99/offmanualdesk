@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatDate, formatINR } from "@offmanual/shared-schema/format";
 import { firmOverview, listEmployees } from "@/lib/admin";
 import { listInvoices } from "@/lib/billing/admin";
+import { firmServers } from "@/lib/setup";
 import {
   AddEmployeeForm,
   EmployeeStatusButton,
@@ -13,6 +14,7 @@ import {
   ResendInviteButton,
   ResetAuthenticatorButton,
   NoticeForm,
+  ImportEmployeesForm,
 } from "../forms";
 import { load, pageSession } from "../session";
 
@@ -28,6 +30,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
   if (overview === "forbidden") return <p>You don't have access to this firm.</p>;
   const people = await listEmployees(deps, session, firmId);
   const { invoices } = await listInvoices(deps, session, firmId);
+  const srvs = await firmServers(deps, session, firmId);
   const nameOf = new Map(people.map((p) => [p.id, p.name]));
   return (
     <main>
@@ -70,6 +73,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
           </table>
         )}
         <AddEmployeeForm firmId={firmId} />
+        <ImportEmployeesForm firmId={firmId} />
       </section>
 
       <section>
@@ -105,12 +109,34 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
         <NoticeForm firmId={firmId} />
       </section>
 
-      {overview.isStaff && (
-        <section>
-          <h2>Servers</h2>
-          <EnrolmentCodeForm firmId={firmId} />
-        </section>
-      )}
+      <section>
+        <h2>Servers</h2>
+        {srvs.length === 0 ? (
+          <p>No server enrolled yet.</p>
+        ) : (
+          <ul>
+            {srvs.map((sv) => (
+              <li key={sv.id}>
+                <strong>{sv.hostname}</strong>: {sv.health}
+                {sv.lastHeartbeatAt ? `, last seen ${formatDate(sv.lastHeartbeatAt)}` : ", not seen yet"}
+                {sv.agentVersion ? `, version ${sv.agentVersion}` : ""}
+                {sv.stagedVersion ? ` (update ${sv.stagedVersion} ready)` : ""}
+                {sv.problems.length > 0 && (
+                  <ul>
+                    {sv.problems.map((p) => (
+                      <li key={p.id}>
+                        {p.status === "fail" ? "Must fix" : "Check"}: {p.title}. {p.detail}
+                        {p.fix ? ` Fix: ${p.fix}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {overview.isStaff && <EnrolmentCodeForm firmId={firmId} />}
+      </section>
 
       <section>
         <h2>Invoices</h2>
