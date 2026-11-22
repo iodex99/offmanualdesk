@@ -136,7 +136,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 
 ### M10 Admin and ease
 - [ ] Admin agent tools
-- [ ] Setup wizard (pre-flight → import users → invites → client scan)
+- [x] Setup (ADR-054): firm page shows each server's pre-flight problems (must fix / check, with the fix), bulk import "Name, email" per line (header/blank lines ignored, per-line reasons, invites sent), Desk "Build client list" task (client-directory skill); [ ] import from an AD group (needs the lab)
 - [x] Weekly partner digest (ADR-053): Mondays (IST) from the daily cron, last week's counts per firm (people using Off Manual, turns, servers healthy, invoices to pay) to the firm's active admins, once per firm and week (`digest_runs`)
 - [x] Report a problem → support queue (ADR-050): Desk tab with preview of exactly what is sent, `support.bundle`/`support.submit` (agent rebuilds the server part; pre-flight + log tail, bounded), `POST /api/agent/support` (strict schema, 20/server/day, ticket ref OM-XXXXXX), staff `/support` page
 - [ ] Fleet board v1
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 19:00: Firm setup: servers' pre-flight, bulk import, client list task (M10)
+- Changed: console `lib/setup.ts` (firmServers: firm-scoped, only warn/fail items; importEmployees: ≤ 200 lines, comma/semicolon/tab, header and blanks ignored, each line through addEmployee so validation, duplicates and invites behave the same), route `POST .../employees/import`, firm page Servers section for admins too, import form; Desk task "Build client list".
+- Tests: console 128/128 (problems only, cross-firm 403; added/skipped with line numbers and reasons, duplicate by case, limits); desk 53/53; `next build` lists the route.
+- Half-done / next: fleet board v1.
 
 ### 2026-11-23 18:30: Fix: enrolment pre-flight bounded
 - Changed: `server-agent enroll` now cuts the pre-flight report to the console's enrolment limits (40 results; title 80, detail 200, fix 300). Before, one long detail (e.g. a share error) would have made the console refuse the whole enrolment. Shared `boundReport(report, limits)` for support and enrolment.

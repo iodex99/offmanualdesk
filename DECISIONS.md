@@ -407,3 +407,10 @@ Template:
 - Context: BILLING §5 lists email for invoice and due-date notices; M10 asks for a weekly partner digest. Rule 10: nothing about clients may leave the firm.
 - Decision: Every billing notice created by issuing or the daily cron is emailed to the firm's active admins (console `firm_admins`), using `<dedupe key>-<address>` as the Resend idempotency key. On Mondays (IST) the cron sends last week's digest per active firm: people who used Off Manual, turns, servers healthy, unpaid issued invoices; the week is claimed in `digest_runs` before sending, so two runs can't both send. Notices record `created_at` from the app clock so the "created since" selection is exact.
 - Consequences: Partners (if they are firm admins in the console) receive the digest; a separate partner list can come later. Failed sends aren't retried beyond Resend's own handling; the Desk notice is still shown.
+
+## ADR-054: Setup is part of the firm page, not a separate wizard; import is paste-a-list
+- Date: 2026-11-23
+- Status: Accepted
+- Context: M10's setup wizard (pre-flight → import users → invites → client scan). Importing from an AD group needs the Server Agent to read group membership on the domain (lab-dependent); the steps are also useful after setup.
+- Decision: The firm page carries every step: servers with their pre-flight problems and fixes (from the enrolment report), "add many people" by pasting "Name, email" lines (each line goes through the normal add so validation, duplicates and invite emails behave the same; problems are reported per line), and the client list is built from Desk with the client-directory task. AD-group import comes after lab L-AD confirms how to read groups.
+- Consequences: No separate wizard state to maintain; admins see the same page during and after setup.

@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Setup: the firm page shows what each server's checks found and how to fix it, and admins can add many people at once by pasting "Name, email" lines; Desk has a "Build client list" task.
 - Firm admins get billing reminders by email and a Monday summary (people using Off Manual, questions handled, server health, invoices to pay).
 - Notices in Desk: Off Manual announcements, the firm's own messages, and billing reminders for firm admins (issued, due soon, due today, overdue), each dismissable.
 - Usage counts: each employee's daily turns and tokens (numbers only) reach the console for seat activity and usage billing.
