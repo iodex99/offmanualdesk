@@ -81,6 +81,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - CI: shellcheck findings in the release workflow; secret scan no longer fails when artifact storage is full.
 
 ### Security
+- A switched-off employee's assistant data is archived on the server (administrators only) 15 minutes after switch-off, removed from their profile, and deleted after the firm's retention period. Planted links can't redirect the clean-up.
 - Employees switched off in the console now lose their lease, day grant and Telegram link on the next sync, not only their status.
 - Releases signed with Authenticode are only staged when every program file's signature checks out with Windows.
 - Telegram replies can no longer carry encoded file dumps or links to files on the server.

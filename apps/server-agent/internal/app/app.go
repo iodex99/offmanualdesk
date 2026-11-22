@@ -11,8 +11,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"offmanual/desk/server-agent/internal/agent"
+	"offmanual/desk/server-agent/internal/console"
+	"offmanual/desk/server-agent/internal/offboard"
 	"offmanual/desk/server-agent/internal/pipe"
 	"offmanual/desk/server-agent/internal/rpc"
 	"offmanual/desk/server-agent/internal/secrets"
@@ -89,6 +92,11 @@ func Run(ctx context.Context, o Options) error {
 		ag.SetSupport(supportSource(o.DataDir), supportUploader(cc))
 	}
 	startTelegram(ctx, st, prot, ag, log)
+	// Offboarding archive + retention purge (F10, ADR-056); local, works offline too.
+	arch := &offboard.Archiver{Store: st, Dir: filepath.Join(o.DataDir, "backups", "offboarded"),
+		Profile: offboard.ProfilePath, Log: log,
+		Retention: func(ctx context.Context) int { return console.RetentionDays(ctx, st) }}
+	go arch.Loop(ctx, 15*time.Minute)
 
 	l, err := listen(o.PipeName)
 	if err != nil {

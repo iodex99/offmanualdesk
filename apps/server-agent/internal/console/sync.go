@@ -148,6 +148,9 @@ func ApplyPolicy(ctx context.Context, st *store.Store, p Policy, etag string) er
 			if err := st.DisableEmployee(ctx, e.SID); err != nil {
 				return err
 			}
+		} else if err := st.CancelOffboarding(ctx, e.SID); err != nil {
+			// Switched on again: an archive not made yet is not made (ADR-056).
+			return err
 		}
 		if t, err := time.Parse(time.RFC3339, e.TOTPResetAt); err == nil {
 			if _, err := st.ApplyTOTPReset(ctx, e.SID, t); err != nil {
@@ -250,4 +253,22 @@ func (s *Syncer) syncNotices(ctx context.Context) error {
 func jsonCompact(v any) (string, error) {
 	b, err := json.Marshal(v)
 	return string(b), err
+}
+
+// RetentionDays is the firm's retention for offboarding archives (policy
+// retentionDays, 30..3650), or 0 when no policy has been synced yet.
+func RetentionDays(ctx context.Context, st *store.Store) int {
+	raw, err := st.Meta(ctx, MetaPolicyJSON)
+	if err != nil || raw == "" {
+		return 0
+	}
+	var p struct {
+		Policy struct {
+			RetentionDays int `json:"retentionDays"`
+		} `json:"policy"`
+	}
+	if json.Unmarshal([]byte(raw), &p) != nil || p.Policy.RetentionDays < 30 || p.Policy.RetentionDays > 3650 {
+		return 0
+	}
+	return p.Policy.RetentionDays
 }

@@ -275,8 +275,11 @@ func (s *Store) DisableEmployee(ctx context.Context, sid string) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM telegram_links WHERE sid = ?`, sid); err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx, `DELETE FROM leases WHERE sid = ?`, sid)
-		return err
+		if _, err := tx.ExecContext(ctx, `DELETE FROM leases WHERE sid = ?`, sid); err != nil {
+			return err
+		}
+		// Archive the assistant's state after a grace period (F10, ADR-056).
+		return startOffboarding(ctx, tx, sid, s.now())
 	})
 }
 

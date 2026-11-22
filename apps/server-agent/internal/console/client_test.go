@@ -380,3 +380,37 @@ func TestPolicyDisabledEmployeeIsCleanedUp(t *testing.T) {
 		t.Fatal("Telegram link kept for a disabled employee")
 	}
 }
+
+func TestPolicyOffboardingCycleAndRetention(t *testing.T) {
+	_, _, st := setup(t)
+	ctx := context.Background()
+	sid := "S-1-5-21-1-2-3-1102"
+	if RetentionDays(ctx, st) != 0 {
+		t.Fatal("retention before any policy")
+	}
+	p := Policy{PolicyVersion: 1, Policy: json.RawMessage(`{"retentionDays":90}`),
+		Employees: []PolicyEmployee{{EmployeeID: "e1", SID: sid, Name: "Asha", Status: "disabled"}}}
+	if err := ApplyPolicy(ctx, st, p, `"a"`); err != nil {
+		t.Fatal(err)
+	}
+	if got := RetentionDays(ctx, st); got != 90 {
+		t.Fatalf("retention %d", got)
+	}
+	if due, _ := st.OffboardingDue(ctx, 0); len(due) != 1 {
+		t.Fatalf("disabled employee has %d open cycles, want 1", len(due))
+	}
+	_ = ApplyPolicy(ctx, st, p, `"b"`) // same status again: still one cycle
+	if due, _ := st.OffboardingDue(ctx, 0); len(due) != 1 {
+		t.Fatalf("repeat sync opened %d cycles", len(due))
+	}
+	p.Employees[0].Status = "active" // switched on again before the archive
+	_ = ApplyPolicy(ctx, st, p, `"c"`)
+	if due, _ := st.OffboardingDue(ctx, 0); len(due) != 0 {
+		t.Fatal("re-enabled employee still due for archiving")
+	}
+	p.Policy = json.RawMessage(`{"retentionDays":5}`) // out of range → unknown
+	_ = ApplyPolicy(ctx, st, p, `"d"`)
+	if RetentionDays(ctx, st) != 0 {
+		t.Fatal("out-of-range retention accepted")
+	}
+}

@@ -144,6 +144,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M11 Pilot hardening
 - [~] Security review first pass (`docs/SECURITY_REVIEW.md`): items 4–7 done, 5 and 8 fixed in the pass; 1–3 and 8 need the lab; one full-history gitleaks scan before the pilot
 - [ ] Backup and restore of per-user agent state
+- [x] Offboarding archive (F10, ADR-056): state zipped to `backups\offboarded` 15 min after switch-off, removed from the profile, purged after `retentionDays`; cancelled on re-enable; [ ] L11 on the RDS host (FSLogix)
 - [x] Firm-facing docs: `docs/guides/employee-quick-start.md`, `docs/guides/admin-guide.md` (only what exists; review with a pilot firm)
 - [~] Install runbook written (`docs/guides/install-runbook.md`, manual steps where the MSI isn't built); [ ] time-to-live under 2 hours verified on a pilot
 
@@ -160,6 +161,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 21:40: Offboarding archive and retention purge (F10, ADR-056)
+- Changed: agent migration 0008 (`offboarding` cycles), store methods (DisableEmployee opens a cycle; CancelOffboarding; due/cleanup/purge lists), `internal/offboard` (Archiver: ProfileList registry lookup, zip of `openclaw-state` + `backups` through `os.Root`, removal, purge after retention; audit category `offboarding`; reasons without paths), console `RetentionDays` from the synced policy, ApplyPolicy cancels the cycle when someone is active again, app runs the loop every 15 min.
+- Tests: offboard 76.8% (grace, archive contents, originals removed and Desk settings kept, no double archive, purge after retention, re-enable cancels and a later switch-off starts again, active never archived, no profile, failure retried, relative/UNC profile refused, bad SID, purge name check; junctions (real `mklink /J` on Windows) inside the state folder, as the state folder and as the OffManual folder: nothing outside archived or deleted, escape recorded as a failure); real registry lookup for the current user and an unknown SID; console cycle + retention bounds; schema version 8; golangci-lint both OSes 0.
+- Half-done / next: L11 on the RDS host; FSLogix profiles (only mounted while signed in).
 
 ### 2026-11-23 21:00: Fix: employees switched off in the console fully cleaned up (F10)
 - Changed: `console.ApplyPolicy` calls `DisableEmployee` for listed employees with status `disabled`, so their day grant, lease (token hash + DPAPI copy) and Telegram link go on the next sync, not only when the console stops listing them.

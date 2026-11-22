@@ -52,7 +52,7 @@ See BUILD_PROMPT.md §3. Any code that would violate one needs an ADR and Dwahni
 
 - Firm signs a data-processing note: what goes to the LLM provider, Telegram policy, retention.
 - LLM provider: API terms that exclude training on customer data; record provider and terms version in the firm's contract.
-- Retention: archived agent state per firm setting (default 180 days), then deleted.
+- Retention: archived agent state per firm setting (default 180 days), then deleted. Archives live in `C:\ProgramData\OffManual\backups\offboarded` (SYSTEM + Administrators); the LocalSystem clean-up of the employee's folder works through `os.Root` so a planted junction can't redirect it (ADR-056).
 - PAN/Aadhaar masking (`india-id-check`) in anything shared outside the firm's server.
 
 ## 6. Review checklist (M11)

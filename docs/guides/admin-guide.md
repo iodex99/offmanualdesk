@@ -12,7 +12,10 @@ Microsoft account; the console always asks for your authenticator code too.
   Lines that can't be added are listed with the reason; the rest are added.
 - **Send invite again** for anyone who hasn't signed in yet.
 - **Switch off** someone who has left. Their Off Manual stops on the next server sync (within 15 minutes), their
-  Telegram link is removed and their assistant can't start again. Nothing is deleted from your file server.
+  Telegram link is removed and their assistant can't start again. About 15 minutes later their assistant's own
+  data (chats and memory, not your files) is moved from their Windows profile into an archive on the server that
+  only administrators can open, and deleted after the number of days you set to keep it. Switch them on again
+  before then and nothing is moved. Nothing is deleted from your file server.
 - **Reset authenticator** only when someone has lost both their phone and their recovery codes. They set it up
   again in Desk from their own Windows sign-in.
 
