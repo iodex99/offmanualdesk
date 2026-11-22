@@ -105,18 +105,22 @@ jobs:
             $deadline = (Get-Date).AddSeconds(30)
             while ((Get-Service OffManualAgent).Status -ne 'Running' -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
             if ((Get-Service OffManualAgent).Status -ne 'Running') { throw "service not running" }
-            $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', 'offmanual-agent', [System.IO.Pipes.PipeDirection]::InOut)
-            $pipe.Connect(10000)
-            $w = New-Object System.IO.StreamWriter($pipe); $w.AutoFlush = $true
-            $r = New-Object System.IO.StreamReader($pipe)
-            $w.WriteLine('{"jsonrpc":"2.0","id":1,"method":"session.hello","params":{}}')
-            $line = $r.ReadLine()
-            Write-Host "session.hello -> $line"
-            if ($line -notmatch '"known":false') { throw "unexpected reply" }
-            $w.WriteLine('{"jsonrpc":"2.0","id":2,"method":"session.hello","params":{"sid":"S-1-5-18"}}')
-            $line = $r.ReadLine()
-            if ($line -notmatch '-32602') { throw "identity in params was not refused: $line" }
-            $pipe.Dispose()
+            # ADR-029/034: a standard GENERIC_READ|GENERIC_WRITE client must be refused, because
+            # GENERIC_WRITE includes FILE_CREATE_PIPE_INSTANCE (squatting). Even an admin is refused.
+            $std = New-Object System.IO.Pipes.NamedPipeClientStream('.', 'offmanual-agent', [System.IO.Pipes.PipeDirection]::InOut)
+            $refused = $false
+            try { $std.Connect(5000) } catch [System.UnauthorizedAccessException] { $refused = $true } finally { $std.Dispose() }
+            if (-not $refused) { throw "a GENERIC_WRITE client was allowed to connect" }
+            # The supported path: bridge (read + write-data only, checks the server is LocalSystem).
+            $requests = @(
+              '{"jsonrpc":"2.0","id":1,"method":"session.hello","params":{}}',
+              '{"jsonrpc":"2.0","id":2,"method":"session.hello","params":{"sid":"S-1-5-18"}}'
+            ) -join "`n"
+            $replies = ($requests + "`n") | & $exe bridge
+            if ($LASTEXITCODE -ne 0) { throw "bridge failed" }
+            Write-Host "replies:`n$($replies -join "`n")"
+            if (($replies -join "`n") -notmatch '"id":1,"result":\{"known":false') { throw "hello reply missing" }
+            if (($replies -join "`n") -notmatch '"id":2,"error":\{"code":-32602') { throw "identity in params was not refused" }
           } finally {
             Get-Content (Join-Path $data 'logs\server-agent.log') -ErrorAction SilentlyContinue | Select-Object -Last 20
             & $exe uninstall

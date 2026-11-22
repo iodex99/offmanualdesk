@@ -5,10 +5,14 @@ package pipe
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,8 +21,15 @@ import (
 	"offmanual/desk/server-agent/internal/rpc"
 )
 
+var pipeSeq atomic.Int64
+
+// testPipeName is unique per call: Windows clock ticks can repeat, so add a counter
+// and random bytes.
 func testPipeName(t *testing.T) string {
-	return fmt.Sprintf(`\\.\pipe\offmanual-test-%d-%d`, os.Getpid(), time.Now().UnixNano())
+	t.Helper()
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf(`\\.\pipe\offmanual-test-%d-%d-%x`, os.Getpid(), pipeSeq.Add(1), b)
 }
 
 func serve(t *testing.T) (name string, cancel context.CancelFunc, done chan error) {
@@ -137,4 +148,41 @@ func TestServeStopsOnCancel(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("serve did not stop")
 	}
+}
+
+func TestBridgeRelaysAndChecksServerIdentity(t *testing.T) {
+	name, cancel, done := serve(t)
+	defer stopServe(t, cancel, done)
+	me, _ := currentUserSID()
+	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"session.hello","params":{}}` + "\n")
+	var out strings.Builder
+	ctx, stop := context.WithTimeout(context.Background(), 10*time.Second)
+	defer stop()
+	// The test server runs as us, not SYSTEM: name our SID explicitly.
+	if err := Bridge(ctx, name, me, in, &syncWriter{w: &out}); err != nil {
+		t.Fatalf("bridge: %v", err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(out.String(), me) && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !strings.Contains(out.String(), me) {
+		t.Fatalf("bridge output %q", out.String())
+	}
+	// Default expectation is LocalSystem: our own server must be refused.
+	err := Bridge(ctx, name, "", strings.NewReader(""), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "refusing") {
+		t.Fatalf("non-SYSTEM server accepted: %v", err)
+	}
+}
+
+type syncWriter struct {
+	mu sync.Mutex
+	w  *strings.Builder
+}
+
+func (s *syncWriter) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.w.Write(p)
 }

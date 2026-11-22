@@ -10,8 +10,10 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 
 	"offmanual/desk/server-agent/internal/app"
+	"offmanual/desk/server-agent/internal/preflight"
 	"offmanual/desk/server-agent/internal/version"
 )
 
@@ -25,9 +27,11 @@ Usage:
   server-agent run [-data DIR]      Run in the foreground (development, diagnostics)
   server-agent install [-data DIR]  Install and start the Windows service (run as Administrator)
   server-agent uninstall            Stop and remove the Windows service (run as Administrator)
+  server-agent preflight [-share \\fs\Clients] [-json]  Check this server is ready
+  server-agent bridge               Relay stdin/stdout to the agent pipe (for Node clients; ADR-034)
   server-agent help                 Show this help
 
-Coming next: enroll <code>, preflight.
+Coming next: enroll <code>.
 `
 
 func main() {
@@ -84,6 +88,53 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		_, _ = fmt.Fprintf(stdout, "Installed and started %s.\n", ServiceName)
+		return 0
+	case "bridge":
+		fs := flag.NewFlagSet("bridge", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		name := fs.String("pipe", "", `pipe name (default \\.\pipe\offmanual-agent)`)
+		server := fs.String("server-sid", "", "expected server SID (default LocalSystem S-1-5-18)")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		if err := bridge(ctx, *name, *server, os.Stdin, stdout); err != nil {
+			_, _ = fmt.Fprintf(stderr, "bridge: %v\n", err)
+			return 1
+		}
+		return 0
+	case "preflight":
+		fs := flag.NewFlagSet("preflight", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		share := fs.String("share", "", `UNC path of the Clients share, e.g. \\fs01\Clients`)
+		install := fs.String("install-dir", "", `install folder (default C:\Program Files\OffManual)`)
+		asJSON := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		o := preflight.DefaultOptions()
+		o.Share = *share
+		if *install != "" {
+			o.InstallDir = *install
+		}
+		r := preflight.Run(context.Background(), preflight.Standard(o))
+		if *asJSON {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(r)
+		} else {
+			for _, res := range r.Results {
+				_, _ = fmt.Fprintf(stdout, "%-5s %-28s %s\n", strings.ToUpper(string(res.Status)), res.Title, res.Detail)
+				if res.Fix != "" {
+					_, _ = fmt.Fprintf(stdout, "      → %s\n", res.Fix)
+				}
+			}
+			_, _ = fmt.Fprintf(stdout, "\nOverall: %s\n", strings.ToUpper(string(r.Overall)))
+		}
+		if r.Overall == preflight.Fail {
+			return 1
+		}
 		return 0
 	case "uninstall":
 		if err := uninstallService(); err != nil {

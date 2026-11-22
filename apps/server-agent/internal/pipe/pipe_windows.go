@@ -3,10 +3,13 @@
 package pipe
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/Microsoft/go-winio"
@@ -97,11 +100,68 @@ func ServerSID(conn net.Conn) (string, error) {
 	return sid, err
 }
 
-// Dial connects to a pipe (Desk is Rust; this is for Go tools and tests).
+// Dial connects with exactly UserAccess (read + write-data). Standard clients ask
+// for GENERIC_WRITE, which includes FILE_CREATE_PIPE_INSTANCE and is therefore
+// refused by the ADR-029 DACL; every Off Manual client must request UserAccess
+// (Desk via CreateFileW, Node via `server-agent bridge`). go-winio dials at
+// SECURITY_ANONYMOUS, so the server can never impersonate the client.
 func Dial(ctx context.Context, name string) (net.Conn, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	return winio.DialPipeContext(ctx, name)
+	return winio.DialPipeAccess(ctx, name, UserAccess)
+}
+
+// LocalSystemSID is the only acceptable server identity in production.
+const LocalSystemSID = "S-1-5-18"
+
+// Bridge relays in → pipe and pipe → out after checking the server's identity
+// (ADR-034). It returns when either side closes. wantServerSID "" means LocalSystem.
+func Bridge(ctx context.Context, name, wantServerSID string, in io.Reader, out io.Writer) error {
+	if wantServerSID == "" {
+		wantServerSID = LocalSystemSID
+	}
+	conn, err := Dial(ctx, name)
+	if err != nil {
+		return fmt.Errorf("connect to Off Manual Server Agent: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+	got, err := ServerSID(conn)
+	if err != nil {
+		return err
+	}
+	if got != wantServerSID {
+		return fmt.Errorf("refusing to talk to %s: the pipe is served by %s, not %s", name, got, wantServerSID)
+	}
+	// Count newline-terminated requests and replies so that when the input ends
+	// (one-shot use) we still deliver every outstanding reply before closing.
+	sent, recv := &lineCounter{}, &lineCounter{}
+	inDone := make(chan error, 1)
+	outDone := make(chan error, 1)
+	go func() { _, err := io.Copy(io.MultiWriter(conn, sent), in); inDone <- err }()
+	go func() { _, err := io.Copy(io.MultiWriter(out, recv), conn); outDone <- err }()
+	select {
+	case err := <-outDone: // server closed
+		return quiet(err)
+	case <-ctx.Done():
+		return nil
+	case err := <-inDone:
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+		deadline := time.After(10 * time.Second)
+		for recv.n.Load() < sent.n.Load() {
+			select {
+			case err := <-outDone:
+				return quiet(err)
+			case <-deadline:
+				return errors.New("timed out waiting for the Server Agent's reply")
+			case <-ctx.Done():
+				return nil
+			case <-time.After(10 * time.Millisecond):
+			}
+		}
+		return nil
+	}
 }
 
 func processIdentity(pid uint32) (string, uint32, error) {
@@ -132,4 +192,18 @@ func currentUserSID() (string, error) {
 		return "", fmt.Errorf("current token user: %w", err)
 	}
 	return u.User.Sid.String(), nil
+}
+
+type lineCounter struct{ n atomic.Int64 }
+
+func (c *lineCounter) Write(p []byte) (int, error) {
+	c.n.Add(int64(bytes.Count(p, []byte{'\n'})))
+	return len(p), nil
+}
+
+func quiet(err error) error {
+	if err == nil || errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
+		return nil
+	}
+	return err
 }
