@@ -292,3 +292,48 @@ export async function fleet(deps: AdminDeps, s: SessionState | null): Promise<Fl
       health: !r.lastHeartbeatAt || r.lastHeartbeatAt.getTime() < stale ? "red" : r.health,
     }));
 }
+
+// ---- firm page (staff, or that firm's own admin) ----
+
+/** Everything the firm page shows except employees and invoices (their own loaders). */
+export async function firmOverview(deps: AdminDeps, s: SessionState | null, firmId: string) {
+  const p = requireFirmAccess(s, firmId);
+  const firm = (
+    await deps.db
+      .select({ id: firms.id, name: firms.name, status: firms.status, stateCode: firms.stateCode })
+      .from(firms)
+      .where(eq(firms.id, firmId))
+  )[0];
+  if (!firm) throw new InputError("That firm doesn't exist.");
+  const policy =
+    (await deps.db.select().from(firmPolicies).where(eq(firmPolicies.firmId, firmId)))[0] ?? null;
+  const grants = await deps.db
+    .select({
+      id: packGrants.id,
+      packKey: packGrants.packKey,
+      adGroup: packGrants.adGroup,
+      employeeId: packGrants.employeeId,
+    })
+    .from(packGrants)
+    .where(eq(packGrants.firmId, firmId));
+  const packs = await deps.db
+    .select({ key: skillPacks.key, name: skillPacks.name })
+    .from(skillPacks)
+    .orderBy(asc(skillPacks.key));
+  return {
+    firm,
+    isStaff: p.kind === "console",
+    policy: policy && {
+      lockTimeoutMaxMin: policy.lockTimeoutMaxMin,
+      dayEndHourIst: policy.dayEndHourIst,
+      telegramMode: policy.telegramMode,
+      telegramUnlockMaxMin: policy.telegramUnlockMaxMin,
+      stepUpActions: policy.stepUpActions,
+      gatewayIdleStopHours: policy.gatewayIdleStopHours,
+      retentionDays: policy.retentionDays,
+      version: policy.version,
+    },
+    grants,
+    packs,
+  };
+}

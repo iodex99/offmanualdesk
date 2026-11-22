@@ -13,6 +13,7 @@ import {
   addEmployee,
   createEnrolmentCode,
   createFirm,
+  firmOverview,
   fleet,
   grantPack,
   InputError,
@@ -194,5 +195,29 @@ describe("firm scoping", () => {
       ["RDS02", "red"],
     ]);
     await expect(fleet(deps, adminOf(a))).rejects.toBeInstanceOf(AuthError);
+  });
+});
+
+describe("firm page overview", () => {
+  it("staff and the firm's own admin see it; other firms' admins and pre-MFA sessions don't", async () => {
+    const { id } = await createFirm(deps, staff, firmBody);
+    const { id: other } = await createFirm(deps, staff, { ...firmBody, name: "Shah", gstin: undefined });
+    const { id: emp } = await addEmployee(deps, staff, id, { name: "Asha", email: "asha@mehta.in" });
+    await grantPack(deps, staff, id, { packKey: "core", employeeId: emp });
+    await updatePolicy(deps, staff, id, { stepUpActions: ["review.approve"] });
+
+    const o = await firmOverview(deps, adminOf(id), id);
+    expect(o).toMatchObject({
+      firm: { id, name: "Mehta & Co", status: "trial" },
+      isStaff: false,
+      policy: { stepUpActions: ["review.approve"] },
+      grants: [{ packKey: "core", employeeId: emp, adGroup: null }],
+    });
+    expect(o.packs.map((p) => p.key)).toEqual(["core", "tally-post"]);
+    expect(o.policy!.version).toBeGreaterThan(1); // every change bumps the agent ETag
+    expect((await firmOverview(deps, staff, id)).isStaff).toBe(true);
+    await expect(firmOverview(deps, adminOf(other), id)).rejects.toBeInstanceOf(AuthError);
+    await expect(firmOverview(deps, preMfa, id)).rejects.toMatchObject({ status: 401 });
+    await expect(firmOverview(deps, staff, uuidv7())).rejects.toBeInstanceOf(InputError);
   });
 });
