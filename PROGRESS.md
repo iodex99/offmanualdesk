@@ -4,27 +4,25 @@
 
 ## Current focus
 
-M0 and M2 done and on `main`. M3 console (auth, agent API, management API, fleet) and the starts of M4 Desk and M5 guard are on `main` too; work continues on branch `m4-desk`. M1 waits on Dwahnil's lab run and decisions on Proposed ADRs.
+Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee binding; M4 Desk (pipe client, unlock, binding, gateway lifecycle, Rust gateway client, chat, Review tab, Telegram link, idle lock, licence banner); M5 guard (lock, licence, packs, review queue, access denied); M6 Telegram relay; M8 staging; M9 billing engine + run + ladder. Lab-dependent items wait for M1.
 
 ## Next step
 
-1. Branch `m4-desk` (merge to `main` when CI is green). Remaining M3: console auth (superadmin/staff/firm admin, mandatory TOTP; OAuth needs Dwahnil's Google/Microsoft apps, so build with an injectable provider and test with fakes), firm/server/employee/invite management + enrolment-code creation, employee OAuth → SID binding endpoint, fleet board v0. `gh` is logged in (`C:\Program Files\GitHub CLI\gh.exe`).
-2. When lab output arrives: `/lab-result L<n>` for each; promote/supersede ADR-019…029 accordingly; flip [A] markers in ARCHITECTURE.md.
-3. Unblocked meanwhile (M2, recorded exception below): Server Agent SQLite store + migrations, JSON-RPC framing over a fake pipe, TOTP/PIN verification, port-lease allocator, all with fakes for Windows-only parts.
-
-M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL details (ADR-029), port leasing (ADR-020) and logged-off gateways (ADR-026), which M2 isolates behind interfaces.
+1. Merge `m4-desk` to `main` (fast-forward; CI green).
+2. Unblocked next: gateway doctor on exit 78 + restart policy + idle stop (F4); `update.status/switch` + restart-to-update with state backup (ADR-025); recovery codes (F2 step 4); step-up prompt; admin UI pages (employees, invites, billing); invoice PDF; invite email behind an injectable sender (Resend key later).
+3. When lab output arrives: `/lab-result L<n>` for each; promote/supersede the lab-dependent ADRs (020, 021, 022, 024, 040 session key, 041 tool registration, 043 tool list); flip [A] markers in ARCHITECTURE.md.
 
 ## Waiting on Dwahnil
 
 - [x] GitHub repo: `https://github.com/iodex99/offmanualdesk` (created 2026-11-22; `main` + `m0-scaffold` pushed). Note the name has no hyphen; docs that say `offmanual-desk` mean this repo.
 - [x] GitHub CLI installed (winget, 2026-11-22).
-- [ ] Approve the `gh` login: open https://github.com/login/device and enter the code Claude gave you (new code needed if it expired: ask Claude to restart `gh auth login --web`).
+- [x] `gh` login approved (2026-11-22).
 - [x] Proposed product ADRs accepted on Dwahnil's "do everything" instruction (016, 019, 023, 025, 026, 027, 028); overturn any by saying so. Lab-dependent ADRs (020, 021, 022, 024) stay Proposed until L1–L3.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
 - [ ] **Review and approve skills** (`skills/offmanual/*`, status `pending` in `skills/registry.lock.json`): read each SKILL.md (ideally with your CA for the tax dates/limits), then set `review` to `{ "status": "approved", "reviewer": "Dwahnil", "date": "YYYY-MM-DD" }`. Only approved skills ship.
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
-- [ ] Later (M3+): Postgres database URL, Vercel project, Google OAuth client, Microsoft Entra app registration, Resend API key
+- [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
 - [ ] Later (M8): Azure Trusted Signing account (or code-signing certificate) as GitHub secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`; release store (ADR-016) secrets `RELEASE_STORE_*`
 - [ ] Later (M9): Razorpay test keys; Off Manual GSTIN, state, SAC code confirmed with the CA
