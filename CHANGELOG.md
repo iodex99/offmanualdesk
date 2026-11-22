@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Firm admins get billing reminders by email and a Monday summary (people using Off Manual, questions handled, server health, invoices to pay).
 - Notices in Desk: Off Manual announcements, the firm's own messages, and billing reminders for firm admins (issued, due soon, due today, overdue), each dismissable.
 - Usage counts: each employee's daily turns and tokens (numbers only) reach the console for seat activity and usage billing.
 - Desk Tasks tab: one-click jobs (GSTR-2B vs books, 26AS/AIS vs books, ledger scrutiny, notice reply draft, missing documents, month-end MIS, bank reco, summarise a document, due this week) that ask for the client and period.

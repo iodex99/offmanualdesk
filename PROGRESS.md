@@ -130,14 +130,14 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] GST split (same state CGST+SGST, else IGST; per-tax paisa rounding) and amount in words (Indian numbering)
 - [x] Invoice run (`lib/billing/run.ts`: drafts per firm/month, refreshed in place until issued; seat days from binding/disable dates + usage_daily activity; mid-month versions) + FY numbering on issue (`OM/FY2026-27/0001`, counter in a transaction; drafts only until `OFFMANUAL_GSTIN` is set); daily scheduler `/api/cron/billing` (Vercel Cron 01:00 IST, `CRON_SECRET` bearer, constant-time; drafts on the 1st, statuses daily); invoice PDF (`lib/billing/pdf.ts`, pdf-lib 1.17.1: both GSTINs, place of supply, SAC, CGST/SGST or IGST, total in words; drafts marked; route `GET .../invoices/[invoiceId]/pdf`, drafts staff-only)
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
-- [x] Notification engine + Desk banners (ADR-052): billing notices for firm admins (issued, due in 7 days, due today, overdue; once each; end when paid), staff/firm-admin notices from the console; email copies still to do
+- [x] Notification engine + Desk banners (ADR-052): billing notices for firm admins (issued, due in 7 days, due today, overdue; once each; end when paid), staff/firm-admin notices from the console; email copies of billing notices to the firm's active admins (ADR-053)
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
 - [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; [ ] override UI
 
 ### M10 Admin and ease
 - [ ] Admin agent tools
 - [ ] Setup wizard (pre-flight → import users → invites → client scan)
-- [ ] Weekly partner digest
+- [x] Weekly partner digest (ADR-053): Mondays (IST) from the daily cron, last week's counts per firm (people using Off Manual, turns, servers healthy, invoices to pay) to the firm's active admins, once per firm and week (`digest_runs`)
 - [x] Report a problem → support queue (ADR-050): Desk tab with preview of exactly what is sent, `support.bundle`/`support.submit` (agent rebuilds the server part; pre-flight + log tail, bounded), `POST /api/agent/support` (strict schema, 20/server/day, ticket ref OM-XXXXXX), staff `/support` page
 - [ ] Fleet board v1
 
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 18:20: Emails to firm admins: billing copies and weekly digest (ADR-053)
+- Changed: console `lib/admin-mail.ts` (emailBillingNotices with the notice's dedupe key as idempotency key; lastWeek in IST; digestFacts counts only; digestText; weeklyDigests claims the week first), `digest_runs` table (migration 0007), daily cron emails new billing notices and sends digests on Mondays, issuing emails the issued notice; notices take `created_at` from the app clock so "created since" matches.
+- Tests: console 125 (once per notice per admin, disabled admins skipped, a bounce doesn't stop others, no mailer → nothing; week boundaries in IST; digest once per week, counts, ₹ and DD-MM-YYYY, closed firms skipped); `next build` ok.
+- Half-done / next: setup wizard; fleet board v1.
 
 ### 2026-11-23 17:50: Notices (ADR-052)
 - Changed: console `notices` table (migration 0006), `lib/notices.ts` (post: staff to one/all firms, firm admin to own firm; feed; billing notices by dedupe key; paid invoices end their notices), issuing and the daily cron create billing notices, policy marks employees whose email is a firm admin's (`admin`), `GET /api/agent/notices`, `POST /api/admin/notices`, firm page form; agent migration 0007 (`employees.is_admin`), store notices (mirror active list, per-SID dismissals), `notices.list`/`notices.ack`, Syncer mirrors notices, client drops malformed notices; Desk `Notices.tsx` banner.

@@ -400,3 +400,10 @@ Template:
 - Context: BILLING §5 and UPDATES §4 need messages in Desk: billing reminders for firm admins, Off Manual announcements, the firm's own messages. Desk only talks to the Server Agent; the Server Agent didn't know who is a firm admin.
 - Decision: The console keeps notices (firm or all firms; audience everyone or firm admins; start/end; a unique dedupe key for generated ones). Billing notices are generated after issuing and by the daily cron, once per invoice and stage (issued, due in 7 days, due today, overdue) and end when the invoice is paid. Staff can post to one firm or all; a firm admin only to their own firm. The policy marks employees whose email matches a firm admin of that firm (`admin: true`). Each sync the Server Agent mirrors the active list (removing ended ones and their dismissals), and `notices.list` returns only what the caller may see and hasn't dismissed.
 - Consequences: Up to 15 minutes before a notice appears. Being a firm admin in Desk depends on using the same email in both places.
+
+## ADR-053: Firm admins get email copies of billing notices and a Monday digest, counts only
+- Date: 2026-11-23
+- Status: Accepted
+- Context: BILLING §5 lists email for invoice and due-date notices; M10 asks for a weekly partner digest. Rule 10: nothing about clients may leave the firm.
+- Decision: Every billing notice created by issuing or the daily cron is emailed to the firm's active admins (console `firm_admins`), using `<dedupe key>-<address>` as the Resend idempotency key. On Mondays (IST) the cron sends last week's digest per active firm: people who used Off Manual, turns, servers healthy, unpaid issued invoices; the week is claimed in `digest_runs` before sending, so two runs can't both send. Notices record `created_at` from the app clock so the "created since" selection is exact.
+- Consequences: Partners (if they are firm admins in the console) receive the digest; a separate partner list can come later. Failed sends aren't retried beyond Resend's own handling; the Desk notice is still shown.

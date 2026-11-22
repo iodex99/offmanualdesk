@@ -40,6 +40,7 @@ IDs are UUIDv7 (`apps/console/lib/ids.ts`). Most tables have `created_at`, `upda
 | `seat_days` | firm_id, employee_id, date, enabled (bool), active (bool) |
 | `audit_summaries` | firm_id, date, category, count |
 | `notices` | firm_id (null = all firms), kind (`update`/`billing`/`admin`), audience (`all`/`admins`), title (≤ 80), body (≤ 500), starts_at, ends_at, dedupe_key (unique; generated billing notices), created_by (migration 0006, ADR-052) |
+| `digest_runs` | firm_id, week_start (Monday, IST), sent_at; one weekly digest per firm and week (migration 0007, ADR-053) |
 | `support_tickets` | firm_id, server_id, employee_id (only if in the same firm), ref (OM-XXXXXX, unique), description (≤ 500, employee's words), bundle (jsonb: server versions, licence, policy ETag, pre-flight, log tail; desk versions), bundle_url (unused), status, notes (migration 0005, ADR-050) |
 
 ### Billing (see BILLING.md)
