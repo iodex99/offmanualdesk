@@ -24,6 +24,7 @@ import {
   resendInvite,
   resetAuthenticator,
   setEmployeeStatus,
+  setTaskRole,
   updatePolicy,
   type AdminDeps,
 } from "@/lib/admin";
@@ -311,5 +312,40 @@ describe("authenticator reset", () => {
     );
     await expect(resetAuthenticator(deps, adminOf(other), firmId, emp)).rejects.toBeInstanceOf(AuthError);
     await expect(resetAuthenticator(deps, adminOf(other), other, emp)).rejects.toThrow(/active employee/);
+  });
+});
+
+describe("task role (ADR-061)", () => {
+  it("own admin or staff sets it; bumps the policy; bad values and other firms refused", async () => {
+    const { id: firmId } = await createFirm(deps, staff, firmBody);
+    const { id: other } = await createFirm(deps, staff, { ...firmBody, name: "Shah", gstin: undefined });
+    const { id: emp } = await addEmployee(deps, staff, firmId, {
+      name: "Asha",
+      email: "asha@mehta.in",
+      taskRole: "article",
+    });
+    expect((await listEmployees(deps, staff, firmId))[0]!.taskRole).toBe("article");
+    const version = async () =>
+      (await db.select().from(firmPolicies).where(eq(firmPolicies.firmId, firmId)))[0]!.version;
+    const before = await version();
+    expect(await setTaskRole(deps, adminOf(firmId), firmId, emp, { taskRole: "partner" })).toEqual({
+      ok: true,
+    });
+    expect((await listEmployees(deps, staff, firmId))[0]!.taskRole).toBe("partner");
+    expect(await version()).toBe(before + 1);
+    await setTaskRole(deps, adminOf(firmId), firmId, emp, { taskRole: null });
+    expect((await listEmployees(deps, staff, firmId))[0]!.taskRole).toBeNull();
+    for (const bad of [{ taskRole: "intern" }, {}, { taskRole: "article", extra: 1 }]) {
+      await expect(setTaskRole(deps, adminOf(firmId), firmId, emp, bad)).rejects.toBeInstanceOf(InputError);
+    }
+    await expect(
+      addEmployee(deps, staff, firmId, { name: "Ravi", email: "ravi@mehta.in", taskRole: "boss" }),
+    ).rejects.toBeInstanceOf(InputError);
+    await expect(
+      setTaskRole(deps, adminOf(other), firmId, emp, { taskRole: "senior" }),
+    ).rejects.toBeInstanceOf(AuthError);
+    await expect(setTaskRole(deps, adminOf(other), other, emp, { taskRole: "senior" })).rejects.toThrow(
+      /isn't in this firm/,
+    );
   });
 });

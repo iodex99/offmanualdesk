@@ -79,6 +79,7 @@ export function Assistant({
   // After each reply, look for folders the assistant was refused (Request access, ADR-058).
   const [denialsSince, setDenialsSince] = useState<number | null>(null);
   const [prefill, setPrefill] = useState<QueuedMessage | null>(null);
+  const [taskRole, setTaskRole] = useState<string | null>(null);
 
   const run = useCallback(async () => {
     setState({ kind: "starting" });
@@ -103,6 +104,12 @@ export function Assistant({
   const ready = state.kind === "ready";
   useEffect(() => {
     if (!ready) return;
+    agent("session.hello")
+      .then((h) => {
+        const r = (h as { taskRole?: unknown }).taskRole;
+        setTaskRole(typeof r === "string" ? r : null);
+      })
+      .catch(() => undefined); // every task in the usual order
     agent("policy.get")
       .then((p) =>
         keeper.setIdleStopHours(Number((p as { gatewayIdleStopHours?: unknown }).gatewayIdleStopHours)),
@@ -183,6 +190,7 @@ export function Assistant({
           {tab === "chat" && <Chat api={kept} queued={queued} prefill={prefill} onRunEnd={setDenialsSince} />}
           {tab === "tasks" && (
             <TaskButtons
+              role={taskRole}
               onRun={(text) => {
                 setQueued((q) => ({ id: (q?.id ?? 0) + 1, text }));
                 setTab("chat");

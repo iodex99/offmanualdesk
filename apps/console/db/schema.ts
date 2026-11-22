@@ -142,6 +142,8 @@ export const employees = pgTable(
     windowsSid: text("windows_sid"),
     windowsUsername: text("windows_username"),
     roleLabel: text("role_label"),
+    /** Which task buttons Desk shows first (SKILLS.md §5, ADR-061): article | senior | manager | partner. */
+    taskRole: text("task_role"),
     oauthProvider: text("oauth_provider"),
     oauthSubject: text("oauth_subject"),
     boundAt: timestamp("bound_at", { withTimezone: true }),

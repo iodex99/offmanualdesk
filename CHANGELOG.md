@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Task roles: the firm admin picks Article, Senior, Manager or Partner per person, and their Desk shows that role's task buttons first.
 - The Server Agent backs up its database every day (last 7 kept) and `server-agent restore -from FILE` brings one back.
 - Desk runs once per Windows session; opening it again brings the running one forward. Explorer "Ask Off Manual" (`--ask <path>`) puts the file or folder in the chat box.
 - The weekly partner digest shows how many folder-access requests were sent that week (a count only).

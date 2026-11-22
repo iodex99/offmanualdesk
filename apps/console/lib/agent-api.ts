@@ -267,6 +267,7 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
       updatedAt: employees.updatedAt,
       totpResetAt: employees.totpResetAt,
       email: employees.email,
+      taskRole: employees.taskRole,
     })
     .from(employees)
     .where(eq(employees.firmId, a.firmId));
@@ -315,6 +316,7 @@ export async function policy(deps: Deps, req: Request): Promise<Response> {
           packs: packsFor(e.id),
           ...(e.totpResetAt ? { totpResetAt: e.totpResetAt.toISOString() } : {}),
           ...(adminEmails.has(e.email.toLowerCase()) ? { admin: true } : {}),
+          ...(e.taskRole ? { taskRole: e.taskRole } : {}),
         })),
     },
     { etag },

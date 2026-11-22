@@ -13,6 +13,7 @@ import {
   PolicyForm,
   ResendInviteButton,
   ResetAuthenticatorButton,
+  TaskRoleSelect,
   NoticeForm,
   ImportEmployeesForm,
 } from "../forms";
@@ -52,6 +53,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                 <th align="left">Email</th>
                 <th align="left">Status</th>
                 <th align="left">Signed in on Desk</th>
+                <th align="left">Tasks shown first</th>
                 <th />
               </tr>
             </thead>
@@ -62,6 +64,9 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                   <td>{p.email}</td>
                   <td>{p.status}</td>
                   <td>{p.boundAt ? formatDate(p.boundAt) : "not yet"}</td>
+                  <td>
+                    <TaskRoleSelect firmId={firmId} employeeId={p.id} taskRole={p.taskRole} />
+                  </td>
                   <td>
                     <EmployeeStatusButton firmId={firmId} employeeId={p.id} status={p.status} />
                     {p.status === "invited" && <ResendInviteButton firmId={firmId} employeeId={p.id} />}

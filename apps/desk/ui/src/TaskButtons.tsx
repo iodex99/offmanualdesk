@@ -1,34 +1,49 @@
 // Tasks tab: one button per common job (SKILLS.md §5). Choosing a task asks for its
 // inputs, then sends one request to the chat.
 import { useState } from "react";
-import { missingInputs, recentFYs, TASKS, type TaskDef, type TaskInput } from "./tasks";
+import { missingInputs, recentFYs, splitTasks, type TaskDef, type TaskInput } from "./tasks";
 
 const realNow = () => new Date();
 
-export function TaskButtons({ onRun, now = realNow }: { onRun: (prompt: string) => void; now?: () => Date }) {
+export function TaskButtons({
+  onRun,
+  now = realNow,
+  role,
+}: {
+  onRun: (prompt: string) => void;
+  now?: () => Date;
+  /** The employee's task role from the console (ADR-061): its tasks come first. */
+  role?: string | null;
+}) {
   const [task, setTask] = useState<TaskDef | null>(null);
   const [values, setValues] = useState<Partial<Record<TaskInput, string>>>({});
   const [error, setError] = useState("");
   const fys = recentFYs(now());
 
   if (!task) {
+    const { first, more } = splitTasks(role);
+    const button = (t: TaskDef) => (
+      <button
+        key={t.id}
+        onClick={() => {
+          setTask(t);
+          setValues({ fy: fys[0] ?? "" });
+          setError("");
+        }}
+      >
+        {t.label}
+      </button>
+    );
     return (
       <section aria-label="Tasks">
         <p>Pick a task. You&apos;ll be asked for the client and period.</p>
-        <div className="tasks">
-          {TASKS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setTask(t);
-                setValues({ fy: fys[0] ?? "" });
-                setError("");
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <div className="tasks">{first.map(button)}</div>
+        {more.length > 0 && (
+          <details>
+            <summary>More tasks</summary>
+            <div className="tasks">{more.map(button)}</div>
+          </details>
+        )}
       </section>
     );
   }

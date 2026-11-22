@@ -16,6 +16,8 @@ Microsoft account; the console always asks for your authenticator code too.
   data (chats and memory, not your files) is moved from their Windows profile into an archive on the server that
   only administrators can open, and deleted after the number of days you set to keep it. Switch them on again
   before then and nothing is moved. Nothing is deleted from your file server.
+- **Tasks shown first**: pick Article, Senior, Manager or Partner for each person; their Desk puts that role's
+  task buttons first. Everyone can still reach every task under **More tasks**.
 - **Reset authenticator** only when someone has lost both their phone and their recovery codes. They set it up
   again in Desk from their own Windows sign-in.
 

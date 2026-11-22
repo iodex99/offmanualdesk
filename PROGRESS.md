@@ -110,7 +110,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Registry tooling: `tools/skill-vet` (static checks: binaries, install scripts, git deps block; network/shell/eval/blobs/absolute paths/credentials warn; review checklist; `lock` emits pending entries) + `verify-skills` with `pending` status; release ships approved only (ADR-039)
 - [ ] Starter pack imported and reviewed (SKILLS.md §3)
 - [x] Client directory skill (pending review); [ ] admin scan task button
-- [x] Task buttons v1 (SKILLS.md §5): Desk Tasks tab (`tasks.ts`, `TaskButtons.tsx`) with client/month/FY/period/file inputs; each sends one request naming the skill and the §5 output file through the chat; [ ] role defaults (needs role from the console), Purchase bills to vouchers (needs the Tally-post pack)
+- [x] Task buttons v1 (SKILLS.md §5): Desk Tasks tab (`tasks.ts`, `TaskButtons.tsx`) with client/month/FY/period/file inputs; each sends one request naming the skill and the §5 output file through the chat; role defaults (ADR-061: console task role per employee → policy → `session.hello` → role's buttons first, others under More tasks); [ ] Purchase bills to vouchers (needs the Tally-post pack)
 - [x] India pack v1 written (all `pending` CA review, never shipped until approved): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
 
 ### M8 Updates
@@ -161,6 +161,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 00:30: Task roles (M7, ADR-061)
+- Changed: console `employees.task_role` (migration 0009), `addEmployee` accepts it, `setTaskRole` + route `POST .../employees/[employeeId]/task-role` (firm-scoped, bumps policy), firm page "Tasks shown first" select, policy carries `taskRole`; agent migration 0010, `SetEmployeeTaskRole` (unknown → none), ApplyPolicy, `session.hello` `taskRole`; Desk `ROLE_TASKS`/`splitTasks` (SKILLS.md §5 defaults), TaskButtons role prop with More tasks, Assistant reads hello.
+- Tests: console admin + agent-api (roles, bump, bad values, cross-firm, policy field); Go (policy → store, unknown and cleared roles, hello); desk 67/67 (defaults, nothing hidden, every listed id exists, partner first + the rest under More tasks); lint, typecheck, golangci-lint both OSes 0. Full-history secret scan re-run: 142 commits, no leaks. CI green at 196d8f9; `main` fast-forwarded.
 
 ### 2026-11-24 00:05: Full-history scan result
 - First full-history gitleaks run (141 commits): 1 finding, `generic-api-key` on a made-up test value (`"0123456789abcdef-cron"`) in `billing-run.test.ts`; not a secret. Ignored by exact fingerprint in `.gitleaksignore`; re-run to confirm clean.

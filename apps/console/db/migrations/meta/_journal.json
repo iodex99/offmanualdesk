@@ -64,6 +64,13 @@
       "when": 1795365009396,
       "tag": "0008_ambiguous_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795367066475,
+      "tag": "0009_lowly_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

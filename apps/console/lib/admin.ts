@@ -125,6 +125,7 @@ const employeeInput = z
       .regex(/^[A-Za-z0-9._\\-]{1,104}$/)
       .optional(),
     roleLabel: z.string().trim().max(60).optional(),
+    taskRole: z.enum(["article", "senior", "manager", "partner"]).optional(),
     inviteChannel: z.enum(["email", "whatsapp"]).default("email"),
   })
   .strict();
@@ -151,6 +152,7 @@ export async function addEmployee(deps: AdminDeps, s: SessionState | null, firmI
         windowsSid: e.windowsSid ?? null,
         windowsUsername: e.windowsUsername ?? null,
         roleLabel: e.roleLabel ?? null,
+        taskRole: e.taskRole ?? null,
         status: "invited",
       });
       await tx.insert(invites).values({ id: inviteId, employeeId: id, channel: e.inviteChannel });
@@ -224,10 +226,33 @@ export async function listEmployees(deps: AdminDeps, s: SessionState | null, fir
       email: employees.email,
       status: employees.status,
       boundAt: employees.boundAt,
+      taskRole: employees.taskRole,
     })
     .from(employees)
     .where(eq(employees.firmId, firmId))
     .orderBy(asc(employees.name));
+}
+
+export const TASK_ROLES = ["article", "senior", "manager", "partner"] as const;
+
+/** Which task buttons Desk shows first for this employee (SKILLS.md §5, ADR-061); null = all in the usual order. */
+export async function setTaskRole(
+  deps: AdminDeps,
+  s: SessionState | null,
+  firmId: string,
+  employeeId: string,
+  input: unknown,
+) {
+  requireFirmAccess(s, firmId);
+  const { taskRole } = parse(z.object({ taskRole: z.enum(TASK_ROLES).nullable() }).strict(), input);
+  const updated = await deps.db
+    .update(employees)
+    .set({ taskRole, updatedAt: deps.now() })
+    .where(and(eq(employees.id, employeeId), eq(employees.firmId, firmId)))
+    .returning({ id: employees.id });
+  if (updated.length !== 1) throw new InputError("That employee isn't in this firm.");
+  await bumpPolicy(deps.db, firmId);
+  return { ok: true };
 }
 
 export async function setEmployeeStatus(

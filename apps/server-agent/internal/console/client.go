@@ -172,6 +172,8 @@ type PolicyEmployee struct {
 	TOTPResetAt string `json:"totpResetAt,omitempty"`
 	// Admin marks an employee who is also a firm admin (admin-only notices, ADR-052).
 	Admin bool `json:"admin,omitempty"`
+	// TaskRole: which task buttons Desk shows first (ADR-061).
+	TaskRole string `json:"taskRole,omitempty"`
 }
 
 // Policy is the firm policy document.

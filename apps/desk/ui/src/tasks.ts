@@ -138,3 +138,20 @@ export function missingInputs(t: TaskDef, v: Partial<Record<TaskInput, string>>)
   };
   return t.inputs.filter((i) => !(v[i] ?? "").trim()).map((i) => names[i]);
 }
+
+export type TaskRole = "article" | "senior" | "manager" | "partner";
+
+/** Role defaults (SKILLS.md §5, ADR-061); null = every task. */
+export const ROLE_TASKS: Record<TaskRole, string[] | null> = {
+  article: ["bank-reco", "gstr2b", "scrutiny", "missing-docs", "summarise"],
+  senior: null,
+  manager: null,
+  partner: ["due-week", "summarise", "mis"],
+};
+
+/** The role's tasks first (in the usual order), the rest under "More tasks". */
+export function splitTasks(role: string | undefined | null): { first: TaskDef[]; more: TaskDef[] } {
+  const ids = role && role in ROLE_TASKS ? ROLE_TASKS[role as TaskRole] : null;
+  if (!ids) return { first: TASKS, more: [] };
+  return { first: TASKS.filter((t) => ids.includes(t.id)), more: TASKS.filter((t) => !ids.includes(t.id)) };
+}

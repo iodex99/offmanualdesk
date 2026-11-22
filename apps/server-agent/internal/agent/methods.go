@@ -30,6 +30,8 @@ type helloResult struct {
 	Notice        string `json:"notice,omitempty"`
 	// Admin: the employee is also a firm admin (sees everyone's access requests, ADR-058).
 	Admin bool `json:"admin,omitempty"`
+	// TaskRole: which task buttons Desk shows first (ADR-061).
+	TaskRole string `json:"taskRole,omitempty"`
 }
 
 func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any, error) {
@@ -51,7 +53,11 @@ func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any
 	if err != nil {
 		return nil, err
 	}
-	return helloResult{Known: true, Admin: admin, Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
+	role, err := a.store.EmployeeTaskRole(ctx, e.SID)
+	if err != nil {
+		return nil, err
+	}
+	return helloResult{Known: true, Admin: admin, TaskRole: role, Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
 		PINSet: e.PINHash != "", Locked: st.Locked, DayUnlocked: st.DayUnlocked, LockedUntil: st.LockedUntil, Packs: e.Packs,
 		ServicePaused: st.ServicePaused, PausedMessage: st.PausedMessage, Notice: st.Notice}, nil
 }

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Assistant } from "./Assistant";
-import { fileSafe, missingInputs, monthLabel, recentFYs, TASKS } from "./tasks";
+import { TaskButtons } from "./TaskButtons";
+import { fileSafe, missingInputs, monthLabel, recentFYs, ROLE_TASKS, splitTasks, TASKS } from "./tasks";
 import { fakeGateway } from "./testGateway";
 
 afterEach(cleanup);
@@ -65,5 +66,36 @@ describe("Tasks tab", () => {
     expect(g.sent).toEqual([
       "Use the tally-mis skill for Mehta Traders for Oct-2026. Save it as MIS_Mehta_Traders_2026-10.xlsx in the client's folder and tell me where it is.",
     ]);
+  });
+});
+
+describe("task roles (ADR-061)", () => {
+  it("role defaults from SKILLS.md: the role's tasks first, the rest under More tasks", () => {
+    const ids = (r: string | null) => {
+      const { first, more } = splitTasks(r);
+      return { first: first.map((t) => t.id), more: more.map((t) => t.id) };
+    };
+    expect(ids("article").first).toEqual(["bank-reco", "gstr2b", "scrutiny", "missing-docs", "summarise"]);
+    expect(ids("partner").first).toEqual(["mis", "summarise", "due-week"]);
+    for (const r of ["senior", "manager", null, "boss"]) {
+      expect(ids(r)).toEqual({ first: TASKS.map((t) => t.id), more: [] });
+    }
+    const a = ids("article");
+    expect([...a.first, ...a.more].sort()).toEqual(TASKS.map((t) => t.id).sort()); // nothing hidden
+    for (const list of Object.values(ROLE_TASKS)) {
+      for (const id of list ?? []) expect(TASKS.some((t) => t.id === id)).toBe(true);
+    }
+  });
+
+  it("shows a partner's tasks first and keeps the others one click away", () => {
+    const { container } = render(<TaskButtons onRun={vi.fn()} role="partner" />);
+    const groups = container.querySelectorAll(".tasks");
+    const first = [...groups[0]!.querySelectorAll("button")].map((b) => b.textContent);
+    expect(groups[1]!.closest("details")).toBeTruthy();
+    expect(groups[1]!.querySelectorAll("button").length).toBe(TASKS.length - 3);
+    expect(first).toEqual(
+      TASKS.filter((t) => ["mis", "summarise", "due-week"].includes(t.id)).map((t) => t.label),
+    );
+    expect(screen.getByText("More tasks")).toBeTruthy();
   });
 });

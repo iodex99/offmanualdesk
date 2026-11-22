@@ -210,6 +210,52 @@ export function ResetAuthenticatorButton({ firmId, employeeId }: { firmId: strin
   );
 }
 
+const TASK_ROLE_NAMES: Record<string, string> = {
+  "": "All tasks",
+  article: "Article",
+  senior: "Senior",
+  manager: "Manager",
+  partner: "Partner",
+};
+
+/** Which task buttons the person's Desk shows first (ADR-061). */
+export function TaskRoleSelect({
+  firmId,
+  employeeId,
+  taskRole,
+}: {
+  firmId: string;
+  employeeId: string;
+  taskRole: string | null;
+}) {
+  const { busy, message, run } = useAction();
+  return (
+    <>
+      <select
+        aria-label="Tasks shown first"
+        defaultValue={taskRole ?? ""}
+        disabled={busy}
+        onChange={(e) => {
+          const v = e.currentTarget.value;
+          void run(async () => {
+            await send(`/api/admin/firms/${firmId}/employees/${employeeId}/task-role`, "POST", {
+              taskRole: v === "" ? null : v,
+            });
+            return "Saved. Desk shows these tasks first within 15 minutes.";
+          });
+        }}
+      >
+        {Object.entries(TASK_ROLE_NAMES).map(([v, n]) => (
+          <option key={v} value={v}>
+            {n}
+          </option>
+        ))}
+      </select>
+      <Note m={message} />
+    </>
+  );
+}
+
 export function NoticeForm({ firmId }: { firmId: string }) {
   const { busy, message, run } = useAction();
   return (

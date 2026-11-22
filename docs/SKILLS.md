@@ -74,4 +74,4 @@ Each India skill: offline where possible, Windows-compatible, writes outputs int
 | Summarise a document | pdf, summarize | file | Summary in chat + `.md` next to file |
 | Due this week | compliance-calendar | none | List in chat |
 
-Role defaults: Article = bank reco, 2B, scrutiny, missing docs, summarise. Senior/Manager = all. Partner = due this week, summaries, MIS, digest.
+Role defaults: Article = bank reco, 2B, scrutiny, missing docs, summarise. Senior/Manager = all. Partner = due this week, summaries, MIS, digest. The firm admin picks each person's role on the console firm page ("Tasks shown first"); it reaches Desk through the policy and `session.hello`. Desk shows the role's buttons first and every other task under *More tasks*: roles order the list, they never take tasks away (packs decide what the assistant may do; ADR-061).

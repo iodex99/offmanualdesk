@@ -414,3 +414,26 @@ func TestPolicyOffboardingCycleAndRetention(t *testing.T) {
 		t.Fatal("out-of-range retention accepted")
 	}
 }
+
+func TestPolicyTaskRoleReachesHello(t *testing.T) {
+	_, _, st := setup(t)
+	ctx := context.Background()
+	sid := "S-1-5-21-1-2-3-1103"
+	p := Policy{PolicyVersion: 1, Employees: []PolicyEmployee{{EmployeeID: "e1", SID: sid, Name: "Asha", Status: "active", TaskRole: "partner"}}}
+	_ = ApplyPolicy(ctx, st, p, `"a"`)
+	if r, _ := st.EmployeeTaskRole(ctx, sid); r != "partner" {
+		t.Fatalf("role %q", r)
+	}
+	p.Employees[0].TaskRole = "boss" // unknown → none
+	_ = ApplyPolicy(ctx, st, p, `"b"`)
+	if r, _ := st.EmployeeTaskRole(ctx, sid); r != "" {
+		t.Fatalf("unknown role stored as %q", r)
+	}
+	p.Employees[0].TaskRole = "article"
+	_ = ApplyPolicy(ctx, st, p, `"c"`)
+	p.Employees[0].TaskRole = ""
+	_ = ApplyPolicy(ctx, st, p, `"d"`)
+	if r, _ := st.EmployeeTaskRole(ctx, sid); r != "" {
+		t.Fatalf("cleared role kept as %q", r)
+	}
+}

@@ -95,6 +95,10 @@ func TestAccessRequestFlow(t *testing.T) {
 	if hello := e.mustOK(asha, "session.hello", nil); hello["admin"] != true {
 		t.Fatalf("hello %v", hello)
 	}
+	_ = e.st.SetEmployeeTaskRole(ctx, asha.SID, "manager")
+	if hello := e.mustOK(asha, "session.hello", nil); hello["taskRole"] != "manager" {
+		t.Fatalf("hello task role %v", hello)
+	}
 	if hello := e.mustOK(ravi, "session.hello", nil); hello["admin"] != nil {
 		t.Fatalf("hello %v", hello)
 	}
