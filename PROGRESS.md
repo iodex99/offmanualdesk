@@ -4,11 +4,11 @@
 
 ## Current focus
 
-M1 Research + lab spikes: research and scripts done; waiting on Dwahnil for the GitHub repo (push + first CI run) and the lab VM run. Then decide the Proposed ADRs 019–028.
+M1 Research + lab spikes: research and scripts done; code pushed to GitHub (`iodex99/offmanualdesk`), first CI run pending review. Waiting on Dwahnil for the lab VM run and decisions on Proposed ADRs.
 
 ## Next step
 
-1. When the repo exists: `git push -u origin main m0-scaffold`, watch CI (`ci.yml`) on `m0-scaffold`, fix anything red (Rust/Tauri and PowerShell analyzer have only run in CI, never locally), then merge to `main`.
+1. Check the first CI run of `ci.yml` on `m0-scaffold` (https://github.com/iodex99/offmanualdesk/actions); fix anything red (Rust/Tauri and PSScriptAnalyzer have only ever run in CI), then merge to `main`. This session can't read Actions for a private repo without `gh`: ask Dwahnil to paste failures or allow `gh`.
 2. When lab output arrives: `/lab-result L<n>` for each; promote/supersede ADR-019…029 accordingly; flip [A] markers in ARCHITECTURE.md.
 3. Unblocked meanwhile (M2, recorded exception below): Server Agent SQLite store + migrations, JSON-RPC framing over a fake pipe, TOTP/PIN verification, port-lease allocator, all with fakes for Windows-only parts.
 
@@ -16,7 +16,8 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 
 ## Waiting on Dwahnil
 
-- [ ] **GitHub repo** (blocks push + CI): create an empty **private** repo `offmanual-desk` under `iodex99` (no README/licence), then tell me. This machine already has GitHub credentials in Git Credential Manager; I'll add the remote and push. (Creating it myself needs the `gh` CLI, which this session wasn't allowed to download.)
+- [x] GitHub repo: `https://github.com/iodex99/offmanualdesk` (created 2026-11-22; `main` + `m0-scaffold` pushed). Note the name has no hyphen; docs that say `offmanual-desk` mean this repo.
+- [ ] Let Claude read CI results: install GitHub CLI (`winget install GitHub.cli`, then `gh auth login`), or paste failing job logs.
 - [ ] **Decide Proposed ADRs** (one line each is enough), DECISIONS.md: ADR-023 (Telegram via Server Agent, no channel plugin in v1), ADR-026 (no logged-off gateways in v1), ADR-027 (guard protects against the agent, not the employee), ADR-016 (release store: Cloudflare R2 recommended), ADR-019 (production on OpenClaw `extended-stable`). The others wait for lab results.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
@@ -140,6 +141,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-22 17:00: Pushed to GitHub
+- Changed: remote `origin` = https://github.com/iodex99/offmanualdesk.git; pushed `main` (kit) and `m0-scaffold` (13 commits).
+- Tests: none new; first CI run triggered by the push.
+- Half-done / next: review CI, fix, merge to `main`.
 
 ### 2026-11-22 16:30: M0 scaffold, M1 research + lab scripts, release pipeline
 - Changed: moved the kit to the repo root, `git init`, local identity. M0: pnpm workspace (TS 6.0, ESLint 10, Prettier, Vitest 5), Go workspace (server-agent + sign-manifest), Tauri 2 Desk (React UI + Rust shell + icons, Cargo.lock), Next 16 console (health API), shared-schema (manifest/IPC JSON Schemas, ₹/date/FY helpers, golden fixture shared with Go), guard + channel-relay packages. Release manifest library (ed25519 over exact bytes, deterministic zip, zip-slip-safe extraction), `sign-manifest` CLI, `tools/release` (prepare/check-tag/notes/verify-skills). CI (`ci.yml`) and release (`release.yml`) workflows, dependabot, golangci config. M1: OpenClaw research (agent) → OPENCLAW_NOTES.md §1–10; pinned OpenClaw 2026.11.6 + Node 24.22.3 (`release.config.json`, `release/openclaw` lockfile); guard plugin given real packaging and typed against the SDK; ADR-015…029; ARCHITECTURE/SECURITY/UPDATES/SKILLS/LAB_VALIDATION updated; lab scripts L1–L10 + runbook (agent).
