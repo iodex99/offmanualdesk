@@ -6,7 +6,11 @@ afterEach(cleanup);
 
 const api = (s: UpdateStatus, applyErr?: unknown) => {
   const applied: string[] = [];
+  const reported: string[] = [];
   const a: UpdateApi = {
+    report: async (v) => {
+      reported.push(v);
+    },
     check: async () => s,
     apply: async (v) => {
       applied.push(v);
@@ -14,7 +18,7 @@ const api = (s: UpdateStatus, applyErr?: unknown) => {
       return { running: true, port: 18800 };
     },
   };
-  return { a, applied };
+  return { a, applied, reported };
 };
 const NOW = () => new Date("2026-11-25T06:00:00Z");
 
@@ -27,7 +31,7 @@ describe("UpdateNotice", () => {
   });
 
   it("offers restart to update and reports success", async () => {
-    const { a, applied } = api({
+    const { a, applied, reported } = api({
       running: "1.0.0",
       available: "1.1.0",
       severity: "normal",
@@ -38,6 +42,8 @@ describe("UpdateNotice", () => {
     fireEvent.click(screen.getByText("Restart to update"));
     expect(await screen.findByText("Updated to 1.1.0.")).toBeTruthy();
     expect(applied).toEqual(["1.1.0"]);
+    // The running release is reported, then the new one after the switch (ADR-063).
+    expect(reported).toEqual(["1.0.0", "1.1.0"]);
   });
 
   it("security update before the deadline shows the date; after it installs itself", async () => {

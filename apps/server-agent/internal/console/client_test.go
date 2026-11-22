@@ -437,3 +437,23 @@ func TestPolicyTaskRoleReachesHello(t *testing.T) {
 		t.Fatalf("cleared role kept as %q", r)
 	}
 }
+
+func TestHeartbeatCarriesEmployeeVersions(t *testing.T) {
+	f, c, st := setup(t)
+	ctx := context.Background()
+	_ = st.UpsertEmployee(ctx, store.Employee{SID: "S-1-5-21-1-2-3-1101", EmployeeID: "e1", Name: "Asha", Status: "active"})
+	_ = st.UpsertEmployee(ctx, store.Employee{SID: "S-1-5-21-1-2-3-1102", EmployeeID: "e2", Name: "Ravi", Status: "active"})
+	_ = st.UpsertEmployee(ctx, store.Employee{SID: "S-1-5-21-1-2-3-1103", EmployeeID: "e3", Name: "Old", Status: "disabled"})
+	_ = st.SetRunningVersion(ctx, "S-1-5-21-1-2-3-1101", "1.1.0")
+	_ = st.SetRunningVersion(ctx, "S-1-5-21-1-2-3-1103", "1.0.0") // switched off: not reported
+	f.policy = Policy{PolicyVersion: 1}
+	s := &Syncer{Client: c, Store: st, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), AgentVersion: "1.0.0"}
+	s.Once(ctx)
+	if len(f.beats) != 1 {
+		t.Fatalf("beats %d", len(f.beats))
+	}
+	got := f.beats[0].EmployeeVersions
+	if len(got) != 1 || got[0] != (EmployeeVersion{EmployeeID: "e1", Version: "1.1.0"}) {
+		t.Fatalf("versions %+v", got)
+	}
+}

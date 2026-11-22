@@ -188,6 +188,36 @@ describe("signed agent routes", () => {
     expect(row.lastHeartbeatAt?.toISOString()).toBe(NOW.toISOString());
   });
 
+  it("heartbeat records each person's running release, only for this firm (ADR-063)", async () => {
+    const s = await enrolServer(firmId);
+    const mine = uuidv7();
+    const theirs = uuidv7();
+    await db.insert(employees).values([
+      { id: mine, firmId, name: "Asha", email: "asha@mehta.in", status: "active" },
+      { id: theirs, firmId: otherFirmId, name: "Other", email: "x@shah.in", status: "active" },
+    ]);
+    const send = (employeeVersions: unknown) =>
+      heartbeat(
+        deps,
+        signedRequest(s.priv, s.serverId, "POST", "/api/agent/heartbeat", {
+          agentVersion: "1.0.1",
+          health: "green",
+          activeSeats: 1,
+          employeeVersions,
+        }),
+      );
+    const res = await send([
+      { employeeId: mine, version: "1.1.0" },
+      { employeeId: theirs, version: "9.9.9" },
+    ]);
+    expect(res.status).toBe(200);
+    const row = async (id: string) => (await db.select().from(employees).where(eq(employees.id, id)))[0]!;
+    expect((await row(mine)).runningVersion).toBe("1.1.0");
+    expect((await row(theirs)).runningVersion).toBeNull(); // another firm's employee is never touched
+    expect((await send([{ employeeId: mine, version: "latest" }])).status).toBe(400);
+    expect((await send([{ employeeId: mine, version: "1.1.0", path: "Clients/x" }])).status).toBe(400);
+  });
+
   it("refuses client content and unknown fields", async () => {
     const s = await enrolServer(firmId);
     const res = await heartbeat(

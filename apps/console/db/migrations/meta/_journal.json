@@ -71,6 +71,13 @@
       "when": 1795367066475,
       "tag": "0009_lowly_hobgoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795367837567,
+      "tag": "0010_pale_bastion",
+      "breakpoints": true
     }
   ]
 }

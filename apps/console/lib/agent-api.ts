@@ -215,6 +215,10 @@ const heartbeatSchema = z
     stagedVersion: version.optional(),
     health: z.enum(["green", "amber", "red"]),
     activeSeats: z.number().int().min(0).max(10000),
+    employeeVersions: z
+      .array(z.object({ employeeId: z.string().uuid(), version }).strict())
+      .max(1000)
+      .optional(),
   })
   .strict();
 
@@ -237,6 +241,13 @@ export async function heartbeat(deps: Deps, req: Request): Promise<Response> {
       updatedAt: now,
     })
     .where(eq(servers.id, a.serverUuid));
+  // Which release each person's assistant runs (ADR-063); only this firm's employees.
+  for (const ev of input.employeeVersions ?? []) {
+    await deps.db
+      .update(employees)
+      .set({ runningVersion: ev.version })
+      .where(and(eq(employees.id, ev.employeeId), eq(employees.firmId, a.firmId)));
+  }
   const firm = (await deps.db.select({ status: firms.status }).from(firms).where(eq(firms.id, a.firmId)))[0];
   const policy = (
     await deps.db

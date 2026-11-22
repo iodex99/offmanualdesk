@@ -227,6 +227,7 @@ export async function listEmployees(deps: AdminDeps, s: SessionState | null, fir
       status: employees.status,
       boundAt: employees.boundAt,
       taskRole: employees.taskRole,
+      runningVersion: employees.runningVersion,
     })
     .from(employees)
     .where(eq(employees.firmId, firmId))

@@ -69,6 +69,7 @@ export const PIPE_METHODS = [
   "notices.list",
   "notices.ack",
   "update.status",
+  "update.report",
   "update.switch",
   "support.bundle",
   "support.submit",

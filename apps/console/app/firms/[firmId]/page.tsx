@@ -54,6 +54,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                 <th align="left">Status</th>
                 <th align="left">Signed in on Desk</th>
                 <th align="left">Tasks shown first</th>
+                <th align="left">Version</th>
                 <th />
               </tr>
             </thead>
@@ -67,6 +68,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                   <td>
                     <TaskRoleSelect firmId={firmId} employeeId={p.id} taskRole={p.taskRole} />
                   </td>
+                  <td>{p.runningVersion ?? ""}</td>
                   <td>
                     <EmployeeStatusButton firmId={firmId} employeeId={p.id} status={p.status} />
                     {p.status === "invited" && <ResendInviteButton firmId={firmId} employeeId={p.id} />}

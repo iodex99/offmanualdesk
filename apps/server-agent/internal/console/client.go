@@ -141,6 +141,14 @@ type Heartbeat struct {
 	StagedVersion   string `json:"stagedVersion,omitempty"`
 	Health          string `json:"health"`
 	ActiveSeats     int    `json:"activeSeats"`
+	// EmployeeVersions: the release each employee's gateway runs (ADR-063).
+	EmployeeVersions []EmployeeVersion `json:"employeeVersions,omitempty"`
+}
+
+// EmployeeVersion pairs a console employee id with a release version.
+type EmployeeVersion struct {
+	EmployeeID string `json:"employeeId"`
+	Version    string `json:"version"`
 }
 
 // HeartbeatReply is what the console tells the agent.

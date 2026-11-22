@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { formatDate } from "@offmanual/shared-schema/format";
+import { callAgent } from "./agent";
 import { messageOf } from "./gatewayApi";
 
 export interface UpdateStatus {
@@ -15,6 +16,8 @@ export interface UpdateStatus {
 export interface UpdateApi {
   check(): Promise<UpdateStatus>;
   apply(version: string): Promise<unknown>;
+  /** Tells the Server Agent which release this person's assistant runs (ADR-063). */
+  report?(version: string): Promise<unknown>;
 }
 
 export const tauriUpdates: UpdateApi = {
@@ -24,6 +27,9 @@ export const tauriUpdates: UpdateApi = {
   },
   async apply(version) {
     return invoke("update_apply", { version });
+  },
+  async report(version) {
+    return callAgent("update.report", { version });
   },
 };
 
@@ -46,6 +52,7 @@ export function UpdateNotice({ api = tauriUpdates, now = realNow }: { api?: Upda
       try {
         await api.apply(version);
         setState({ kind: "done", version });
+        void api.report?.(version).catch(() => undefined);
       } catch (e) {
         setState({ kind: "failed", message: messageOf(e, "The update didn't work. Try again later.") });
       }
@@ -58,6 +65,7 @@ export function UpdateNotice({ api = tauriUpdates, now = realNow }: { api?: Upda
     api
       .check()
       .then((s) => {
+        if (s.running) void api.report?.(s.running).catch(() => undefined); // best effort
         if (cancelled || !s.available) return;
         const due =
           s.severity === "security" && s.deadlineAt !== null && Date.parse(s.deadlineAt) <= now().getTime();

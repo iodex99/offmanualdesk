@@ -42,6 +42,7 @@ pub const DESK_METHODS: &[&str] = &[
     "notices.list",
     "notices.ack",
     "update.status",
+    "update.report",
     "update.switch",
     "support.bundle",
     "support.submit",

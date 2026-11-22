@@ -133,7 +133,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [ ] Razorpay (payment links, UPI AutoPay / e-mandate), webhooks
 - [x] Notification engine + Desk banners (ADR-052): billing notices for firm admins (issued, due in 7 days, due today, overdue; once each; end when paid), staff/firm-admin notices from the console; email copies of billing notices to the firm's active admins (ADR-053)
 - [x] Enforcement ladder logic + override with reason + offline grace (`ladder.ts`)
-- [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; [ ] override UI
+- [x] Ladder wired end to end: `refreshFirmStatus` sets `firms.status` from issued invoices + contract grace/suspend days + override with reason (ADR-045); heartbeat carries it; agent, guard, Telegram and Desk enforce/show it (ADR-042); daily via the cron route; override UI on the superadmin `/billing` page (state, reason, until)
 
 ### M10 Admin and ease
 - [ ] Admin agent tools
@@ -162,6 +162,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-24 01:30: Who runs which release (M8, ADR-063)
+- Changed: agent migration 0011 (`employees.running_version`), pipe `update.report` (strict semver, SID from the pipe; shared IPC list, Desk allowlist), heartbeat `employeeVersions` (active employees only); console `employees.running_version` (migration 0010), heartbeat schema accepts it (≤ 1000, uuid + semver, strict) and updates only this firm's employees, firm page Version column; Desk UpdateNotice reports the running release after each check and the new one after a switch. Also ticked the stale ladder "override UI" item (the `/billing` page has it).
+- Tests: Go (report stored, bad versions/extra sid field/unknown caller refused; heartbeat carries active employees only); console 135/135 (stored, other firm's employee untouched, bad version and unknown field refused); desk 67/67 (reports running then new); golangci-lint both OSes 0. CI for the `current` switch green incl. the real service's non-crash recovery flag; `main` at bc1365d.
 
 ### 2026-11-24 01:00: `current` switch and Server Agent self-update (M8, ADR-062)
 - Changed: `internal/update/current.go` (CurrentVersion via Readlink, SwitchCurrent: next junction + rename swap + rollback, only staged versions with a manifest; Switcher: quiet hours 02–05 IST with no active lease or past a security deadline, never backwards, marks `active`, asks for a restart when the agent changed), junction via `mklink /J` (`link_windows.go`), app `switchLoop` (15 min) cancels Run with ErrRestartForUpdate; **fix**: service install now sets `SetRecoveryActionsOnNonCrashFailures(true)`; before, an agent that stopped itself with an error was not restarted although the code said so; `install` registers through `current`. CI round trip asserts the flag with `sc qfailureflag`.

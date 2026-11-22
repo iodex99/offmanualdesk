@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- The console firm page shows which Off Manual release each person's assistant runs.
 - The Server Agent moves `current` to a staged release at a quiet time (or after a security deadline) and restarts into it.
 - Task roles: the firm admin picks Article, Senior, Manager or Partner per person, and their Desk shows that role's task buttons first.
 - The Server Agent backs up its database every day (last 7 kept) and `server-agent restore -from FILE` brings one back.

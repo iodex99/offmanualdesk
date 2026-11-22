@@ -56,7 +56,7 @@ Status markers: **[V]** verified in lab or source, **[A]** assumption pending `L
 | `telegram.send` | channel-relay | Outbound message (policy-checked) |
 | `access.denials` / `access.request` / `access.list` / `access.resolve` | Desk | Caller's recent Access Denied (from the local audit); note to the firm's admins about one of them (path copied from the audit row, never from the body); list (admins: everyone's); admins close as done/declined. All local (ADR-058) |
 | `notices.list` / `notices.ack` | Desk | Update, billing, admin notices |
-| `update.status` / `update.switch` | Desk | Staged version, restart-to-update |
+| `update.status` / `update.report` | Desk | Staged version (restart-to-update); the release this person's gateway runs, sent in the heartbeat as `employeeVersions` so the firm page shows who is still on an older one (ADR-063) |
 | `support.bundle` | Desk | Build support bundle (metadata only) |
 
 ### 3.2 Desk ↔ gateway

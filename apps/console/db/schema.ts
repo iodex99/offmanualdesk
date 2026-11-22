@@ -144,6 +144,8 @@ export const employees = pgTable(
     roleLabel: text("role_label"),
     /** Which task buttons Desk shows first (SKILLS.md §5, ADR-061): article | senior | manager | partner. */
     taskRole: text("task_role"),
+    /** Release this person's assistant runs, from the server heartbeat (ADR-063). */
+    runningVersion: text("running_version"),
     oauthProvider: text("oauth_provider"),
     oauthSubject: text("oauth_subject"),
     boundAt: timestamp("bound_at", { withTimezone: true }),

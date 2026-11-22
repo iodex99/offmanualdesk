@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"offmanual/desk/server-agent/internal/rpc"
 	"testing"
 	"time"
 )
@@ -29,5 +30,23 @@ func TestUpdateStatus(t *testing.T) {
 	}
 	if _, errObj := e.call(nobod, "update.status", nil); errObj == nil {
 		t.Fatal("unknown caller got update status")
+	}
+}
+
+func TestUpdateReport(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	e.mustOK(asha, "update.report", map[string]string{"version": "1.2.0"})
+	vs, _ := e.st.RunningVersions(ctx)
+	if len(vs) != 1 || vs[0].Version != "1.2.0" || vs[0].EmployeeID != "emp-1101" {
+		t.Fatalf("versions %+v", vs)
+	}
+	for _, bad := range []any{map[string]string{"version": "latest"}, map[string]string{}, map[string]any{"version": "1.2.0", "sid": ravi.SID}} {
+		if _, errObj := e.call(asha, "update.report", bad); code(errObj) != rpc.CodeInvalidParams {
+			t.Fatalf("%v accepted: %v", bad, errObj)
+		}
+	}
+	if _, errObj := e.call(nobod, "update.report", map[string]string{"version": "1.2.0"}); errObj == nil {
+		t.Fatal("unknown caller reported")
 	}
 }

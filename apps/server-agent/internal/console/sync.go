@@ -64,7 +64,13 @@ func (s *Syncer) Once(ctx context.Context) {
 		seats = s.Seats(ctx)
 	}
 	staged, _ := s.Store.StagedVersion(ctx)
-	reply, err := s.Client.SendHeartbeat(ctx, Heartbeat{AgentVersion: s.AgentVersion, Health: "green", ActiveSeats: seats, StagedVersion: staged})
+	hb := Heartbeat{AgentVersion: s.AgentVersion, Health: "green", ActiveSeats: seats, StagedVersion: staged}
+	if vs, err := s.Store.RunningVersions(ctx); err == nil {
+		for _, v := range vs {
+			hb.EmployeeVersions = append(hb.EmployeeVersions, EmployeeVersion{EmployeeID: v.EmployeeID, Version: v.Version})
+		}
+	}
+	reply, err := s.Client.SendHeartbeat(ctx, hb)
 	if err != nil {
 		s.Log.Warn("heartbeat failed", "error", err.Error())
 		return

@@ -36,7 +36,7 @@ Implemented (2026-11-23): `apps/server-agent/internal/update/stager.go`, driven 
 
 ## 4. Desk notice and switch
 
-- Notice: "Off Manual <v> is ready — what's new. Restart to update." Firm admin also sees who is still on the old version.
+- Notice: "Off Manual <v> is ready — what's new. Restart to update." Firm admin also sees who is still on the old version: Desk reports its running release (`update.report`, after each check and switch), the heartbeat carries `employeeVersions`, and the console firm page has a Version column (ADR-063).
 - Restart to update: stop the employee's gateway → run `openclaw doctor` (state migration; verify exact command in OPENCLAW_NOTES.md §8) → start from new version → health check → on failure, roll back that user to the previous version and report.
 - Security release: after `deadline_at`, Desk switches automatically at the next lock or idle period.
 
