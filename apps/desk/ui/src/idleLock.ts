@@ -58,12 +58,7 @@ export function useIdleLock(opts: {
 
     const check = async () => {
       if (cancelled || locking) return;
-      let idleSec: number | null = null;
-      try {
-        idleSec = await readIdle();
-      } catch {
-        idleSec = null;
-      }
+      let idleSec = await readIdle().catch(() => null);
       if (idleSec === null) idleSec = Math.floor((now() - lastActivity.current) / 1000);
       if (idleSec >= timeoutMin.current * 60) {
         locking = true;
