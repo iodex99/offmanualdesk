@@ -57,6 +57,8 @@ See BUILD_PROMPT.md §3. Any code that would violate one needs an ADR and Dwahni
 
 ## 6. Review checklist (M11)
 
+Status of each item: `SECURITY_REVIEW.md`.
+
 - [ ] Pipe ACL and SID derivation tested with a second user trying to call as the first
 - [ ] Gateway token isolation tested across two RDS sessions
 - [ ] Access-denied path tested on UNC, mapped drive, OneDrive folder

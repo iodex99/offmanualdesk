@@ -81,6 +81,8 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - CI: shellcheck findings in the release workflow; secret scan no longer fails when artifact storage is full.
 
 ### Security
+- Telegram replies can no longer carry encoded file dumps or links to files on the server.
+- When an employee is switched off, Desk stops their assistant within a minute.
 - Server Agent pipe ACL tightened to explicit rights plus first-instance flag and server identity check, after the lab self-test showed generic write allows pipe squatting (ADR-029).
 - Gateway config must set `gateway.auth.rateLimit.exemptLoopback: false`; OpenClaw's default exempts loopback, which on an RDS host means every session (ADR-021).
 - Install scripts of the OpenClaw SDK dependency disabled in the workspace; release payload installs OpenClaw with `--ignore-scripts` from a lockfile.

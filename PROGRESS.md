@@ -97,7 +97,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [ ] Desk side: `chat.abort` + Request access button
 - [x] Review queue core in the guard (ADR-028/041): `offmanual_delete_files` proposal tool, `review.json` store, approve once / reject / edit / approve all, interrupted approvals never re-run, gateway methods `offmanual.review.list|decide` (scope operator.approvals), built-in deletes blocked; [ ] Desk Review tab (needs the Rust gateway client), step-up on approve, Tally/email actions
 - [x] Audit events to Server Agent (access denials)
-- [ ] Telegram policy enforcement (off / text / files)
+- [x] Telegram policy enforcement (off / text / files) in the Server Agent router; replies stripped of encoded dumps and local links (security review #5)
 
 ### M6 Telegram
 - [x] Server Agent long-polls the firm bot (Bot API getUpdates/sendMessage), routes by linked Telegram user ID, persists the offset, ignores groups/bots, text-only by default, 4096-char chunking (`internal/telegram`)
@@ -142,7 +142,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] Fleet board v1: firm (link) and firm status, health with 1 h staleness, last seen, agent/OpenClaw/Desk/staged versions, seats, problem reports in the last 7 days, count of unhealthy servers, links to firms/billing/reports
 
 ### M11 Pilot hardening
-- [ ] Security review against SECURITY.md checklist
+- [~] Security review first pass (`docs/SECURITY_REVIEW.md`): items 4–7 done, 5 and 8 fixed in the pass; 1–3 and 8 need the lab; one full-history gitleaks scan before the pilot
 - [ ] Backup and restore of per-user agent state
 - [x] Firm-facing docs: `docs/guides/employee-quick-start.md`, `docs/guides/admin-guide.md` (only what exists; review with a pilot firm)
 - [~] Install runbook written (`docs/guides/install-runbook.md`, manual steps where the MSI isn't built); [ ] time-to-live under 2 hours verified on a pilot
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 20:10: Security review first pass (M11)
+- Changed: `docs/SECURITY_REVIEW.md` (all 9 checklist items with evidence and what remains); Telegram replies sanitized (`internal/telegram/sanitize.go`: 200+ char encoded runs, file:// and localhost/127.0.0.1 links removed, audited); Desk checks `session.hello` every minute while unlocked and stops the gateway with a plain message when the employee is switched off (`Unlock.tsx`, `stopGateway` prop).
+- Tests: Go sanitize table + relay end to end; desk 55/55 (disabled stops the gateway, periodic check); golangci-lint both OSes 0.
+- Half-done / next: lab items 1–3 and 8; Authenticode check; full-history gitleaks scan.
 
 ### 2026-11-23 19:40: Guides (M11)
 - Changed: employee quick start, admin guide and install runbook in `docs/guides/`, describing only what is built (hotkey, Explorer right-click and the MSI are marked as coming).
