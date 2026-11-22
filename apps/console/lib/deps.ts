@@ -1,6 +1,7 @@
 // Production dependencies for route handlers.
 import type { RouteDeps } from "./auth-routes";
 import { getDb } from "./db";
+import { mailerFromEnv } from "./email";
 import { providerFromEnv, type IdentityProvider, type ProviderName } from "./oidc";
 import { loadKey } from "./secretbox";
 
@@ -26,6 +27,7 @@ export function routeDeps(): RouteDeps {
     db: getDb(),
     now: () => new Date(),
     dataKey: loadKey(),
+    mailer: mailerFromEnv(),
     providers: configuredProviders(),
     baseUrl,
     secureCookies: baseUrl.startsWith("https://"),

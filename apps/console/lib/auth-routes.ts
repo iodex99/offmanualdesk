@@ -13,6 +13,7 @@ import {
   totpVerify,
   type AuthDeps,
 } from "./auth";
+import type { Mailer } from "./email";
 import type { IdentityProvider, ProviderName, VerifiedIdentity } from "./oidc";
 
 export const OIDC_COOKIE = "om_oidc";
@@ -21,6 +22,8 @@ export interface RouteDeps extends AuthDeps {
   providers: Partial<Record<ProviderName, IdentityProvider>>;
   baseUrl: string; // e.g. https://console.offmanual.in
   secureCookies: boolean;
+  /** Outgoing email (invites); null until configured. */
+  mailer?: Mailer | null;
 }
 
 export function cookie(name: string, value: string, maxAgeSec: number, secure: boolean): string {

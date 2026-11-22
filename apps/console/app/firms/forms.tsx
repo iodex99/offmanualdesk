@@ -108,12 +108,14 @@ export function AddEmployeeForm({ firmId }: { firmId: string }) {
     <form
       onSubmit={form((f) =>
         run(async () => {
-          await send(`/api/admin/firms/${firmId}/employees`, "POST", {
+          const r = await send(`/api/admin/firms/${firmId}/employees`, "POST", {
             name: str(f, "name"),
             email: str(f, "email"),
             roleLabel: opt(f, "roleLabel"),
           });
-          return "Added. They can now sign in from Off Manual Desk with this email.";
+          return r.inviteSent
+            ? "Added, and an invite email is on its way. They sign in from Off Manual Desk with this email."
+            : "Added. No invite email was sent: tell them to open Off Manual Desk and sign in with this email.";
         }),
       )}
     >
@@ -156,6 +158,26 @@ export function EmployeeStatusButton({
         }
       >
         {next === "disabled" ? "Switch off" : "Switch on"}
+      </button>
+      <Note m={message} />
+    </>
+  );
+}
+
+export function ResendInviteButton({ firmId, employeeId }: { firmId: string; employeeId: string }) {
+  const { busy, message, run } = useAction();
+  return (
+    <>
+      <button
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            await send(`/api/admin/firms/${firmId}/employees/${employeeId}/invite`, "POST", {});
+            return "Invite sent again.";
+          })
+        }
+      >
+        Send invite again
       </button>
       <Note m={message} />
     </>

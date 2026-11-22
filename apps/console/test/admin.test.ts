@@ -20,6 +20,7 @@ import {
   listEmployees,
   listFirms,
   newEnrolmentCode,
+  resendInvite,
   setEmployeeStatus,
   updatePolicy,
   type AdminDeps,
@@ -219,5 +220,58 @@ describe("firm page overview", () => {
     await expect(firmOverview(deps, adminOf(other), id)).rejects.toBeInstanceOf(AuthError);
     await expect(firmOverview(deps, preMfa, id)).rejects.toMatchObject({ status: 401 });
     await expect(firmOverview(deps, staff, uuidv7())).rejects.toBeInstanceOf(InputError);
+  });
+});
+
+describe("invite email", () => {
+  const mailer = () => {
+    const sent: { to: string; key: string }[] = [];
+    let fail = false;
+    return {
+      sent,
+      setFail: (f: boolean) => (fail = f),
+      m: {
+        async send(e: { to: string; idempotencyKey: string }) {
+          if (fail) throw new Error("down");
+          sent.push({ to: e.to, key: e.idempotencyKey });
+        },
+      },
+    };
+  };
+
+  it("adding an employee sends the invite and records it; failures don't undo the add", async () => {
+    const { id: firmId } = await createFirm(deps, staff, firmBody);
+    const ml = mailer();
+    const d = { ...deps, mailer: ml.m, baseUrl: "https://console.test" };
+    const a = await addEmployee(d, adminOf(firmId), firmId, { name: "Asha", email: "Asha@Mehta.in" });
+    expect(a.inviteSent).toBe(true);
+    expect(ml.sent).toEqual([{ to: "asha@mehta.in", key: expect.stringMatching(/^invite-/) }]);
+    expect((await db.select().from(invites).where(eq(invites.employeeId, a.id)))[0]!.sentAt).toEqual(NOW);
+
+    ml.setFail(true);
+    const b = await addEmployee(d, adminOf(firmId), firmId, { name: "Ravi", email: "ravi@mehta.in" });
+    expect(b.inviteSent).toBe(false);
+    expect(await db.select().from(employees).where(eq(employees.id, b.id))).toHaveLength(1);
+    expect((await db.select().from(invites).where(eq(invites.employeeId, b.id)))[0]!.sentAt).toBeNull();
+
+    const c = await addEmployee(deps, adminOf(firmId), firmId, { name: "Neha", email: "neha@mehta.in" });
+    expect(c.inviteSent).toBe(false); // email not configured
+
+    ml.setFail(false);
+    expect(await resendInvite(d, adminOf(firmId), firmId, b.id)).toEqual({ sent: true });
+    expect(ml.sent.map((x) => x.to)).toContain("ravi@mehta.in");
+    await expect(resendInvite(deps, adminOf(firmId), firmId, c.id)).rejects.toThrow(/isn't set up/);
+  });
+
+  it("resend is firm-scoped and only for people who haven't signed in", async () => {
+    const { id: firmId } = await createFirm(deps, staff, firmBody);
+    const { id: other } = await createFirm(deps, staff, { ...firmBody, name: "Shah", gstin: undefined });
+    const ml = mailer();
+    const d = { ...deps, mailer: ml.m, baseUrl: "https://console.test" };
+    const a = await addEmployee(d, staff, firmId, { name: "Asha", email: "asha@mehta.in" });
+    await expect(resendInvite(d, adminOf(other), firmId, a.id)).rejects.toBeInstanceOf(AuthError);
+    await expect(resendInvite(d, adminOf(other), other, a.id)).rejects.toThrow(/isn't in this firm/);
+    await db.update(employees).set({ status: "active" }).where(eq(employees.id, a.id));
+    await expect(resendInvite(d, staff, firmId, a.id)).rejects.toThrow(/already signed in/);
   });
 });

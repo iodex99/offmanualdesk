@@ -17,11 +17,15 @@ import {
 import { hashCode } from "./agent-api";
 import { AuthError, requireConsole, requireFirmAccess, type SessionState } from "./auth";
 import type { DB } from "./db";
+import { inviteEmail, type Mailer } from "./email";
 import { uuidv7 } from "./ids";
 
 export interface AdminDeps {
   db: DB;
   now: () => Date;
+  /** Invite email; null/absent until RESEND_API_KEY is configured. */
+  mailer?: Mailer | null;
+  baseUrl?: string;
 }
 
 export class InputError extends Error {}
@@ -135,6 +139,7 @@ export async function addEmployee(deps: AdminDeps, s: SessionState | null, firmI
   requireFirmAccess(s, firmId);
   const e = parse(employeeInput, input);
   const id = uuidv7(deps.now().getTime());
+  const inviteId = uuidv7();
   try {
     await deps.db.transaction(async (tx) => {
       await tx.insert(employees).values({
@@ -147,7 +152,7 @@ export async function addEmployee(deps: AdminDeps, s: SessionState | null, firmI
         roleLabel: e.roleLabel ?? null,
         status: "invited",
       });
-      await tx.insert(invites).values({ id: uuidv7(), employeeId: id, channel: e.inviteChannel });
+      await tx.insert(invites).values({ id: inviteId, employeeId: id, channel: e.inviteChannel });
     });
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -156,7 +161,57 @@ export async function addEmployee(deps: AdminDeps, s: SessionState | null, firmI
     throw err;
   }
   await bumpPolicy(deps.db, firmId);
-  return { id };
+  return { id, inviteSent: await sendInvite(deps, firmId, inviteId, e.name, e.email, e.inviteChannel) };
+}
+
+/** Sends the invite email; failure never undoes adding the employee (the admin can resend). */
+async function sendInvite(
+  deps: AdminDeps,
+  firmId: string,
+  inviteId: string,
+  name: string,
+  email: string,
+  channel: "email" | "whatsapp",
+): Promise<boolean> {
+  if (channel !== "email" || !deps.mailer || !deps.baseUrl) return false;
+  const firm = (await deps.db.select({ name: firms.name }).from(firms).where(eq(firms.id, firmId)))[0];
+  try {
+    await deps.mailer.send(
+      inviteEmail({ to: email, name, firm: firm?.name ?? "Your firm", consoleUrl: deps.baseUrl, inviteId }),
+    );
+  } catch {
+    return false;
+  }
+  await deps.db.update(invites).set({ sentAt: deps.now() }).where(eq(invites.id, inviteId));
+  return true;
+}
+
+/** Re-sends an employee's invite email (e.g. after email was configured or it bounced). */
+export async function resendInvite(
+  deps: AdminDeps,
+  s: SessionState | null,
+  firmId: string,
+  employeeId: string,
+) {
+  requireFirmAccess(s, firmId);
+  const row = (
+    await deps.db
+      .select({
+        name: employees.name,
+        email: employees.email,
+        status: employees.status,
+        inviteId: invites.id,
+      })
+      .from(employees)
+      .innerJoin(invites, eq(invites.employeeId, employees.id))
+      .where(and(eq(employees.id, employeeId), eq(employees.firmId, firmId)))
+  )[0];
+  if (!row) throw new InputError("That employee isn't in this firm.");
+  if (row.status !== "invited") throw new InputError("This person has already signed in.");
+  if (!deps.mailer) throw new InputError("Email isn't set up for the console yet.");
+  const sent = await sendInvite(deps, firmId, row.inviteId, row.name, row.email, "email");
+  if (!sent) throw new InputError("The email couldn't be sent. Check the address and try again later.");
+  return { sent: true };
 }
 
 export async function listEmployees(deps: AdminDeps, s: SessionState | null, firmId: string) {

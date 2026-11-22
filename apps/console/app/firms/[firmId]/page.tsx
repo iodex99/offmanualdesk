@@ -10,6 +10,7 @@ import {
   EnrolmentCodeForm,
   PackGrantForm,
   PolicyForm,
+  ResendInviteButton,
 } from "../forms";
 import { load, pageSession } from "../session";
 
@@ -58,6 +59,7 @@ export default async function FirmPage({ params }: { params: Promise<{ firmId: s
                   <td>{p.boundAt ? formatDate(p.boundAt) : "not yet"}</td>
                   <td>
                     <EmployeeStatusButton firmId={firmId} employeeId={p.id} status={p.status} />
+                    {p.status === "invited" && <ResendInviteButton firmId={firmId} employeeId={p.id} />}
                   </td>
                 </tr>
               ))}
