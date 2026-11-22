@@ -4,6 +4,7 @@ import { AgentBridge, AgentUnavailable } from "../src/agent-bridge.js";
 import {
   ACCESS_DENIED_TEXT,
   LockCache,
+  MSG_PAUSED,
   StoppedRuns,
   deniedInResult,
   deniedResult,
@@ -119,5 +120,38 @@ describe("AgentBridge (against a fake bridge process)", () => {
     const missing = new AgentBridge("Z:\\no\\such\\server-agent.exe", ["bridge"], 1000);
     await expect(missing.call("lock.get")).rejects.toBeInstanceOf(AgentUnavailable);
     missing.close();
+  });
+});
+
+describe("licence gate", () => {
+  const now = new Date("2026-11-23T05:00:00Z");
+  it("blocks every channel while the service is paused, even when unlocked", () => {
+    for (const channel of ["desk", "telegram"] as const) {
+      expect(
+        lockGate(
+          {
+            locked: false,
+            servicePaused: true,
+            pausedMessage: "Off Manual isn't activated on this server yet.",
+          },
+          channel,
+          now,
+        ),
+      ).toEqual({
+        outcome: "block",
+        reason: "licence",
+        message: "Off Manual isn't activated on this server yet.",
+      });
+    }
+    expect(
+      lockGate(
+        { locked: false, servicePaused: true, telegramUnlockedUntil: "2026-11-23T06:00:00Z" },
+        "telegram",
+        now,
+      ),
+    ).toEqual({ outcome: "block", reason: "licence", message: MSG_PAUSED });
+  });
+  it("passes when not paused", () => {
+    expect(lockGate({ locked: false, servicePaused: false }, "desk", now)).toEqual({ outcome: "pass" });
   });
 });

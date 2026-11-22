@@ -285,6 +285,10 @@ type lockStatus struct {
 	DayUnlocked           bool   `json:"dayUnlocked"`
 	LockedUntil           string `json:"lockedUntil,omitempty"`
 	TelegramUnlockedUntil string `json:"telegramUnlockedUntil,omitempty"`
+	// Licence (BILLING §6): when servicePaused the guard refuses every turn with pausedMessage.
+	ServicePaused bool   `json:"servicePaused,omitempty"`
+	PausedMessage string `json:"pausedMessage,omitempty"`
+	Notice        string `json:"notice,omitempty"`
 }
 
 func (a *Agent) lockStatus(ctx context.Context, sid string) (lockStatus, error) {
@@ -303,6 +307,11 @@ func (a *Agent) lockStatus(ctx context.Context, sid string) (lockStatus, error) 
 	}
 	if now.Before(l.TelegramUnlockedUntil) {
 		st.TelegramUnlockedUntil = rfc(l.TelegramUnlockedUntil)
+	}
+	lic := a.Licence(ctx)
+	st.ServicePaused, st.Notice = !lic.Usable, lic.Notice
+	if !lic.Usable {
+		st.PausedMessage = lic.Message
 	}
 	return st, nil
 }

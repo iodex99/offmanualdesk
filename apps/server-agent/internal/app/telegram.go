@@ -127,6 +127,7 @@ func startTelegram(ctx context.Context, st *store.Store, p secrets.Protector, ag
 		Relay:  newRelay(st, p),
 		Unlock: ag.TelegramUnlock,
 		Active: ag.ActiveEmployee,
+		Paused: ag.PausedMessage,
 	}}
 	log.Info("telegram router started")
 	go r.Run(ctx, bot)

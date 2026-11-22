@@ -9,7 +9,12 @@ export interface LockStatus {
   dayUnlocked?: boolean;
   lockedUntil?: string;
   telegramUnlockedUntil?: string;
+  /** Licence (BILLING §6): suspended, closed, not activated or offline past the grace period. */
+  servicePaused?: boolean;
+  pausedMessage?: string;
 }
+
+export const MSG_PAUSED = "Off Manual is paused for your firm. Please contact your admin.";
 
 export type GateDecision = { outcome: "pass" } | { outcome: "block"; reason: string; message: string };
 
@@ -25,6 +30,9 @@ export function lockGate(status: LockStatus | null, channel: "desk" | "telegram"
       reason: "agent_unavailable",
       message: "Off Manual can't check your sign-in right now. Please try again in a minute.",
     };
+  }
+  if (status.servicePaused) {
+    return { outcome: "block", reason: "licence", message: status.pausedMessage || MSG_PAUSED };
   }
   if (status.lockedUntil && Date.parse(status.lockedUntil) > now.getTime()) {
     return {

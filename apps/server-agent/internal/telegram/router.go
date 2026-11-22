@@ -40,6 +40,8 @@ type Hooks struct {
 	Unlock func(ctx context.Context, sid, code string) error
 	// Active reports whether sid is an active employee.
 	Active func(ctx context.Context, sid string) bool
+	// Paused returns a plain message when the firm's licence stops employees (BILLING §6), else "".
+	Paused func(ctx context.Context) string
 }
 
 // Sender is the part of Bot the router uses (a fake in tests).
@@ -94,6 +96,12 @@ func (r *Router) Handle(ctx context.Context, u Update) {
 	if err != nil || (r.Hooks.Active != nil && !r.Hooks.Active(ctx, sid)) {
 		reply(MsgNotLinked)
 		return
+	}
+	if r.Hooks.Paused != nil {
+		if msg := r.Hooks.Paused(ctx); msg != "" {
+			reply(msg)
+			return
+		}
 	}
 	mode := "off"
 	if r.Hooks.Mode != nil {

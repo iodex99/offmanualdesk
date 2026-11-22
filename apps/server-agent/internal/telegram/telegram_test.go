@@ -47,6 +47,7 @@ type env struct {
 	mode    string
 	relay   func(text string) (string, error)
 	unlockE error
+	paused  string
 }
 
 func newEnv(t *testing.T) *env {
@@ -63,6 +64,7 @@ func newEnv(t *testing.T) *env {
 		Relay:  func(_ context.Context, _ string, _ int64, text string) (string, error) { return e.relay(text) },
 		Unlock: func(context.Context, string, string) error { return e.unlockE },
 		Active: func(_ context.Context, sid string) bool { return sid == asha },
+		Paused: func(context.Context) string { return e.paused },
 	}}
 	return e
 }
@@ -275,5 +277,22 @@ func TestChunks(t *testing.T) {
 		if !strings.HasPrefix(p, "₹") {
 			t.Fatal("split inside a rune")
 		}
+	}
+}
+
+func TestPausedLicenceRepliesPlainly(t *testing.T) {
+	e := newEnv(t)
+	e.link(t, 777)
+	e.paused = "Off Manual is paused for your firm. Please contact your admin."
+	relayed := false
+	e.relay = func(string) (string, error) { relayed = true; return "x", nil }
+	e.r.Handle(context.Background(), msg(777, "hi"))
+	if e.out.last() != e.paused || relayed {
+		t.Fatalf("paused: %q relayed=%v", e.out.last(), relayed)
+	}
+	e.paused = ""
+	e.r.Handle(context.Background(), msg(777, "hi"))
+	if !relayed {
+		t.Fatal("not relayed after the pause ended")
 	}
 }
