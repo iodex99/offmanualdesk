@@ -89,11 +89,13 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 
 ### M5 Guard plugin
 - [x] Packaging + SDK typing: `openclaw.plugin.json`, `dist/plugin.js`, `before_install` block (M1)
-- [ ] Lock + licence enforcement on every inbound turn (`before_agent_run`, fail-closed)
+- [x] Lock enforcement on every inbound turn (`before_agent_run` via `server-agent bridge`, 5 s cache, fail closed, Telegram window) 
+- [ ] Licence (firm status) enforcement
 - [ ] Skill packs from policy (AD groups + console overrides)
-- [ ] Access-denied handling (ADR-022: tool-result middleware + run block + Desk abort) + Request access
+- [x] Access-denied handling in the guard (ADR-022: tool-result middleware rewrite + `before_tool_call` block for the rest of the run + audit event)
+- [ ] Desk side: `chat.abort` + Request access button
 - [ ] Review queue (ADR-028; approve all / edit / reject), Desk UI
-- [ ] Audit events to Server Agent
+- [x] Audit events to Server Agent (access denials)
 - [ ] Telegram policy enforcement (off / text / files)
 
 ### M6 Telegram
@@ -153,6 +155,11 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 00:30: Guard plugin enforcement (M5 start)
+- Changed: `guard/src/agent-bridge.ts` (NDJSON JSON-RPC over `server-agent bridge` stdio; method allowlist lock.get/policy.get/audit.append; timeouts; restarts; fail closed), `gates.ts` (lockGate, LockCache, access-denied detection + replacement text, StoppedRuns, targetFromArgs), `plugin.ts` wired to `before_agent_run`, `registerAgentToolResultMiddleware`, `before_tool_call`, `agent_end`, `before_install`, service stop; manifest `bridgeCommand`.
+- Tests: guard vitest 43/43 (3 consecutive runs) incl. a fake bridge process (junk lines ignored, error replies, bridge death → AgentUnavailable, restart, missing exe); typecheck against openclaw@2026.11.6 confirms hook names and payload fields; lint + build clean.
+- Half-done / next: skill packs → tool allowlist, review queue (ADR-028), Telegram policy, Desk abort + Request access.
 
 ### 2026-11-22 23:45: Desk ↔ Server Agent client and unlock flow
 - Changed: Rust `agent_client.rs` (windows-sys 0.61 FFI, paths verified in the crate source; `unsafe_code` lint now `deny` with one audited module), Tauri command `agent_call` on a blocking thread; UI `agent.ts`, `Unlock.tsx` (signup / enrol / PIN / unlock / ready), wired into `App.tsx`; `qrcode` dependency.

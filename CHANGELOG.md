@@ -34,6 +34,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 - Console management API: firms, one-time server enrolment codes, employees (add, list, switch off), skill-pack grants by employee or AD group, firm policy; firm admins only ever see their own firm.
 - Console fleet board: every server with red/amber/green status, last seen, version and active seats.
 - Desk: first-run authenticator set-up with a QR code, PIN set-up, unlock with PIN or today's code, and lock; it talks to the Server Agent only after confirming the service is genuine.
+- Guard plugin: refuses every turn while Off Manual is locked (and when it can't check), stops a task the moment Windows denies access to a file (no retries, no other paths), records the denial in the firm's local audit log, and blocks all skill/plugin installs.
 - Server Agent PIN rules (4–8 digits, obvious PINs refused), argon2id PIN hashing, and lockout rules (3 wrong PINs → daily code; 5 wrong codes → 15-minute lockout + admin alert).
 
 ### Changed
