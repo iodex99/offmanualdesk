@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Guides: employee quick start, firm admin guide and install runbook.
 - Fleet board shows firm status, all component versions, pending updates and recent problem reports per server.
 - Setup: the firm page shows what each server's checks found and how to fix it, and admins can add many people at once by pasting "Name, email" lines; Desk has a "Build client list" task.
 - Firm admins get billing reminders by email and a Monday summary (people using Off Manual, questions handled, server health, invoices to pay).

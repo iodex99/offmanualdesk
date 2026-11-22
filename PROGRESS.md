@@ -144,8 +144,8 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 ### M11 Pilot hardening
 - [ ] Security review against SECURITY.md checklist
 - [ ] Backup and restore of per-user agent state
-- [ ] Firm-facing docs (employee quick start, admin guide)
-- [ ] Install runbook, time-to-live under 2 hours verified
+- [x] Firm-facing docs: `docs/guides/employee-quick-start.md`, `docs/guides/admin-guide.md` (only what exists; review with a pilot firm)
+- [~] Install runbook written (`docs/guides/install-runbook.md`, manual steps where the MSI isn't built); [ ] time-to-live under 2 hours verified on a pilot
 
 ## Done summary
 
@@ -160,6 +160,10 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 19:40: Guides (M11)
+- Changed: employee quick start, admin guide and install runbook in `docs/guides/`, describing only what is built (hotkey, Explorer right-click and the MSI are marked as coming).
+- Tests: none (docs).
 
 ### 2026-11-23 19:20: Fleet board v1 (M10)
 - Changed: `fleet()` adds firm id/status, OpenClaw/Desk/staged versions and 7-day problem report counts; `/fleet` page uses the shared session helper and links.

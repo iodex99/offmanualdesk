@@ -22,6 +22,7 @@ Managed AI assistant for Indian CA firms, built on OpenClaw, installed on the fi
 | Why things are the way they are | `DECISIONS.md` |
 | What shipped | `CHANGELOG.md` |
 | The original build brief | `BUILD_PROMPT.md` |
+| Guides for firms and installers | `docs/guides/` |
 
 Read only the docs the current task touches. Never answer from memory of an earlier session; read the file.
 
