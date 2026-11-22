@@ -154,7 +154,8 @@ C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM
 
 ### F6 Review queue
 1. Irreversible actions exist only as guard proposal tools (v1: `offmanual_delete_files`; Tally voucher and client email follow). The tool validates, stores a proposal (kind, params, plain summary) in `review.json` and returns "Queued for review #<id> … nothing has been done yet" (ADR-041). `before_tool_call` blocks built-in deletes (exec delete commands, `apply_patch` deletes, `fs_delete`/`fs_move`) with a pointer to the proposal tool.
-2. Desk *Review* tab calls gateway methods `offmanual.review.list` and `offmanual.review.decide { ids, decision, params? }` (scope `operator.approvals`; the agent can't call them because the `gateway` tool is denied): list, approve all, edit (one item, re-validated), reject. Step-up if the firm requires (to do).
+2. If the firm's `stepUpActions` contains `review.approve`, `decide` answers `{stepUpRequired}` until Desk sends a live grant: Desk asks for today's code → `auth.stepUp` → grant → retry; the guard checks it with `auth.stepUpCheck` (the Server Agent compares the grant's SID with the OS caller; ADR-047).
+   Desk *Review* tab calls gateway methods `offmanual.review.list` and `offmanual.review.decide { ids, decision, params? }` (scope `operator.approvals`; the agent can't call them because the `gateway` tool is denied): list, approve all, edit (one item, re-validated), reject. Step-up if the firm requires (to do).
 3. Approve → the item is claimed atomically (runs once) → guard executes as the employee → plain result + audit (`review_queued`/`review_approved`/`review_rejected`, no paths). For Tally, re-fetch the voucher and compare (to do).
 
 ### F7 Telegram linking and messages

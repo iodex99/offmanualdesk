@@ -357,3 +357,10 @@ Template:
 - Context: F2 step 4 promises recovery codes. TOTP is mandatory (rule 9), so a lost phone otherwise needs an admin.
 - Decision: On authenticator confirmation the Server Agent creates 8 codes (`XXXXX-XXXXX`, no look-alike characters, ~49 bits each), returns them once and stores only `sha256("om-recovery:" + normalised code)`. `auth.recover` takes one code from the caller's own (OS-identified) session, at most 5 tries per hour per SID; a correct code is consumed atomically, the TOTP secret/enrolment/counter are cleared and the day grant revoked, so the employee enrols the new phone (and gets fresh codes) before anything unlocks. Codes are case and dash insensitive.
 - Consequences: Someone who has both the employee's Windows session and a recovery code can re-enrol; that is the same trust as the Windows password plus a secret the employee keeps offline. An admin reset path is still needed for employees who lose the codes too.
+
+## ADR-047: Step-up for review approvals is checked by the guard against the Server Agent
+- Date: 2026-11-23
+- Status: Accepted
+- Context: F3 lists step-up for sensitive action classes; approving review items (deletes now, Tally posts and client emails later) is the most sensitive thing an employee does in Desk. Grants live in the Server Agent (10 minutes, per SID and action).
+- Decision: Action class `review.approve`. When the firm's `stepUpActions` lists it, the guard's `offmanual.review.decide` returns `{stepUpRequired: true}` (not an error, so Desk can prompt) unless the request carries a grant that the Server Agent confirms through the new pipe method `auth.stepUpCheck` for the calling OS identity (the bridge runs as the employee, so one employee's grant is useless to another). An unreadable policy blocks approvals (fail closed); rejecting never needs step-up. Desk keeps the pending approval, asks for today's code, calls `auth.stepUp`, and retries once with the grant.
+- Consequences: Firms turn this on in policy; one code covers approvals for 10 minutes. Console UI to edit `stepUpActions` is part of the admin pages.

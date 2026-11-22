@@ -79,7 +79,7 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`); recovery codes shown once after enrolment and "Lost your phone?" → `auth.recover` → re-enrol (ADR-046)
 - [x] Sign-in + SID binding: Desk signup screen (console URL + QR from `auth.bindStart`, code → `auth.bindComplete` with the OS-derived SID; 10 tries/hour)
 - [x] Daily unlock, PIN unlock, switch to daily code after 3 wrong PINs, manual lock
-- [x] Idle lock: session idle from `GetLastInputInfo` (Rust `idle.rs`, per RDS session) polled every 30 s, firm `lockTimeoutMax` from policy.get (default 15), fallback to in-window activity, `lock.set` then back to the unlock screen; [ ] step-up prompt
+- [x] Idle lock: session idle from `GetLastInputInfo` (Rust `idle.rs`, per RDS session) polled every 30 s, firm `lockTimeoutMax` from policy.get (default 15), fallback to in-window activity, `lock.set` then back to the unlock screen; step-up prompt on Review approvals when the firm lists `review.approve` (ADR-047)
 - [x] Gateway lifecycle v1: lease → verified-keys config → `node openclaw.mjs gateway run` with env-only token → `/readyz`; Desk contains itself in a kill-on-close Job Object; stop releases the lease (`gateway.rs`, `gateway_manager.rs`, commands `gateway_start/stop/status`, UI `Assistant.tsx`)
 - [x] Gateway: early exit detected during startup; exit code 78 → state snapshot (ADR-025, newest 3 kept) → `doctor --fix --yes --non-interactive` without the token (≤ 5 min) → retry once; lease released on failure; start holds the lock (no double start), status non-blocking; [ ] listener check (ADR-020, lab), idle stop, restart after a crash
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
@@ -160,6 +160,11 @@ Branch `m4-desk` (CI green on every push): M2 done; M3 console core + employee b
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-23 11:20: Step-up for review approvals (F3/F6)
+- Changed: agent `auth.stepUpCheck` (grant checked for the OS caller; shared IPC schema), guard bridge allows it, guard `review-api.ts` (decide validation + firm `stepUpActions` contains `review.approve` → `{stepUpRequired}` until a live grant is sent; unreadable policy blocks approval, reject never needs step-up), Rust `decide_params` carries a 32-hex `stepUpGrant`, Desk Review tab asks for today's code (`auth.stepUp`) and retries. ADR-047.
+- Tests: Go stepUpCheck (own grant valid, other employee's not, bad action, expiry); guard 71/71; desk 31/31; Rust decide_params grant test (CI); golangci-lint both OSes 0; CI for recovery codes green.
+- Half-done / next: merge `m4-desk` → `main`.
 
 ### 2026-11-23 10:50: Recovery codes (F2 step 4)
 - Changed: store `recovery.go` (SetRecoveryCodes, RecoveryCodesLeft, UseRecoveryCode: atomic, resets TOTP secret/enrolment/counter), agent `recovery.go` (8 codes XXXXX-XXXXX from the no-look-alike alphabet, salted sha256 hashes only, `auth.recover` with 5 tries/hour per SID, day grant revoked, audit), totpEnrolConfirm returns the codes once, shared `limited()` helper (bind uses it too); shared IPC schema + Desk Rust allowlist add `auth.recover`; Desk codes screen and recovery screen. ADR-046.

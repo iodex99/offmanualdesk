@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Firms can require today's authenticator code before anyone approves an item in the Review tab.
 - Recovery codes: shown once when you set up your authenticator; if you lose your phone, one code lets you set up a new one.
 - Desk repairs the assistant's data automatically when a new OpenClaw version needs it (backup first, then repair, then one retry).
 - Billing: monthly draft invoices from each firm's contract, issuing with numbers per financial year (OM/FY2026-27/0001), manual payments, and firm status following the payment ladder (with a reasoned override).
