@@ -67,3 +67,31 @@ describe("Review", () => {
     expect(await screen.findByText("Nothing is waiting for your approval.")).toBeTruthy();
   });
 });
+
+describe("Review step-up", () => {
+  it("asks for today's code when the firm requires it, then approves with the grant", async () => {
+    const g = fakeGateway({ items: [del("7", [String.raw`C:\A\x.pdf`])] });
+    g.state.stepUpGrant = "0123456789abcdef0123456789abcdef";
+    const calls: [string, Record<string, unknown>][] = [];
+    const agent = async (method: string, params: Record<string, unknown> = {}) => {
+      calls.push([method, params]);
+      if (params.code !== "123456") throw { code: -32003, message: "That code isn't right." };
+      return { grantId: "0123456789abcdef0123456789abcdef", expiresAt: "x" };
+    };
+    render(<Review api={g.api} agent={agent} />);
+    fireEvent.click(await screen.findByText("Approve"));
+    expect(await screen.findByText(/asks for today's code/)).toBeTruthy();
+    expect(g.decisions).toEqual([]);
+    fireEvent.change(screen.getByLabelText(/6-digit code/), { target: { value: "000000" } });
+    fireEvent.click(screen.getByText("Approve"));
+    expect(await screen.findByText("That code isn't right.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/6-digit code/), { target: { value: "123456" } });
+    fireEvent.click(screen.getByText("Approve"));
+    expect(await screen.findByText("Nothing is waiting for your approval.")).toBeTruthy();
+    expect(g.decisions).toEqual([{ ids: ["7"], decision: "approve" }]);
+    expect(calls.map((c) => c[1])).toEqual([
+      { code: "000000", action: "review.approve" },
+      { code: "123456", action: "review.approve" },
+    ]);
+  });
+});

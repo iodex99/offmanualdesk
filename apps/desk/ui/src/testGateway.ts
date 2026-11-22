@@ -19,6 +19,8 @@ export function fakeGateway(init: { items?: ReviewItem[] } = {}) {
         message: `#${id} ${decision}d`,
       })),
     listError: null as unknown,
+    /** When set, approvals need this grant (firm step-up rule). */
+    stepUpGrant: "" as string,
   };
   const api: GatewayApi = {
     async send(message) {
@@ -41,13 +43,16 @@ export function fakeGateway(init: { items?: ReviewItem[] } = {}) {
       if (state.listError) throw state.listError;
       return items;
     },
-    async reviewDecide(ids, decision, params) {
+    async reviewDecide(ids, decision, params, stepUpGrant) {
+      if (decision === "approve" && state.stepUpGrant && stepUpGrant !== state.stepUpGrant) {
+        return { stepUpRequired: true as const, action: "review.approve" };
+      }
       decisions.push({ ids, decision, ...(params !== undefined ? { params } : {}) });
       const r = state.decide(ids, decision);
       items = items.map((p) =>
         ids.includes(p.id) ? { ...p, status: decision === "approve" ? "done" : "rejected" } : p,
       );
-      return r;
+      return { results: r };
     },
   };
   const emit = (e: ChatEvent) => listener?.(e);

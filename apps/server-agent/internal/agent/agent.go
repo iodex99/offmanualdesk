@@ -92,6 +92,7 @@ func (a *Agent) Register(srv *rpc.Server) {
 	srv.Handle("auth.bindStart", a.bindStart)
 	srv.Handle("auth.bindComplete", a.bindComplete)
 	srv.Handle("auth.recover", a.authRecover)
+	srv.Handle("auth.stepUpCheck", a.stepUpCheck)
 }
 
 // ---- errors in plain words ----

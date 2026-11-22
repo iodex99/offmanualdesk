@@ -282,8 +282,25 @@ func (a *Agent) stepUp(ctx context.Context, c rpc.Caller, p json.RawMessage) (an
 	return map[string]string{"grantId": id, "expiresAt": rfc(exp)}, nil
 }
 
-// StepUpValid reports whether grantID is a live step-up for sid and action.
-// The guard checks this (through a future pipe method) before a sensitive action.
+// stepUpCheck lets the guard ask whether a grant is live for the caller (the SID
+// comes from the OS, so one employee can't use another's grant) and action.
+func (a *Agent) stepUpCheck(ctx context.Context, c rpc.Caller, p json.RawMessage) (any, error) {
+	var in struct {
+		GrantID string `json:"grantId"`
+		Action  string `json:"action"`
+	}
+	if err := decode(p, &in); err != nil || !actionRe.MatchString(in.Action) || len(in.GrantID) > 64 {
+		return nil, rpc.Errorf(rpc.CodeInvalidParams, "invalid params")
+	}
+	e, err := a.employee(ctx, c, false)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]bool{"valid": a.StepUpValid(in.GrantID, e.SID, in.Action)}, nil
+}
+
+// StepUpValid reports whether grantID is a live step-up for sid and action
+// (pipe method auth.stepUpCheck, used by the guard).
 func (a *Agent) StepUpValid(grantID, sid, action string) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()

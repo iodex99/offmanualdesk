@@ -135,6 +135,7 @@ pub fn decide_params(
     ids: &[String],
     decision: &str,
     edited: Option<Value>,
+    step_up_grant: Option<String>,
 ) -> Result<Value, GatewayError> {
     if ids.is_empty()
         || ids.len() > 100
@@ -153,6 +154,12 @@ pub fn decide_params(
             return Err(err("Edit one item at a time."));
         }
         p["params"] = e;
+    }
+    if let Some(g) = step_up_grant {
+        if g.len() != 32 || !g.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(err("Enter today's code again."));
+        }
+        p["stepUpGrant"] = json!(g);
     }
     Ok(p)
 }
@@ -177,22 +184,34 @@ mod tests {
     fn decide_params_checks_shapes() {
         let ids = vec!["1".to_string(), "2".to_string()];
         assert_eq!(
-            decide_params(&ids, "approve", None).unwrap(),
+            decide_params(&ids, "approve", None, None).unwrap(),
             json!({"ids":["1","2"],"decision":"approve"})
         );
-        assert!(decide_params(&[], "approve", None).is_err());
-        assert!(decide_params(&["x1".into()], "approve", None).is_err());
-        assert!(decide_params(&ids, "maybe", None).is_err());
-        assert!(decide_params(&ids, "approve", Some(json!({}))).is_err());
+        assert!(decide_params(&[], "approve", None, None).is_err());
+        assert!(decide_params(&["x1".into()], "approve", None, None).is_err());
+        assert!(decide_params(&ids, "maybe", None, None).is_err());
+        assert!(decide_params(&ids, "approve", Some(json!({})), None).is_err());
         assert_eq!(
             decide_params(
                 &["3".into()],
                 "approve",
-                Some(json!({"paths":["C:\\a.pdf"]}))
+                Some(json!({"paths":["C:\\a.pdf"]})),
+                None
             )
             .unwrap()["params"]["paths"][0],
             "C:\\a.pdf"
         );
+    }
+
+    #[test]
+    fn decide_params_carries_a_well_formed_step_up_grant() {
+        let ids = vec!["1".to_string()];
+        let g = "0123456789abcdef0123456789abcdef".to_string();
+        assert_eq!(
+            decide_params(&ids, "approve", None, Some(g.clone())).unwrap()["stepUpGrant"],
+            g.as_str()
+        );
+        assert!(decide_params(&ids, "approve", None, Some("xyz".into())).is_err());
     }
 
     #[test]

@@ -12,6 +12,7 @@
         "auth.bindStart",
         "auth.bindComplete",
         "auth.recover",
+        "auth.stepUpCheck",
         "auth.totpEnrolStart",
         "auth.totpEnrolConfirm",
         "auth.pinSet",

@@ -300,7 +300,20 @@ func TestStepUpGrants(t *testing.T) {
 	if e.ag.StepUpValid(id, ravi.SID, "tally.post") || e.ag.StepUpValid(id, asha.SID, "email.send") {
 		t.Fatal("grant valid for another employee or action")
 	}
+	// The guard's pipe check uses the caller's OS identity: Ravi can't use Asha's grant.
+	if r := e.mustOK(asha, "auth.stepUpCheck", map[string]string{"grantId": id, "action": "tally.post"}); r["valid"] != true {
+		t.Fatalf("check: %v", r)
+	}
+	if r := e.mustOK(ravi, "auth.stepUpCheck", map[string]string{"grantId": id, "action": "tally.post"}); r["valid"] != false {
+		t.Fatalf("other employee: %v", r)
+	}
+	if _, errObj := e.call(asha, "auth.stepUpCheck", map[string]string{"grantId": id, "action": "Bad!"}); code(errObj) != rpc.CodeInvalidParams {
+		t.Fatalf("bad action: %v", errObj)
+	}
 	e.advance(11 * time.Minute)
+	if r := e.mustOK(asha, "auth.stepUpCheck", map[string]string{"grantId": id, "action": "tally.post"}); r["valid"] != false {
+		t.Fatalf("expired: %v", r)
+	}
 	if e.ag.StepUpValid(id, asha.SID, "tally.post") {
 		t.Fatal("grant outlived 10 minutes")
 	}

@@ -73,7 +73,7 @@ export function Assistant({
             </button>
           </nav>
           {tab === "chat" && <Chat api={api} />}
-          {tab === "review" && <Review api={api} />}
+          {tab === "review" && <Review api={api} agent={agent} />}
           {tab === "telegram" && <TelegramLink agent={agent} />}
         </div>
       );

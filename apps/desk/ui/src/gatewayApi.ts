@@ -29,13 +29,21 @@ export interface DecisionResult {
   message: string;
 }
 
+export type DecideReply = { results: DecisionResult[] } | { stepUpRequired: true; action: string };
+
 export interface GatewayApi {
   send(message: string): Promise<string>;
   abort(runId?: string): Promise<void>;
   /** Subscribes to chat events; resolves to an unsubscribe function. */
   onChat(cb: (e: ChatEvent) => void): Promise<() => void>;
   reviewList(): Promise<ReviewItem[]>;
-  reviewDecide(ids: string[], decision: "approve" | "reject", params?: unknown): Promise<DecisionResult[]>;
+  /** Results, or stepUpRequired when the firm wants today's code before approving (ADR-047). */
+  reviewDecide(
+    ids: string[],
+    decision: "approve" | "reject",
+    params?: unknown,
+    stepUpGrant?: string,
+  ): Promise<DecideReply>;
 }
 
 const preview = { message: "Preview mode: your assistant only runs inside Off Manual Desk." };
@@ -58,14 +66,14 @@ export const tauriGateway: GatewayApi = {
     const r = await invoke<{ items?: ReviewItem[] }>("review_list");
     return Array.isArray(r.items) ? r.items : [];
   },
-  async reviewDecide(ids, decision, params) {
+  async reviewDecide(ids, decision, params, stepUpGrant) {
     if (!isTauri()) throw preview;
-    const r = await invoke<{ results?: DecisionResult[] }>("review_decide", {
-      ids,
-      decision,
-      params: params ?? null,
-    });
-    return Array.isArray(r.results) ? r.results : [];
+    const r = await invoke<{ results?: DecisionResult[]; stepUpRequired?: boolean; action?: string }>(
+      "review_decide",
+      { ids, decision, params: params ?? null, stepUpGrant: stepUpGrant ?? null },
+    );
+    if (r.stepUpRequired === true) return { stepUpRequired: true, action: r.action ?? "review.approve" };
+    return { results: Array.isArray(r.results) ? r.results : [] };
   },
 };
 

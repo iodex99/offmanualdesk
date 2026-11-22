@@ -162,8 +162,9 @@ async fn review_decide(
     ids: Vec<String>,
     decision: String,
     params: Option<serde_json::Value>,
+    step_up_grant: Option<String>,
 ) -> Result<serde_json::Value, gateway_manager::GatewayError> {
-    let p = chat::decide_params(&ids, &decision, params)?;
+    let p = chat::decide_params(&ids, &decision, params, step_up_grant)?;
     let (gw, st) = (Arc::clone(&gw), Arc::clone(&st));
     tauri::async_runtime::spawn_blocking(move || {
         chat::with_client(&gw, &st, sink_for(app), |c| {

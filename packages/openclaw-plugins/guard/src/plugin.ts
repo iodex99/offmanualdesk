@@ -34,6 +34,7 @@ import {
 } from "./gates.js";
 import { PLUGIN_ID } from "./index.js";
 import { deleteFiles, MAX_DELETE_FILES } from "./delete-files.js";
+import { handleDecide, stepUpActionsFrom } from "./review-api.js";
 import { ReviewQueue, ReviewStore, bypassBlockReason, queuedText, type ActionKind } from "./review.js";
 
 export const INSTALL_BLOCK_REASON = "Installs are managed by Off Manual. Ask your admin.";
@@ -126,20 +127,14 @@ export default definePluginEntry({
     api.registerGatewayMethod(
       "offmanual.review.decide",
       async ({ params, respond }) => {
-        const ids = params.ids;
-        const decision = params.decision;
-        if (
-          !Array.isArray(ids) ||
-          ids.length === 0 ||
-          ids.length > 100 ||
-          !ids.every((x) => typeof x === "string" && /^\d{1,9}$/.test(x)) ||
-          (decision !== "approve" && decision !== "reject") ||
-          (params.params !== undefined && ids.length !== 1)
-        ) {
-          respond(false, undefined, { code: "INVALID_REQUEST", message: "invalid params" });
-          return;
-        }
-        respond(true, { results: await queue.decide(ids as string[], decision, params.params) });
+        const r = await handleDecide(queue, params, {
+          stepUpActions: async () => stepUpActionsFrom(await bridge.call("policy.get")),
+          grantValid: async (grantId, action) =>
+            ((await bridge.call("auth.stepUpCheck", { grantId, action })) as { valid?: unknown }).valid ===
+            true,
+        });
+        if (r.ok) respond(true, r.payload);
+        else respond(false, undefined, r.error);
       },
       { scope: "operator.approvals" },
     );

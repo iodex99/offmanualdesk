@@ -2,6 +2,7 @@
 // the employee approves, edits or rejects them. Nothing runs without a click here.
 import { useCallback, useEffect, useState } from "react";
 import { formatDate } from "@offmanual/shared-schema/format";
+import { callAgent, type AgentCall } from "./agent";
 import { messageOf, type DecisionResult, type GatewayApi, type ReviewItem } from "./gatewayApi";
 
 interface DeleteParams {
@@ -24,12 +25,15 @@ const STATUS: Record<string, string> = {
   pending: "Waiting",
 };
 
-export function Review({ api }: { api: GatewayApi }) {
+export function Review({ api, agent = callAgent }: { api: GatewayApi; agent?: AgentCall }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null);
   const [error, setError] = useState("");
   const [notes, setNotes] = useState<DecisionResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<{ id: string; keep: Set<string> } | null>(null);
+  // Firm step-up rule (ADR-047): the approval waits for today's code.
+  const [stepUp, setStepUp] = useState<{ ids: string[]; params?: unknown; action: string } | null>(null);
+  const [code, setCode] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -44,11 +48,18 @@ export function Review({ api }: { api: GatewayApi }) {
     void load();
   }, [load]);
 
-  const decide = async (ids: string[], decision: "approve" | "reject", params?: unknown) => {
+  const decide = async (ids: string[], decision: "approve" | "reject", params?: unknown, grant?: string) => {
     setBusy(true);
     try {
-      setNotes(await api.reviewDecide(ids, decision, params));
+      const r = await api.reviewDecide(ids, decision, params, grant);
+      if ("stepUpRequired" in r) {
+        setStepUp({ ids, action: r.action, ...(params !== undefined ? { params } : {}) });
+        setCode("");
+        return;
+      }
+      setNotes(r.results);
       setEditing(null);
+      setStepUp(null);
     } catch (e) {
       setNotes([]);
       setError(messageOf(e, "That didn't go through. Try again."));
@@ -57,6 +68,52 @@ export function Review({ api }: { api: GatewayApi }) {
       await load();
     }
   };
+
+  const confirmStepUp = async () => {
+    if (!stepUp) return;
+    setError("");
+    try {
+      const g = (await agent("auth.stepUp", { code, action: stepUp.action })) as { grantId?: unknown };
+      if (typeof g.grantId !== "string") throw { message: "Unexpected reply. Try again." };
+      await decide(stepUp.ids, "approve", stepUp.params, g.grantId);
+    } catch (e) {
+      setError(messageOf(e, "That code didn't work. Try again."));
+    }
+  };
+
+  if (stepUp) {
+    return (
+      <form
+        aria-label="Confirm approval"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          void confirmStepUp();
+        }}
+      >
+        <p>
+          Your firm asks for today's code before approving. Enter the 6-digit code from your authenticator
+          app.
+        </p>
+        <label>
+          6-digit code{" "}
+          <input
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          />
+        </label>
+        <button type="submit" disabled={busy || code.length !== 6}>
+          Approve
+        </button>
+        <button type="button" onClick={() => setStepUp(null)}>
+          Cancel
+        </button>
+        {error && <p role="alert">{error}</p>}
+      </form>
+    );
+  }
 
   if (items === null)
     return error ? <ErrorBox message={error} retry={load} /> : <p className="hint">Loading…</p>;
