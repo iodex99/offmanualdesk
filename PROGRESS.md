@@ -4,11 +4,11 @@
 
 ## Current focus
 
-M0 done. M2 Server Agent core complete on `m2-server-agent` (CI green incl. real LocalSystem service round trip); M3 console started on the same branch (schema + agent API). M1 waits on Dwahnil's lab run and decisions on Proposed ADRs.
+M0 and M2 done and on `main`. M3 console (auth, agent API, management API, fleet) and the starts of M4 Desk and M5 guard are on `main` too; work continues on branch `m4-desk`. M1 waits on Dwahnil's lab run and decisions on Proposed ADRs.
 
 ## Next step
 
-1. M3 next slices on `m2-server-agent` (merge to `main` once CI is green): console auth (superadmin/staff/firm admin, mandatory TOTP; OAuth needs Dwahnil's Google/Microsoft apps, so build with an injectable provider and test with fakes), firm/server/employee/invite management + enrolment-code creation, employee OAuth → SID binding endpoint, fleet board v0. `gh` is logged in (`C:\Program Files\GitHub CLI\gh.exe`).
+1. Branch `m4-desk` (merge to `main` when CI is green). Remaining M3: console auth (superadmin/staff/firm admin, mandatory TOTP; OAuth needs Dwahnil's Google/Microsoft apps, so build with an injectable provider and test with fakes), firm/server/employee/invite management + enrolment-code creation, employee OAuth → SID binding endpoint, fleet board v0. `gh` is logged in (`C:\Program Files\GitHub CLI\gh.exe`).
 2. When lab output arrives: `/lab-result L<n>` for each; promote/supersede ADR-019…029 accordingly; flip [A] markers in ARCHITECTURE.md.
 3. Unblocked meanwhile (M2, recorded exception below): Server Agent SQLite store + migrations, JSON-RPC framing over a fake pipe, TOTP/PIN verification, port-lease allocator, all with fakes for Windows-only parts.
 
@@ -48,7 +48,7 @@ M2 may start before M1's lab boxes are ticked: lab results only affect pipe ACL 
 - [ ] Lab results recorded (needs Dwahnil) and ADRs updated
 - [x] Product ADRs decided (016, 019, 023, 025–028); lab-dependent ones wait for results
 
-### M2 Server Agent core
+### M2 Server Agent core (done 2026-11-23; merged to `main`)
 - [x] Windows service install/uninstall/start/stop (SCM recovery: restart 5 s/30 s/2 min), `run` foreground mode, JSON logs to `logs\server-agent.log` (CI round trip on windows-latest)
 - [x] SQLite local store + migrations (DATA_MODEL.md §2; `internal/store`, ADR-032)
 - [x] Named pipe JSON-RPC server with OS-derived caller SID (ADR-029 DACL; `internal/rpc`, `internal/pipe`; DACL verified on a real pipe)
