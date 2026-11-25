@@ -26,9 +26,9 @@ ClawHub is a parts bin. Nothing from it runs on a client server unless it has be
 | India GST toolkit | `sanketbhatia/india-gst` | core | Offline, stdlib Python |
 | India ID check/mask | `sanketbhatia/india-id-check` | core | Masking for shared outputs |
 | India income tax regimes | `sanketbhatia/india-income-tax` | core | |
-| Excel | `ivangdavila/excel-xlsx` | core | |
-| Word | `ivangdavila/word-docx` | core | |
-| PDF extraction | `awspace/pdf` | core | |
+| Excel | `ivangdavila/excel-xlsx` | core | **Imported 25-11-2026** (1.0.2, MIT-0) as `vendored/ivangdavila__excel-xlsx`, pending review; examples need Python + openpyxl/pandas, so it is gated on Python being on PATH (ADR-070) |
+| Word | `ivangdavila/word-docx` | core | **Imported 25-11-2026** (1.0.2, MIT-0) as `vendored/ivangdavila__word-docx`, pending review; tool-neutral |
+| PDF extraction | `awspace/pdf` | core | **Not imported**: no licence on ClawHub and the skill says "license: Proprietary" (looks like a republished proprietary skill). PDF reading uses OpenClaw's built-in `pdf` tool in the core pack (ADR-070) |
 | Google Workspace | `steipete/gog` | email-send (send), core (read) | Firms on Google |
 | Outlook | `jotamed/outlook` | email-send (send), core (read) | Firms on M365; direct Graph |
 | Telegram buttons | `ighniz/telegram-ui` (plugin) | core | Unlock + approvals |

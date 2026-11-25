@@ -26,6 +26,8 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [ ] Later (M6): Telegram bot token for the lab firm
 - [ ] **MSI tool licence (M8)**: WiX v4 is out of support; v7 (current) requires accepting the Open Source Maintenance Fee EULA, and organisations with annual revenue ≥ US$10,000 must sponsor `wixtoolset` on GitHub (fee is "not a license fee"; non-payment can suspend access to the binaries; building WiX from its MS-RL source avoids the EULA). Decide: (a) accept the EULA and sponsor if over the threshold, (b) build WiX from source in CI, or (c) another installer. Until then the MSI isn't built and the install runbook's manual steps apply.
 - [x] **Telegram Approve for Desk unlock**: decided 25-11-2026, option (b): in place of the PIN only, after the day's authenticator unlock (ADR-068, built).
+- [ ] **Python for the Excel skill (ADR-070)**: the imported Excel skill's examples use Python (openpyxl, pandas), which Off Manual doesn't ship. Choose: (a) ship a pinned embeddable Python + openpyxl inside the signed release (recommended; small, no runtime downloads), (b) firms install Python themselves, or (c) adapt the skill to a Node library Off Manual ships. Until then the skill only appears on servers that already have Python.
+- [ ] **Approve the two imported skills** (`ivangdavila/excel-xlsx`, `ivangdavila/word-docx`): read each SKILL.md and PROVENANCE.md, then set `review` to approved in `skills/registry.lock.json` (or tell me to).
 - [ ] Later (M8): Azure Trusted Signing account (or code-signing certificate) as GitHub secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`; release store (ADR-016) secrets `RELEASE_STORE_*`
 - [ ] Later (M9): Razorpay test keys (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` in Vercel), a webhook in the Razorpay dashboard to `<console>/api/razorpay/webhook` for `payment_link.paid` with its secret as `RAZORPAY_WEBHOOK_SECRET`; Off Manual GSTIN, state, SAC code confirmed with the CA
 
@@ -110,7 +112,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 
 ### M7 Skills
 - [x] Registry tooling: `tools/skill-vet` (static checks: binaries, install scripts, git deps block; network/shell/eval/blobs/absolute paths/credentials warn; review checklist; `lock` emits pending entries) + `verify-skills` with `pending` status; release ships approved only (ADR-039)
-- [ ] Starter pack imported and reviewed (SKILLS.md §3)
+- [~] Starter pack (SKILLS.md §3): Excel and Word imported 25-11-2026 (`skills/vendored/ivangdavila__*`, MIT-0, adapted, pending Dwahnil's approval); PDF skill rejected (proprietary licence; built-in `pdf` tool covers reading); [ ] Python for the Excel skill (decision, ADR-070); [ ] remaining starter skills (Tally, accountant, bank recon, GST, ID check, income tax, Outlook/Google, memory, diagnostics, web search)
 - [x] Client directory skill (pending review); scan started from the Desk task "Build client list" (ADR-054)
 - [x] Task buttons v1 (SKILLS.md §5): Desk Tasks tab (`tasks.ts`, `TaskButtons.tsx`) with client/month/FY/period/file inputs; each sends one request naming the skill and the §5 output file through the chat; role defaults (ADR-061: console task role per employee → policy → `session.hello` → role's buttons first, others under More tasks); [ ] Purchase bills to vouchers (needs the Tally-post pack)
 - [x] India pack v1 written and approved by Dwahnil on 25-11-2026 (ships with the next release): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
@@ -163,6 +165,11 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-25 11:00: Starter-pack Excel and Word skills imported (M7, ADR-070)
+- Changed: downloaded `ivangdavila/excel-xlsx` and `ivangdavila/word-docx` 1.0.2 from ClawHub's API (`/api/v1/skills/<slug>`, `/versions/1.0.2`, `/api/v1/download`, as OpenClaw 2026.11.6's own client calls them) into an empty scratch folder, nothing executed; every file matched ClawHub's published sha256; vendored as `skills/vendored/ivangdavila__<slug>/` with `SKILL.md` adapted (name = slug, `metadata.openclaw` win32, Excel gated on `python`/`py`, ClawHub install/star/sync lines removed, Off Manual rules added) and `PROVENANCE.md` (source, hashes, licence, changes, checklist); lock entries `pending`. `awspace/pdf` not imported (licence).
+- Tests: skill-vet check → no blocking findings (URL warnings are metadata only); `verify-skills` → 11 skills, 9 approved, 13 files match.
+- Waiting: Dwahnil approves the two skills; Python decision for Excel.
 
 ### 2026-11-25 10:00: Approve on Telegram in place of the PIN (M6, ADR-068 accepted)
 - Changed: Server Agent `internal/agent/tgapprove.go` (start/status pipe methods, TelegramDecision; all rules re-checked at the tap; in memory, 60 s, single use, newest wins, 5/hour), store `TelegramUserForSID`, `session.hello.telegramApprove`; Telegram `Bot.SendApproval`/`AnswerCallback`/`EditMessageText`, `allowed_updates` adds `callback_query`, router handles `ua:`/`ud:` callbacks (Bot API 10.5 fields verified); app wires the prompter; shared IPC list + Desk allowlist; Desk `TelegramApprove.tsx` on the PIN screen only.
