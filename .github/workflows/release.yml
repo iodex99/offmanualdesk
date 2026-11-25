@@ -66,7 +66,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       dry_run: ${{ steps.meta.outputs.dry_run }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG }}
 
@@ -88,12 +88,12 @@ jobs:
               `OPENCLAW_VERSION=${c.openclaw.version}`, `MIN_AGENT_VERSION=${c.minAgentVersion}`];
             require("fs").appendFileSync(process.env.GITHUB_ENV, out.join("\n") + "\n");'
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server-agent/go.mod
       - uses: dtolnay/rust-toolchain@stable
@@ -190,7 +190,7 @@ jobs:
           else echo "::warning::Authenticode signing not configured; binaries are UNSIGNED (fine for ring 0 only)."; echo "enabled=false" >> "$GITHUB_OUTPUT"; fi
       - name: Sign binaries
         if: steps.authenticode.outputs.enabled == 'true'
-        uses: azure/trusted-signing-action@v0
+        uses: azure/trusted-signing-action@v2
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -268,7 +268,7 @@ jobs:
           rm -f out/SHA256SUMS.txt
           (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ steps.meta.outputs.version }}
           path: out/
@@ -286,7 +286,7 @@ jobs:
     env:
       VERSION: ${{ needs.build.outputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-${{ needs.build.outputs.version }}
           path: out
