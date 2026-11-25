@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Off Manual first-install MSI (WiX Toolset v7, ADR-071). Updates after the first install
+  never use the MSI: the Server Agent stages signed releases side by side (ADR-010/062).
+
+  Build (see .github/workflows): wix build installer/OffManual.wxs -arch x64
+    -d Version=<x.y.z> -d PayloadDir=<absolute release payload dir> -o OffManual-<v>.msi
+  The payload dir is the release payload (server-agent.exe, desk\, node\, openclaw\,
+  plugins\, skills\) plus the signed manifest.json / manifest.sig.json.
+
+  Install for a firm (elevated):
+    msiexec /i OffManual-<v>.msi CONSOLEURL=https://console.example ENROLCODE=ABCD-2345
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Off Manual"
+    Manufacturer="Off Manual"
+    Version="$(var.Version)"
+    UpgradeCode="3BA5C1E3-897F-42DD-93A7-484574AAF2DE"
+    Scope="perMachine"
+    Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Off Manual is already installed. After the first install, Off Manual updates itself." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Optional enrolment at install time. The code is hidden from the MSI log. -->
+    <Property Id="CONSOLEURL" Secure="yes" />
+    <Property Id="ENROLCODE" Secure="yes" Hidden="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="OffManualDir" Name="OffManual">
+        <Directory Id="VersionsDir" Name="versions">
+          <Directory Id="VersionDir" Name="$(var.Version)" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Off Manual" Level="1">
+      <ComponentGroupRef Id="Payload" />
+      <ComponentRef Id="DeskAutostart" />
+      <ComponentRef Id="ExplorerVerbFiles" />
+      <ComponentRef Id="ExplorerVerbFolders" />
+    </Feature>
+
+    <ComponentGroup Id="Payload" Directory="VersionDir">
+      <!-- Named so the custom actions can run it. -->
+      <Component Id="ServerAgentExeComponent">
+        <File Id="ServerAgentExe" Source="$(var.PayloadDir)\server-agent.exe" KeyPath="yes" />
+      </Component>
+      <Files Include="$(var.PayloadDir)\**">
+        <Exclude Files="$(var.PayloadDir)\server-agent.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- Desk starts at every sign-in for every user (ARCHITECTURE F1), always through `current`. -->
+    <Component Id="DeskAutostart" Directory="OffManualDir">
+      <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="OffManualDesk"
+        Type="string" Value="&quot;[OffManualDir]current\desk\offmanual-desk.exe&quot;" KeyPath="yes" />
+    </Component>
+
+    <!-- Explorer right-click "Ask Off Manual" for files and folders (ADR-059). -->
+    <Component Id="ExplorerVerbFiles" Directory="OffManualDir">
+      <RegistryValue Root="HKLM" Key="Software\Classes\*\shell\OffManualDesk" Type="string" Value="Ask Off Manual" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\*\shell\OffManualDesk\command" Type="string"
+        Value="&quot;[OffManualDir]current\desk\offmanual-desk.exe&quot; --ask &quot;%1&quot;" />
+    </Component>
+    <Component Id="ExplorerVerbFolders" Directory="OffManualDir">
+      <RegistryValue Root="HKLM" Key="Software\Classes\Directory\shell\OffManualDesk" Type="string" Value="Ask Off Manual" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Directory\shell\OffManualDesk\command" Type="string"
+        Value="&quot;[OffManualDir]current\desk\offmanual-desk.exe&quot; --ask &quot;%1&quot;" />
+    </Component>
+
+    <!--
+      setup: `current` junction, optional enrolment, service through `current` (server-agent setup).
+      teardown: service, `current` and later staged versions removed; ProgramData kept.
+      Deferred, as LocalSystem (Impersonate=no). A failed setup rolls the install back,
+      and the rollback action removes anything setup did.
+    -->
+    <CustomAction Id="OffManualSetupRollback" FileRef="ServerAgentExe" ExeCommand="teardown"
+      Execute="rollback" Impersonate="no" Return="ignore" />
+    <CustomAction Id="OffManualSetup" FileRef="ServerAgentExe"
+      ExeCommand="setup -console &quot;[CONSOLEURL]&quot; -code &quot;[ENROLCODE]&quot;"
+      Execute="deferred" Impersonate="no" Return="check" HideTarget="yes" />
+    <CustomAction Id="OffManualTeardown" FileRef="ServerAgentExe" ExeCommand="teardown"
+      Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="OffManualSetupRollback" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="OffManualSetup" After="OffManualSetupRollback" Condition="NOT Installed" />
+      <Custom Action="OffManualTeardown" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

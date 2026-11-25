@@ -198,3 +198,74 @@ jobs:
           # Findings fail the job and appear in the log; no SARIF artifact upload
           # (artifact storage quota on the account is limited).
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
+  installer:
+    name: Installer (WiX MSI, windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/server-agent/go.mod
+          cache-dependency-path: apps/server-agent/go.sum
+      - name: Test payload (real Server Agent, placeholder Desk)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $p = Join-Path $env:RUNNER_TEMP 'payload'
+          New-Item -ItemType Directory -Force (Join-Path $p 'desk'), (Join-Path $p 'skills') | Out-Null
+          go build -trimpath -o (Join-Path $p 'server-agent.exe') ./apps/server-agent/cmd/server-agent
+          if ($LASTEXITCODE -ne 0) { throw 'build failed' }
+          Copy-Item (Join-Path $p 'server-agent.exe') (Join-Path $p 'desk\offmanual-desk.exe')
+          Copy-Item skills/packs.json (Join-Path $p 'skills\packs.json')
+          '{}' | Set-Content -Encoding utf8 (Join-Path $p 'manifest.json')
+      - name: WiX 7 (OSMF EULA accepted on Dwahnil's instruction, ADR-071)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet tool install --global wix --version 7.0.1
+          if ($LASTEXITCODE -ne 0) { throw 'wix install failed' }
+          $tools = Join-Path $env:USERPROFILE '.dotnet\tools'
+          Add-Content $env:GITHUB_PATH $tools
+          & (Join-Path $tools 'wix.exe') eula accept wix7
+          if ($LASTEXITCODE -ne 0) { throw 'eula accept failed' }
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          wix build installer/OffManual.wxs -arch x64 -d Version=0.0.1 -d "PayloadDir=$env:RUNNER_TEMP\payload" -o "$env:RUNNER_TEMP\OffManual-test.msi"
+          if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
+      - name: Install, check, uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = "$env:RUNNER_TEMP\OffManual-test.msi"
+          $root = Join-Path $env:ProgramFiles 'OffManual'
+          $p = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', "`"$env:RUNNER_TEMP\install.log`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\install.log" -Tail 80; throw "install exit $($p.ExitCode)" }
+          $cur = Get-Item (Join-Path $root 'current')
+          if ($cur.LinkType -ne 'Junction' -or $cur.Target -notmatch 'versions\\0\.0\.1$') { throw "current: $($cur.LinkType) $($cur.Target)" }
+          $svc = Get-CimInstance Win32_Service -Filter "Name='OffManualAgent'"
+          if (-not $svc) { throw 'service not installed' }
+          if ($svc.PathName -notmatch '\\current\\server-agent\.exe') { throw "service path $($svc.PathName)" }
+          if ($svc.StartName -ne 'LocalSystem') { throw "service account $($svc.StartName)" }
+          $deadline = (Get-Date).AddSeconds(30)
+          while ((Get-Service OffManualAgent).Status -ne 'Running' -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+          if ((Get-Service OffManualAgent).Status -ne 'Running') { throw 'service not running' }
+          $flag = (sc.exe qfailureflag OffManualAgent) -join "`n"
+          if ($flag -notmatch 'FAILURE_ACTIONS_ON_NONCRASH_FAILURES\s*:\s*TRUE') { throw "recovery flag: $flag" }
+          $run = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run').OffManualDesk
+          if ($run -ne "`"$root\current\desk\offmanual-desk.exe`"") { throw "Run key: $run" }
+          $verb = (Get-ItemProperty 'Registry::HKEY_LOCAL_MACHINE\Software\Classes\*\shell\OffManualDesk\command').'(default)'
+          if ($verb -notmatch '--ask "%1"$') { throw "Explorer verb: $verb" }
+          if (Select-String -Path "$env:RUNNER_TEMP\install.log" -Pattern 'ENROLCODE = ' -Quiet) { Write-Host 'note: ENROLCODE property appears in the log (empty here)' }
+          # Uninstall: service, junction, registry and files gone; ProgramData kept.
+          $u = Start-Process msiexec.exe -ArgumentList '/x', "`"$msi`"", '/qn', '/l*v', "`"$env:RUNNER_TEMP\uninstall.log`"" -Wait -PassThru
+          if ($u.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\uninstall.log" -Tail 80; throw "uninstall exit $($u.ExitCode)" }
+          if (Get-Service OffManualAgent -ErrorAction SilentlyContinue) { throw 'service still installed' }
+          if (Test-Path (Join-Path $root 'current')) { throw 'current still there' }
+          if ((Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run').OffManualDesk) { throw 'Run key still there' }
+          if (Test-Path 'Registry::HKEY_LOCAL_MACHINE\Software\Classes\*\shell\OffManualDesk') { throw 'Explorer verb still there' }
+          if (Test-Path (Join-Path $root 'versions\0.0.1\server-agent.exe')) { throw 'files still there' }
+          Write-Host 'MSI install and uninstall verified.'

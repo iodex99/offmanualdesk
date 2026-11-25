@@ -151,3 +151,18 @@ func uninstallService() error {
 	}
 	return s.Delete()
 }
+
+// serviceInstalled reports whether the OffManualAgent service exists.
+func serviceInstalled() bool {
+	m, err := mgr.Connect()
+	if err != nil {
+		return false
+	}
+	defer func() { _ = m.Disconnect() }()
+	s, err := m.OpenService(ServiceName)
+	if err != nil {
+		return false
+	}
+	_ = s.Close()
+	return true
+}

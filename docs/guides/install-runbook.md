@@ -1,7 +1,6 @@
 # Install runbook (Off Manual staff)
 
-Goal: a firm live in under 2 hours (M11). Steps marked **(to build)** are not available yet; use the manual
-step given instead.
+Goal: a firm live in under 2 hours (M11). The MSI does the server setup in one step; a manual fallback is below it.
 
 ## Before the visit
 
@@ -13,30 +12,40 @@ step given instead.
 
 ## On the RDS server (as an administrator)
 
-1. **Install files** **(MSI to build)**. Manually: copy the release payload to
-   `C:\Program Files\OffManual\versions\<version>\` and create the junction
-   `C:\Program Files\OffManual\current` → that folder:
-   `mklink /J "C:\Program Files\OffManual\current" "C:\Program Files\OffManual\versions\<version>"`.
-2. **Pre-flight**: `"C:\Program Files\OffManual\current\server-agent.exe" preflight -share \\server\Clients`.
-   Fix every FAIL (the line under each says how). WARN items can wait but note them.
-3. **Enrol**: `server-agent.exe enroll -console https://console.offmanual.in <CODE>`. It runs pre-flight again
-   and registers the server; its key stays protected on this machine.
-4. **Install the service**: `server-agent.exe install`. It runs as LocalSystem and restarts itself if it stops.
-5. **Telegram (optional)**: create the firm's bot with BotFather, then
+1. **Install** from an elevated command prompt (the code comes from the console, step 3 above):
+   ```
+   msiexec /i OffManual-<version>.msi CONSOLEURL=https://console.offmanual.in ENROLCODE=<CODE> /l*v install.log
+   ```
+   It installs the release under `C:\Program Files\OffManual\versions\<version>\`, points
+   `C:\Program Files\OffManual\current` at it, enrols the server with the console (pre-flight runs and is
+   reported), installs and starts the `OffManualAgent` service (LocalSystem, restarts itself), starts Desk at every
+   sign-in for all users, and adds Explorer's "Ask Off Manual". The code never appears in the log. Leave out
+   `CONSOLEURL`/`ENROLCODE` to enrol later with `server-agent.exe enroll`. If enrolment fails (wrong or expired
+   code), the install rolls back; make a new code and run it again.
+2. **Pre-flight with the share**: `"C:\Program Files\OffManual\current\server-agent.exe" preflight -share \\server\Clients`.
+   Fix every FAIL (the line under each says how). If WebView2 is reported missing, install Microsoft's
+   Evergreen WebView2 runtime (not bundled in the MSI yet).
+3. **Telegram (optional)**: create the firm's bot with BotFather, then
    `server-agent.exe telegram-setup -username <FirmBot>` and paste the token when asked. Restart the
    `OffManualAgent` service.
-6. Register the service from the `current` path so updates take effect at restart:
-   `"C:\Program Files\OffManual\current\server-agent.exe" install` (the command rewrites a `versions\<v>` path to `current` anyway).
-7. **Desk autostart** **(MSI to build)**. Manually: add `C:\Program Files\OffManual\current\desk\offmanual-desk.exe`
-   to the All Users Startup folder.
-8. **Explorer "Ask Off Manual"** **(MSI to build)**. Manually, in an elevated command prompt (all users):
+
+Uninstall (Apps & features, or `msiexec /x OffManual-<version>.msi`) stops and removes the service, `current`,
+later updates, Desk autostart and the Explorer entry. `C:\ProgramData\OffManual` (settings, backups,
+archives) is kept.
+
+### Without the MSI (fallback)
+
+1. Copy the release payload to `C:\Program Files\OffManual\versions\<version>\` and run
+   `"C:\Program Files\OffManual\versions\<version>\server-agent.exe" setup -console https://console.offmanual.in -code <CODE>`
+   (the same steps the MSI runs: `current`, enrolment, service).
+2. Desk autostart: add `C:\Program Files\OffManual\current\desk\offmanual-desk.exe` to the All Users Startup folder.
+3. Explorer "Ask Off Manual", in an elevated command prompt:
    ```
    reg add "HKLM\Software\Classes\*\shell\OffManualDesk" /ve /d "Ask Off Manual" /f
    reg add "HKLM\Software\Classes\*\shell\OffManualDesk\command" /ve /d "\"C:\Program Files\OffManual\current\desk\offmanual-desk.exe\" --ask \"%1\"" /f
    reg add "HKLM\Software\Classes\Directory\shell\OffManualDesk" /ve /d "Ask Off Manual" /f
    reg add "HKLM\Software\Classes\Directory\shell\OffManualDesk\command" /ve /d "\"C:\Program Files\OffManual\current\desk\offmanual-desk.exe\" --ask \"%1\"" /f
    ```
-   Right-clicking a file or folder then opens Desk (or brings the running one forward) with the path in the chat box.
 
 ## In the console, after enrolment
 

@@ -207,3 +207,21 @@ func serviceBinaryPath(root, exe string) string {
 	}
 	return filepath.Join(root, "current", filepath.FromSlash(parts[1]))
 }
+
+// EnrolledAs returns the console server ID this data directory is enrolled as ("" if none).
+func EnrolledAs(ctx context.Context, dataDir string) string {
+	if dataDir == "" {
+		dataDir = DefaultDataDir()
+	}
+	p := filepath.Join(dataDir, "agent.db")
+	if _, err := os.Stat(p); err != nil {
+		return ""
+	}
+	st, err := store.Open(ctx, p)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = st.Close() }()
+	id, _ := st.Meta(ctx, console.MetaServerID)
+	return id
+}

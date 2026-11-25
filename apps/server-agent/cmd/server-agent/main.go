@@ -32,6 +32,8 @@ Usage:
   server-agent bridge               Relay stdin/stdout to the agent pipe (for Node clients; ADR-034)
   server-agent enroll -console URL CODE  Register this server with the Off Manual console
   server-agent telegram-setup -username FirmBot  Store the firm bot (token read from stdin)
+  server-agent setup [-console URL -code CODE]  First-install steps (run by the MSI)
+  server-agent teardown           Uninstall steps (run by the MSI)
   server-agent restore -from FILE  Replace agent.db with a backup (service stopped; ADR-060)
   server-agent help                 Show this help
 
@@ -150,6 +152,37 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		if err := app.Enrol(context.Background(), *data, *consoleURL, fs.Arg(0), stdout); err != nil {
 			_, _ = fmt.Fprintf(stderr, "enrol failed: %v\n", err)
+			return 1
+		}
+		return 0
+	case "setup":
+		// Run by the MSI after it lays down the release (ADR-071).
+		fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		consoleURL := fs.String("console", "", "console URL (optional; with -code)")
+		code := fs.String("code", "", "enrolment code (optional)")
+		data := fs.String("data", "", "data directory")
+		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
+			_, _ = fmt.Fprintln(stderr, "usage: server-agent setup [-console URL -code CODE]")
+			return 2
+		}
+		d, err := realSetupDeps()
+		if err == nil {
+			err = runSetup(context.Background(), d, *data, strings.TrimSpace(*consoleURL), strings.TrimSpace(*code), stdout)
+		}
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "setup failed: %v\n", err)
+			return 1
+		}
+		return 0
+	case "teardown":
+		// Run by the MSI before it removes its files (ADR-071).
+		d, err := realSetupDeps()
+		if err == nil {
+			err = runTeardown(d, stdout)
+		}
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "teardown: %v\n", err)
 			return 1
 		}
 		return 0

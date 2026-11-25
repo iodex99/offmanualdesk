@@ -9,7 +9,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 ## Next step
 
 1. `main` = `m4-desk` at 2d97076; watch CI by commit (`gh run list --commit <sha>`) and fast-forward after each green run.
-2. Next: UPI AutoPay / e-mandate; MSI once the WiX decision is made; live Razorpay check once test keys exist.
+2. Next: UPI AutoPay / e-mandate; Python decision for the Excel skill (ADR-070); live Razorpay check once test keys exist.
 3. When lab output arrives: `/lab-result L<n>` for each; promote/supersede the lab-dependent ADRs (020, 021, 022, 024, 040 session key, 041 tool registration, 043 tool list); flip [A] markers in ARCHITECTURE.md.
 
 ## Waiting on Dwahnil
@@ -24,7 +24,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
 - [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
-- [ ] **MSI tool licence (M8)**: WiX v4 is out of support; v7 (current) requires accepting the Open Source Maintenance Fee EULA, and organisations with annual revenue ≥ US$10,000 must sponsor `wixtoolset` on GitHub (fee is "not a license fee"; non-payment can suspend access to the binaries; building WiX from its MS-RL source avoids the EULA). Decide: (a) accept the EULA and sponsor if over the threshold, (b) build WiX from source in CI, or (c) another installer. Until then the MSI isn't built and the install runbook's manual steps apply.
+- [x] **MSI tool licence**: decided 25-11-2026: use WiX v7 now (EULA accepted in CI and the release workflow), pay the sponsorship when revenue reaches US$10,000 a year (ADR-071).
 - [x] **Telegram Approve for Desk unlock**: decided 25-11-2026, option (b): in place of the PIN only, after the day's authenticator unlock (ADR-068, built).
 - [ ] **Python for the Excel skill (ADR-070)**: the imported Excel skill's examples use Python (openpyxl, pandas), which Off Manual doesn't ship. Choose: (a) ship a pinned embeddable Python + openpyxl inside the signed release (recommended; small, no runtime downloads), (b) firms install Python themselves, or (c) adapt the skill to a Node library Off Manual ships. Until then the skill only appears on servers that already have Python.
 - [ ] **Approve the two imported skills** (`ivangdavila/excel-xlsx`, `ivangdavila/word-docx`): read each SKILL.md and PROVENANCE.md, then set `review` to approved in `skills/registry.lock.json` (or tell me to).
@@ -78,7 +78,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Fleet board v0 (`/fleet`: firm, server, health with 1 h staleness → red, last seen, version, seats)
 
 ### M4 Desk core
-- [x] Tauri shell; single instance per session (ADR-059: `Local\OffManualDesk` mutex, second launch forwards through the per-user inbox + wake event and exits); [ ] autostart at logon (MSI / runbook step), [ ] L8 on the RDS host
+- [x] Tauri shell; single instance per session (ADR-059: `Local\OffManualDesk` mutex, second launch forwards through the per-user inbox + wake event and exits); autostart at logon (MSI HKLM Run, ADR-071), [ ] L8 on the RDS host
 - [x] Pipe client in Rust (`src-tauri/src/agent_client.rs`: CreateFileW with 0x12008B, SQOS anonymous, server must be LocalSystem, NDJSON, Desk method allowlist) + `agent_call` command
 - [x] TOTP enrolment (QR) + PIN set screens (`ui/src/Unlock.tsx`); recovery codes shown once after enrolment and "Lost your phone?" → `auth.recover` → re-enrol (ADR-046)
 - [x] Sign-in + SID binding: Desk signup screen (console URL + QR from `auth.bindStart`, code → `auth.bindComplete` with the OS-derived SID; 10 tries/hour)
@@ -89,7 +89,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Gateway client protocol v4 + device auth in Go (`server-agent/internal/gateway`, verified against OpenClaw source; used by the Telegram relay)
 - [x] Gateway client in Rust (`gateway_client.rs`, ADR-021 option A): protocol v4 + device auth (port of the Go client), one background thread per Desk, device key DPAPI CurrentUser (`dpapi.rs`), scopes read/write/approvals
 - [x] Chat panel (`Chat.tsx`: streaming `om-chat` events, Stop → `chat.abort`, plain errors) and Review tab (`Review.tsx`: approve / approve all / edit ticked files / reject, recent decisions); docked panel (right edge of the work area at start) + global hotkey Ctrl+Alt+O (ADR-064); Settings tab: dock side + own shorter lock time (ADR-066); [ ] L8 on the RDS host
-- [x] Explorer right-click "Ask Off Manual": `--ask <path>` handled (forwarded to the running Desk, path put in the chat box, ADR-059); [ ] verb registered by the MSI (manual `reg add` in the install runbook)
+- [x] Explorer right-click "Ask Off Manual": `--ask <path>` handled (forwarded to the running Desk, path put in the chat box, ADR-059); verb registered by the MSI (ADR-071)
 - [x] Notifications area: licence banner/paused screen (ADR-042), update notice (ADR-048), notices from Off Manual and the firm with Dismiss (ADR-052)
 
 ### M5 Guard plugin
@@ -126,7 +126,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Server Agent stage + verify + report (`internal/update`: embedded keyring, HTTPS-only, size-limited, signature → console match → min agent version → payload hash → safe extract to `.staging` → verify → rename; tampered staged copies quarantined; state in `updates`; staged version in heartbeat); Authenticode check (ADR-055: manifest `authenticode` flag set by the release workflow when it signed; then every .exe/.dll must pass WinVerifyTrust with whole-chain revocation)
 - [x] Desk notice + restart-to-update + security deadline (ADR-048): `update.status` (staged version, severity, deadline; migration 0004), per-employee `desk\version.json`, gateway starts from `versions\<v>`, exit 78 → backup → Doctor → retry; failure restores the snapshot and the previous version; security releases install themselves after the deadline
 - [x] Rollback of a failed switch (restore snapshot, previous version, ADR-025/048); console-driven rollback = firm pin to the previous version on `/releases`, `current` junction move + Server Agent self-update (ADR-062: quiet hours 02–05 IST with no active lease, or a security deadline; restart via SCM recovery incl. non-crash failures); Desk binary follows at the next sign-in
-- [ ] MSI (WiX v4) for first installs
+- [x] MSI for first installs (ADR-071): `installer/OffManual.wxs` (WiX 7.0.1): files to `versions\<v>`, `server-agent setup` custom action (current, enrolment via `CONSOLEURL`/`ENROLCODE`, service), Desk autostart + Explorer verb in HKLM, `teardown` on uninstall, rollback on failure; CI installs/uninstalls it; release attaches `OffManual-<v>.msi`. [ ] WebView2 bootstrapper, [ ] sign the MSI, [ ] check long `node_modules` paths on a real release build
 
 ### M9 Billing
 - [x] Billing engine (pure, `apps/console/lib/billing/`): all 5 line types, both seat modes, tiered/volume bands with fractional seats, mid-month proration, versioned per-seat lines, adjustments, usage with quota + markup (ADR-038)
@@ -165,6 +165,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-25 12:00: MSI installer (M8, ADR-071)
+- Changed: `installer/OffManual.wxs` (WiX v4+ schema, built with WiX 7.0.1: per-machine, fixed UpgradeCode, MajorUpgrade, payload harvested with `Files` and server-agent.exe named for the custom actions, HKLM Run + Explorer verb components, deferred `setup`/`teardown` custom actions as LocalSystem with a rollback action, `ENROLCODE` hidden); Server Agent `setup` (current junction from its own `versions\<v>` location, enrol unless already enrolled, service through `current`) and `teardown` (service, `current`, later staged versions; ProgramData kept), `app.EnrolledAs`; CI job builds and installs/uninstalls a test MSI on windows-latest and checks junction, service path/account/running/recovery flag, Run key, Explorer verb, and that everything is gone after uninstall; release workflow builds `OffManual-<v>.msi` with the signed manifest inside and attaches it. Runbook rewritten around the MSI (manual fallback kept).
+- Tests: Go setup/teardown (current made, enrol once, repair is safe, no code → enrol later, code without URL refused, failed enrolment fails before the service, outside versions refused, teardown removes service/current/staged versions and keeps its own version and unrelated folders, twice harmless) on Windows with real junctions; actionlint; MSI itself verified in CI.
 
 ### 2026-11-25 11:00: Starter-pack Excel and Word skills imported (M7, ADR-070)
 - Changed: downloaded `ivangdavila/excel-xlsx` and `ivangdavila/word-docx` 1.0.2 from ClawHub's API (`/api/v1/skills/<slug>`, `/versions/1.0.2`, `/api/v1/download`, as OpenClaw 2026.11.6's own client calls them) into an empty scratch folder, nothing executed; every file matched ClawHub's published sha256; vendored as `skills/vendored/ivangdavila__<slug>/` with `SKILL.md` adapted (name = slug, `metadata.openclaw` win32, Excel gated on `python`/`py`, ClawHub install/star/sync lines removed, Off Manual rules added) and `PROVENANCE.md` (source, hashes, licence, changes, checklist); lock entries `pending`. `awspace/pdf` not imported (licence).

@@ -240,6 +240,19 @@ jobs:
           node tools/release/cli.mjs notes "$VERSION" > out/RELEASE_NOTES.md
           (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
+      - name: MSI for first installs (WiX 7; OSMF EULA accepted on Dwahnil's instruction, ADR-071)
+        run: |
+          set -euo pipefail
+          dotnet tool install --global wix --version 7.0.1
+          WIX="$USERPROFILE/.dotnet/tools/wix.exe"
+          "$WIX" eula accept wix7
+          # The installed version folder carries the signed manifest, like a staged release (ADR-062).
+          cp out/manifest.json out/manifest.sig.json payload/
+          MSI_VERSION="${VERSION%%-*}" # MSI versions are numeric x.y.z
+          "$WIX" build installer/OffManual.wxs -arch x64 -d "Version=$MSI_VERSION"             -d "PayloadDir=$(cygpath -w "$PWD/payload")" -o "out/OffManual-$VERSION.msi"
+          rm -f out/SHA256SUMS.txt
+          (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ steps.meta.outputs.version }}
@@ -269,7 +282,7 @@ jobs:
           set -euo pipefail
           gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --title "Off Manual Desk $VERSION" \
             --notes-file out/RELEASE_NOTES.md --prerelease \
-            "out/offmanual-$VERSION.zip" out/manifest.json out/manifest.sig.json out/SHA256SUMS.txt
+            "out/offmanual-$VERSION.zip" "out/OffManual-$VERSION.msi" out/manifest.json out/manifest.sig.json out/SHA256SUMS.txt
       - name: Release store (R2/S3)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.RELEASE_STORE_ACCESS_KEY_ID }}

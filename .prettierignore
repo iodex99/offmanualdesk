@@ -10,3 +10,4 @@ skills/vendored
 # Markdown memory files are hand-formatted; tables would be reflowed.
 *.md
 release/openclaw/package-lock.json
+installer/*.wxs

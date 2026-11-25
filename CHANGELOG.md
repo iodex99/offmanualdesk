@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- MSI installer: one command installs Off Manual on the firm's server, enrols it, starts the service, and sets up Desk autostart and Explorer's "Ask Off Manual"; uninstall removes it cleanly.
 - Excel and Word skills from the ClawHub starter pack, adapted and pinned in the repo (pending review). The PDF skill was not taken because its licence is proprietary.
 - Approve on Telegram: after today's authenticator code, Desk can be unlocked from the linked phone instead of the PIN.
 - The nine Off Manual skills (client directory, compliance calendar, ledger scrutiny, GSTR-2B vs books, 26AS/AIS vs books, TDS checks, notice reply draft, document chaser, Tally MIS) are approved and ship with the next release.

@@ -19,7 +19,7 @@ Trigger: tag `v*.*.*` (normal release), or *Run workflow* with an existing tag, 
 7. Authenticode-sign every `.exe`/`.dll` via Azure Trusted Signing when its secrets exist; otherwise warn "UNSIGNED (ring 0 only)".
 8. `sign-manifest build`: deterministic `offmanual-<v>.zip` of the payload + `manifest.json` (ADR-015: schema, version, commit, createdAt, severity, deadlineAt for security releases, minAgentVersion, openclawVersion, nodeVersion, keyId, payload name/SHA-256/size, every file's path/SHA-256/size). `sign-manifest sign` (key only from env `RELEASE_SIGNING_KEY`) → `manifest.sig.json`; `sign-manifest verify` against the committed `apps/server-agent/pkg/manifest/keys/<keyId>.pub`, including a test extraction.
 9. Publish (not on dry runs): GitHub pre-release with zip, manifest, signature, `SHA256SUMS.txt`, notes from CHANGELOG; upload to the release store if configured (ADR-016); `POST <console>/api/releases` (ring 0) if configured *(M8: endpoint)*.
-10. MSI for first installs *(M8)*.
+10. MSI for first installs (built, ADR-071): `installer/OffManual.wxs` with WiX 7.0.1; the signed manifest is copied into the payload so the installed version folder looks like a staged release; `OffManual-<version>.msi` is attached to the GitHub release.
 
 ## 2. Rings
 
