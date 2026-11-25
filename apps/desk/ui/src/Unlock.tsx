@@ -7,6 +7,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { isAgentError, type AgentCall } from "./agent";
 import { Assistant, type StartGateway } from "./Assistant";
 import { useIdleLock, type ReadIdle } from "./idleLock";
+import { TelegramApprove } from "./TelegramApprove";
 
 interface Hello {
   known: boolean;
@@ -21,6 +22,8 @@ interface Hello {
   servicePaused?: boolean;
   pausedMessage?: string;
   notice?: string;
+  /** "Approve on Telegram" may stand in for the PIN now (ADR-068). */
+  telegramApprove?: boolean;
 }
 
 type Screen =
@@ -304,6 +307,7 @@ export function Unlock({
           <button type="button" onClick={() => setScreen({ kind: "unlock", usePin: false })}>
             Use today's code instead
           </button>
+          {hello?.telegramApprove && <TelegramApprove agent={agent} onApproved={() => void refresh()} />}
           {error && <p role="alert">{error}</p>}
         </form>
       ) : (

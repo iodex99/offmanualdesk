@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -20,14 +21,30 @@ import (
 const asha = "S-1-5-21-1-2-3-1101"
 
 type sent struct {
-	mu   sync.Mutex
-	msgs []string
+	mu      sync.Mutex
+	msgs    []string
+	answers []string
+	edits   []string
 }
 
 func (s *sent) SendMessage(_ context.Context, _ int64, text string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.msgs = append(s.msgs, text)
+	return nil
+}
+
+func (s *sent) AnswerCallback(_ context.Context, _ string, text string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.answers = append(s.answers, text)
+	return nil
+}
+
+func (s *sent) EditMessageText(_ context.Context, _, _ int64, text string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.edits = append(s.edits, text)
 	return nil
 }
 
@@ -294,5 +311,84 @@ func TestPausedLicenceRepliesPlainly(t *testing.T) {
 	e.r.Handle(context.Background(), msg(777, "hi"))
 	if !relayed {
 		t.Fatal("not relayed after the pause ended")
+	}
+}
+
+func TestCallbackDecisions(t *testing.T) {
+	e := newEnv(t)
+	var got []string
+	e.r.Hooks.Decide = func(_ context.Context, from int64, id string, approve bool) string {
+		got = append(got, fmt.Sprintf("%d %s %v", from, id, approve))
+		if approve {
+			return "Approved."
+		}
+		return "Denied."
+	}
+	id := strings.Repeat("ab", 16)
+	tap := func(from int64, data string, bot bool) {
+		e.r.Handle(context.Background(), Update{UpdateID: 2, CallbackQuery: &CallbackQuery{
+			ID: "cb1", From: &User{ID: from, IsBot: bot}, Data: data,
+			Message: &Message{MessageID: 9, Chat: Chat{ID: from, Type: "private"}},
+		}})
+	}
+	tap(777, "ua:"+id, false)
+	tap(777, "ud:"+id, false)
+	tap(777, "ua:not-an-id", false) // junk data never reaches the agent
+	tap(777, "ua:"+id, true)        // bots are ignored
+	if want := []string{"777 " + id + " true", "777 " + id + " false"}; strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("decisions %v", got)
+	}
+	if strings.Join(e.out.answers, "|") != "Approved.|Denied.|This button doesn't do anything any more." {
+		t.Fatalf("answers %v", e.out.answers)
+	}
+	if len(e.out.edits) != 3 || e.out.edits[0] != "Approved." {
+		t.Fatalf("edits %v", e.out.edits)
+	}
+}
+
+func TestBotApprovalCalls(t *testing.T) {
+	var calls []string
+	var bodies []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var b map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&b)
+		calls = append(calls, r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:])
+		bodies = append(bodies, b)
+		_, _ = w.Write([]byte(`{"ok":true,"result":[]}`))
+	}))
+	defer srv.Close()
+	b := &Bot{BaseURL: srv.URL + "/botSECRET-TOKEN", HTTP: srv.Client()}
+	ctx := context.Background()
+	id := strings.Repeat("0f", 16)
+	if err := b.SendApproval(ctx, 777, "Unlock?", id); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.AnswerCallback(ctx, "cb1", strings.Repeat("x", 250)); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.EditMessageText(ctx, 777, 9, "Approved."); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.GetUpdates(ctx, 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(calls, ",") != "sendMessage,answerCallbackQuery,editMessageText,getUpdates" {
+		t.Fatalf("calls %v", calls)
+	}
+	kb := bodies[0]["reply_markup"].(map[string]any)["inline_keyboard"].([]any)[0].([]any)
+	if kb[0].(map[string]any)["callback_data"] != "ua:"+id || kb[1].(map[string]any)["callback_data"] != "ud:"+id {
+		t.Fatalf("buttons %v", kb)
+	}
+	if len("ua:"+id) > 64 {
+		t.Fatal("callback data over the Bot API's 64-byte limit")
+	}
+	if n := len([]rune(bodies[1]["text"].(string))); n != 200 {
+		t.Fatalf("answer text %d characters, want ≤ 200", n)
+	}
+	if kb := bodies[2]["reply_markup"].(map[string]any)["inline_keyboard"].([]any); len(kb) != 0 {
+		t.Fatal("edit must remove the buttons")
+	}
+	if au := bodies[3]["allowed_updates"].([]any); len(au) != 2 || au[1] != "callback_query" {
+		t.Fatalf("allowed_updates %v", au)
 	}
 }

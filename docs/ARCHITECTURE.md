@@ -54,6 +54,7 @@ Status markers: **[V]** verified in lab or source, **[A]** assumption pending `L
 | `telegram.linkStart` | Desk | One-time deep-link code |
 | `telegram.subscribe` | channel-relay | Stream inbound messages for this SID |
 | `telegram.send` | channel-relay | Outbound message (policy-checked) |
+| `unlock.telegramStart` / `unlock.telegramStatus` | Desk | Approve on Telegram in place of the PIN (ADR-068) |
 | `access.denials` / `access.request` / `access.list` / `access.resolve` | Desk | Caller's recent Access Denied (from the local audit); note to the firm's admins about one of them (path copied from the audit row, never from the body); list (admins: everyone's); admins close as done/declined. All local (ADR-058) |
 | `notices.list` / `notices.ack` | Desk | Update, billing, admin notices |
 | `update.status` / `update.report` | Desk | Staged version (restart-to-update); the release this person's gateway runs, sent in the heartbeat as `employeeVersions` so the firm page shows who is still on an older one (ADR-063) |
@@ -168,7 +169,7 @@ C:\ProgramData\OffManual\     DACL D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA): SYSTEM
 5. Unlinked senders get one "not linked" reply; nothing else.
 
 ### F8 Unlock from Telegram
-- Desk "Approve on Telegram" → bot sends inline Approve/Deny → callback → `lock.set(unlocked)` for Desk. **Not built: Proposed ADR-068** (as written it would replace the daily TOTP code; awaiting Dwahnil's decision, recommended variant: replace the PIN only).
+- Desk "Approve on Telegram" (PIN screen only) → `unlock.telegramStart` → bot sends Approve/Deny to the linked account → callback → Server Agent re-checks (day code in force, PIN still allowed, no lockout, Telegram on, same linked account, ≤ 60 s, once) → Desk lock cleared like a PIN; Desk polls `unlock.telegramStatus` (ADR-068, option b). It never replaces the daily authenticator code.
 - Away: `/unlock 123456` → TOTP check → Telegram-only unlock for the firm's window.
 
 ### F9 Update

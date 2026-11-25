@@ -34,6 +34,8 @@ opens what your Windows account can open, and anything that can't be undone wait
 
 - **Files stay in the office.** Your files, chats and prompts never go to Off Manual. Only numbers (how many
   questions, which version) do.
+- **Approve on Telegram**: once you've entered today's code, Desk can unlock after a break with a tap on your
+  phone instead of your PIN (if your Telegram is linked). Only tap Approve if you asked for it just then.
 - **Settings**: choose the left or right side of the screen and, if you like, a shorter lock time than your
   firm's limit.
 - **Open Off Manual from anywhere**: press **Ctrl+Alt+O**. Desk sits on the right side of your screen; drag it

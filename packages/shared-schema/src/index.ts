@@ -70,6 +70,8 @@ export const PIPE_METHODS = [
   "notices.ack",
   "update.status",
   "update.report",
+  "unlock.telegramStart",
+  "unlock.telegramStatus",
   "update.switch",
   "support.bundle",
   "support.submit",

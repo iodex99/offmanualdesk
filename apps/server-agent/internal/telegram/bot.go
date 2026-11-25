@@ -43,8 +43,19 @@ type Message struct {
 
 // Update is one item from getUpdates.
 type Update struct {
-	UpdateID int64    `json:"update_id"`
-	Message  *Message `json:"message"`
+	UpdateID      int64          `json:"update_id"`
+	Message       *Message       `json:"message"`
+	CallbackQuery *CallbackQuery `json:"callback_query,omitempty"`
+}
+
+// CallbackQuery is a tap on an inline button (Bot API: id, from, message as
+// MaybeInaccessibleMessage, data ≤ 64 bytes). Chat and message_id are present
+// even when the message is no longer accessible.
+type CallbackQuery struct {
+	ID      string   `json:"id"`
+	From    *User    `json:"from"`
+	Message *Message `json:"message,omitempty"`
+	Data    string   `json:"data"`
 }
 
 // Bot is a minimal Bot API client.
@@ -100,7 +111,7 @@ func (b *Bot) call(ctx context.Context, method string, params any, out any) erro
 func (b *Bot) GetUpdates(ctx context.Context, offset int64, timeoutSec int) ([]Update, error) {
 	var ups []Update
 	err := b.call(ctx, "getUpdates", map[string]any{
-		"offset": offset, "timeout": timeoutSec, "allowed_updates": []string{"message"},
+		"offset": offset, "timeout": timeoutSec, "allowed_updates": []string{"message", "callback_query"},
 	}, &ups)
 	return ups, err
 }
@@ -108,6 +119,36 @@ func (b *Bot) GetUpdates(ctx context.Context, offset int64, timeoutSec int) ([]U
 // SendMessage sends plain text (no parse mode, so nothing is interpreted as markup).
 func (b *Bot) SendMessage(ctx context.Context, chatID int64, text string) error {
 	return b.call(ctx, "sendMessage", map[string]any{"chat_id": chatID, "text": text}, nil)
+}
+
+// SendApproval sends text with Approve and Deny buttons; callback data is
+// "ua:<id>" / "ud:<id>" (≤ 64 bytes as the Bot API requires).
+func (b *Bot) SendApproval(ctx context.Context, chatID int64, text, requestID string) error {
+	return b.call(ctx, "sendMessage", map[string]any{
+		"chat_id": chatID,
+		"text":    text,
+		"reply_markup": map[string]any{"inline_keyboard": [][]map[string]string{{
+			{"text": "Approve", "callback_data": "ua:" + requestID},
+			{"text": "Deny", "callback_data": "ud:" + requestID},
+		}}},
+	}, nil)
+}
+
+// AnswerCallback stops the button's spinner and shows a short note (≤ 200 characters).
+func (b *Bot) AnswerCallback(ctx context.Context, callbackID, text string) error {
+	if r := []rune(text); len(r) > 200 {
+		text = string(r[:200])
+	}
+	return b.call(ctx, "answerCallbackQuery", map[string]any{"callback_query_id": callbackID, "text": text}, nil)
+}
+
+// EditMessageText replaces a bot message's text and removes its buttons (an empty
+// inline keyboard is sent explicitly).
+func (b *Bot) EditMessageText(ctx context.Context, chatID, messageID int64, text string) error {
+	return b.call(ctx, "editMessageText", map[string]any{
+		"chat_id": chatID, "message_id": messageID, "text": text,
+		"reply_markup": map[string]any{"inline_keyboard": [][]map[string]string{}},
+	}, nil)
 }
 
 // Chunks splits text into Telegram-sized parts on rune boundaries, preferring newlines.

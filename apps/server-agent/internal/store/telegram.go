@@ -77,3 +77,13 @@ func (s *Store) LeaseTokenProtected(ctx context.Context, sid string) ([]byte, er
 	}
 	return b, err
 }
+
+// TelegramUserForSID returns the Telegram user linked to sid (ErrNotFound if none).
+func (s *Store) TelegramUserForSID(ctx context.Context, sid string) (int64, error) {
+	var id int64
+	err := s.db.QueryRowContext(ctx, `SELECT telegram_user_id FROM telegram_links WHERE sid = ?`, sid).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	}
+	return id, err
+}

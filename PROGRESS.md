@@ -25,7 +25,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
 - [ ] **MSI tool licence (M8)**: WiX v4 is out of support; v7 (current) requires accepting the Open Source Maintenance Fee EULA, and organisations with annual revenue ≥ US$10,000 must sponsor `wixtoolset` on GitHub (fee is "not a license fee"; non-payment can suspend access to the binaries; building WiX from its MS-RL source avoids the EULA). Decide: (a) accept the EULA and sponsor if over the threshold, (b) build WiX from source in CI, or (c) another installer. Until then the MSI isn't built and the install runbook's manual steps apply.
-- [ ] **Telegram Approve for Desk unlock (ADR-068, Proposed)**: F8's button would replace the daily TOTP code, which weakens rule 9. Choose (a) don't build, or (b) allow it only in place of the PIN after the day's authenticator unlock (recommended if wanted). Nothing is built until you say.
+- [x] **Telegram Approve for Desk unlock**: decided 25-11-2026, option (b): in place of the PIN only, after the day's authenticator unlock (ADR-068, built).
 - [ ] Later (M8): Azure Trusted Signing account (or code-signing certificate) as GitHub secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`; release store (ADR-016) secrets `RELEASE_STORE_*`
 - [ ] Later (M9): Razorpay test keys (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` in Vercel), a webhook in the Razorpay dashboard to `<console>/api/razorpay/webhook` for `payment_link.paid` with its secret as `RAZORPAY_WEBHOOK_SECRET`; Off Manual GSTIN, state, SAC code confirmed with the CA
 
@@ -105,7 +105,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Server Agent long-polls the firm bot (Bot API getUpdates/sendMessage), routes by linked Telegram user ID, persists the offset, ignores groups/bots, text-only by default, 4096-char chunking (`internal/telegram`)
 - [x] Relay: Server Agent as gateway client (ADR-023/040) through `internal/gateway`; only to a gateway Desk started (fresh lease), else "Open Desk" (ADR-026)
 - [x] Link via deep link one-time code (`telegram.linkStart`, hashed, 10 min, single use; offboarding unlinks); Desk Telegram tab shows the link as a QR code for the phone (`TelegramLink.tsx`)
-- [x] `/unlock <code>` opens a Telegram-only window (firm `telegram_unlock_max_min`, default 60); [ ] inline Approve button for Desk unlock: **Proposed ADR-068, waiting on Dwahnil** (would change an unlock factor)
+- [x] `/unlock <code>` opens a Telegram-only window (firm `telegram_unlock_max_min`, default 60); inline Approve button for Desk unlock in place of the PIN only, after the day's authenticator code (ADR-068, Dwahnil's choice (b))
 - [ ] ~~Wake stopped gateway on message~~ out of v1 if ADR-026 is accepted
 
 ### M7 Skills
@@ -163,6 +163,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-25 10:00: Approve on Telegram in place of the PIN (M6, ADR-068 accepted)
+- Changed: Server Agent `internal/agent/tgapprove.go` (start/status pipe methods, TelegramDecision; all rules re-checked at the tap; in memory, 60 s, single use, newest wins, 5/hour), store `TelegramUserForSID`, `session.hello.telegramApprove`; Telegram `Bot.SendApproval`/`AnswerCallback`/`EditMessageText`, `allowed_updates` adds `callback_query`, router handles `ua:`/`ud:` callbacks (Bot API 10.5 fields verified); app wires the prompter; shared IPC list + Desk allowlist; Desk `TelegramApprove.tsx` on the PIN screen only.
+- Tests: Go (approve unlocks like a PIN; other Telegram account refused; single use; deny; expiry; newer request wins; no day code → not offered/refused; three wrong PINs → refused even mid-request; Telegram off; not linked; switched off mid-request; 5/hour; send failure; bad id; extra field; not offered without a bot; router callbacks incl. junk data and bots; bot request shapes, 64-byte callback data, 200-char answer, buttons removed, allowed_updates); desk 78/78 (waits then approved, denied, gives up, plain reason, offered only when hello says so, never on the daily-code screen); `pnpm run check` green.
 
 ### 2026-11-25 09:00: Skills approved
 - Changed: on Dwahnil's instruction, all 9 skills set to `approved` (reviewer Dwahnil, 2026-11-25) in `skills/registry.lock.json`; the release workflow now ships them.

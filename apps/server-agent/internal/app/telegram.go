@@ -128,7 +128,12 @@ func startTelegram(ctx context.Context, st *store.Store, p secrets.Protector, ag
 		Unlock: ag.TelegramUnlock,
 		Active: ag.ActiveEmployee,
 		Paused: ag.PausedMessage,
+		Decide: ag.TelegramDecision,
 	}}
+	// "Approve on Telegram" in place of the PIN (ADR-068): private chat ID = user ID.
+	ag.SetTelegramPrompter(func(ctx context.Context, userID int64, requestID, text string) error {
+		return bot.SendApproval(ctx, userID, text, requestID)
+	})
 	log.Info("telegram router started")
 	go r.Run(ctx, bot)
 }

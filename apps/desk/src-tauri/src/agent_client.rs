@@ -43,6 +43,8 @@ pub const DESK_METHODS: &[&str] = &[
     "notices.ack",
     "update.status",
     "update.report",
+    "unlock.telegramStart",
+    "unlock.telegramStatus",
     "update.switch",
     "support.bundle",
     "support.submit",

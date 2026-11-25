@@ -42,11 +42,15 @@ type Hooks struct {
 	Active func(ctx context.Context, sid string) bool
 	// Paused returns a plain message when the firm's licence stops employees (BILLING §6), else "".
 	Paused func(ctx context.Context) string
+	// Decide handles Approve/Deny for a Desk unlock request (ADR-068) and returns a plain message.
+	Decide func(ctx context.Context, telegramUserID int64, requestID string, approve bool) string
 }
 
 // Sender is the part of Bot the router uses (a fake in tests).
 type Sender interface {
 	SendMessage(ctx context.Context, chatID int64, text string) error
+	AnswerCallback(ctx context.Context, callbackID, text string) error
+	EditMessageText(ctx context.Context, chatID, messageID int64, text string) error
 }
 
 // Router handles updates.
@@ -60,10 +64,16 @@ type Router struct {
 var (
 	startRe  = regexp.MustCompile(`^/start(?:@\w+)?(?:\s+([A-Za-z0-9_-]{6,64}))?\s*$`)
 	unlockRe = regexp.MustCompile(`^/unlock(?:@\w+)?(?:\s+(\d{6}))?\s*$`)
+	// Approve/Deny buttons for a Desk unlock request (ADR-068).
+	decisionRe = regexp.MustCompile(`^u([ad]):([0-9a-f]{32})$`)
 )
 
 // Handle processes one update. Message text is never logged (SECURITY §4).
 func (r *Router) Handle(ctx context.Context, u Update) {
+	if u.CallbackQuery != nil {
+		r.handleCallback(ctx, u.CallbackQuery)
+		return
+	}
 	m := u.Message
 	if m == nil || m.From == nil || m.From.IsBot || m.Chat.Type != "private" {
 		return // groups and channels are ignored: employees talk to the bot one to one
@@ -196,6 +206,26 @@ func (r *Router) Run(ctx context.Context, p Poller) {
 			r.Handle(ctx, u)
 			offset = u.UpdateID + 1
 			_ = r.Store.SetMeta(ctx, "telegram_offset", FormatOffset(offset))
+		}
+	}
+}
+
+// handleCallback answers an Approve/Deny tap. Only the employee's linked Telegram
+// account can approve (the agent checks the link and every unlock rule again).
+func (r *Router) handleCallback(ctx context.Context, q *CallbackQuery) {
+	if q.From == nil || q.From.IsBot || q.ID == "" {
+		return
+	}
+	msg := "This button doesn't do anything any more."
+	if m := decisionRe.FindStringSubmatch(q.Data); m != nil && r.Hooks.Decide != nil {
+		msg = r.Hooks.Decide(ctx, q.From.ID, m[2], m[1] == "a")
+	}
+	if err := r.Send.AnswerCallback(ctx, q.ID, msg); err != nil {
+		r.Log.Warn("telegram answer failed", "error", err.Error())
+	}
+	if q.Message != nil && q.Message.Chat.Type == "private" {
+		if err := r.Send.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, msg); err != nil {
+			r.Log.Warn("telegram edit failed", "error", err.Error())
 		}
 	}
 }

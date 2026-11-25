@@ -263,3 +263,25 @@ describe("offboarding", () => {
     }
   });
 });
+
+describe("Approve on Telegram on the PIN screen (ADR-068)", () => {
+  it("is offered only when the Server Agent says so", async () => {
+    const offered = fakeAgent({ "session.hello": [{ ...base, telegramApprove: true }] });
+    render(<Unlock agent={offered.agent} startGateway={async () => ({ running: true, port: 18800 })} />);
+    expect(await screen.findByText("Approve on Telegram")).toBeTruthy();
+    cleanup();
+    const notOffered = fakeAgent({ "session.hello": [{ ...base }] });
+    render(<Unlock agent={notOffered.agent} startGateway={async () => ({ running: true, port: 18800 })} />);
+    expect(await screen.findByText(/Enter your PIN to unlock/)).toBeTruthy();
+    expect(screen.queryByText("Approve on Telegram")).toBeNull();
+  });
+
+  it("is never offered on the daily-code screen", async () => {
+    const { agent } = fakeAgent({
+      "session.hello": [{ ...base, dayUnlocked: false, telegramApprove: true }],
+    });
+    render(<Unlock agent={agent} startGateway={async () => ({ running: true, port: 18800 })} />);
+    expect(await screen.findByText("Enter today's code from your authenticator app.")).toBeTruthy();
+    expect(screen.queryByText("Approve on Telegram")).toBeNull();
+  });
+});

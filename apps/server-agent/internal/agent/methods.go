@@ -32,6 +32,8 @@ type helloResult struct {
 	Admin bool `json:"admin,omitempty"`
 	// TaskRole: which task buttons Desk shows first (ADR-061).
 	TaskRole string `json:"taskRole,omitempty"`
+	// TelegramApprove: Desk may offer "Approve on Telegram" instead of the PIN now (ADR-068).
+	TelegramApprove bool `json:"telegramApprove,omitempty"`
 }
 
 func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any, error) {
@@ -57,7 +59,7 @@ func (a *Agent) hello(ctx context.Context, c rpc.Caller, p json.RawMessage) (any
 	if err != nil {
 		return nil, err
 	}
-	return helloResult{Known: true, Admin: admin, TaskRole: role, Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
+	return helloResult{Known: true, Admin: admin, TaskRole: role, TelegramApprove: a.TelegramApproveOffered(ctx, e.SID), Name: e.Name, Status: e.Status, TOTPEnroled: !e.TOTPEnrolledAt.IsZero(),
 		PINSet: e.PINHash != "", Locked: st.Locked, DayUnlocked: st.DayUnlocked, LockedUntil: st.LockedUntil, Packs: e.Packs,
 		ServicePaused: st.ServicePaused, PausedMessage: st.PausedMessage, Notice: st.Notice}, nil
 }
