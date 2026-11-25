@@ -165,7 +165,8 @@ jobs:
         shell: pwsh
         run: |
           $target = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).target_directory
-          $exe = Get-ChildItem (Join-Path $target 'debug/deps') -Filter 'offmanual_desk-*.exe' | Select-Object -First 1
+          # Newer Cargo puts test binaries under debug/build/<pkg>/<hash>/out, older under debug/deps.
+          $exe = Get-ChildItem (Join-Path $target 'debug') -Recurse -Filter 'offmanual_desk-*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $exe) { throw 'test binary not found' }
           $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
           $text = [System.Text.Encoding]::ASCII.GetString($bytes)
