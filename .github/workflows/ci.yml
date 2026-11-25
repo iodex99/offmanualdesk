@@ -164,7 +164,8 @@ jobs:
         working-directory: apps/desk/src-tauri
         shell: pwsh
         run: |
-          $exe = Get-ChildItem target/debug/deps -Filter 'offmanual_desk-*.exe' | Select-Object -First 1
+          $target = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).target_directory
+          $exe = Get-ChildItem (Join-Path $target 'debug/deps') -Filter 'offmanual_desk-*.exe' | Select-Object -First 1
           if (-not $exe) { throw 'test binary not found' }
           $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
           $text = [System.Text.Encoding]::ASCII.GetString($bytes)
