@@ -10,21 +10,21 @@
 ## Changes made
 
 1. `name` set to the folder slug `excel-xlsx` (Desk shows skills by name, ADR-069).
-2. `metadata.clawdbot` (no longer read by OpenClaw) replaced with `metadata.openclaw` and `os: ["win32"]` plus `requires.anyBins: ["python","py"]`, so the skill is only offered where Python exists (its code examples use pandas/openpyxl, which Off Manual does not ship today).
+2. `metadata.clawdbot` (no longer read by OpenClaw) replaced with `metadata.openclaw` and `os: ["win32"]` plus `requires.anyBins: ["python","py"]` (always satisfied: Off Manual ships Python 3.14 with openpyxl and pandas and puts it first on the assistant's PATH, ADR-072; the gate stays as a safety net).
 3. Removed the "Related Skills" and "Feedback" sections: they told the agent to run `clawhub install`/`star`/`sync`, and nothing is installed from ClawHub at runtime (rule 5).
 4. Added an "Off Manual" section: stay within the employee's Windows rights, stop on Access Denied, save results as new files with the firm's naming rule.
 
 ## Review checklist
 
-- Executes: nothing by itself (Markdown guidance). Its examples have the assistant run Python (`openpyxl`, `pandas`) through the `exec` tool; Off Manual doesn't ship Python, so the skill is gated on `python`/`py` being on PATH.
+- Executes: nothing by itself (Markdown guidance). Its examples have the assistant run Python (`openpyxl`, `pandas`) through the `exec` tool, using the Python Off Manual ships (ADR-072); the skill tells it never to `pip install`.
 - Network destinations: none. The URLs here and the frontmatter `homepage` are metadata, never fetched.
 - Files written: only what the employee asks for, saved as new files next to the source in folders they can open (added rule); Windows rights decide.
-- Binaries: Python 3 with `openpyxl`/`pandas`, only if the firm has it installed (not shipped by Off Manual).
+- Binaries: the bundled Python 3.14.10 with openpyxl 3.1.5 and pandas 3.1.1 (`release/python/python.lock.json`, hash-pinned).
 - Third parties: none.
 - Windows: OS set to `win32`; no POSIX-only tools.
 - Output naming and portals: added rule for the firm's naming; nothing is submitted anywhere.
 
 ## Review
 
-- Status: pending Dwahnil's approval in `skills/registry.lock.json`.
+- Status: approved by Dwahnil on 25-11-2026 (`skills/registry.lock.json`).
 - Reviewer notes: see the session log entry of 25-11-2026 in PROGRESS.md.

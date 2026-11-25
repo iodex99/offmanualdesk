@@ -88,19 +88,8 @@ func platformChecks(o Options) []Check {
 			return Pass, "Remote Desktop connections are allowed.", ""
 		}},
 		{ID: "webview2", Title: "Microsoft Edge WebView2", Run: func(context.Context) (Status, string, string) {
-			// Microsoft Learn "Distribute your app and the WebView2 Runtime": Evergreen runtime
-			// client GUID {F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}, value "pv".
-			for _, path := range []string{
-				`SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}`,
-				`SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}`,
-			} {
-				if k, err := registry.OpenKey(registry.LOCAL_MACHINE, path, registry.QUERY_VALUE); err == nil {
-					pv, _, err := k.GetStringValue("pv")
-					_ = k.Close()
-					if err == nil && pv != "" && pv != "0.0.0.0" {
-						return Pass, "WebView2 " + pv + " is installed.", ""
-					}
-				}
+			if pv := WebView2Version(); pv != "" {
+				return Pass, "WebView2 " + pv + " is installed.", ""
 			}
 			return Warn, "WebView2 is not installed for all users.", "The Off Manual installer adds it; or install the Evergreen WebView2 Runtime from Microsoft."
 		}},

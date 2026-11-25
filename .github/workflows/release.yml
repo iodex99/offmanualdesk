@@ -159,6 +159,9 @@ jobs:
           echo "openclaw --version: $got"
           case "$got" in *"$OPENCLAW_VERSION"*) ;; *) echo "::error::bundled OpenClaw did not report $OPENCLAW_VERSION"; exit 1;; esac
 
+      - name: Bundled Python for skills (pinned, hash-checked, smoke-tested; ADR-072)
+        run: python tools/release/bundle_python.py --out payload/python --smoke
+
       - name: Skills (verified against skills/registry.lock.json)
         run: |
           set -euo pipefail
@@ -240,6 +243,18 @@ jobs:
           node tools/release/cli.mjs notes "$VERSION" > out/RELEASE_NOTES.md
           (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
+      - name: WebView2 runtime installer for the MSI (must be signed by Microsoft; ADR-072)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $f = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
+          Invoke-WebRequest -UseBasicParsing -Uri 'https://go.microsoft.com/fwlink/?linkid=2124701' -OutFile $f
+          $s = Get-AuthenticodeSignature $f
+          if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
+            throw "WebView2 installer signature: $($s.Status) $($s.SignerCertificate.Subject)"
+          }
+          Write-Host "WebView2 installer $((Get-Item $f).VersionInfo.ProductVersion), signed by Microsoft"
+          Add-Content $env:GITHUB_ENV "WV2_WIN=$f"
       - name: MSI for first installs (WiX 7; OSMF EULA accepted on Dwahnil's instruction, ADR-071)
         run: |
           set -euo pipefail
@@ -249,7 +264,7 @@ jobs:
           # The installed version folder carries the signed manifest, like a staged release (ADR-062).
           cp out/manifest.json out/manifest.sig.json payload/
           MSI_VERSION="${VERSION%%-*}" # MSI versions are numeric x.y.z
-          "$WIX" build installer/OffManual.wxs -arch x64 -d "Version=$MSI_VERSION"             -d "PayloadDir=$(cygpath -w "$PWD/payload")" -o "out/OffManual-$VERSION.msi"
+          "$WIX" build installer/OffManual.wxs -arch x64 -d "Version=$MSI_VERSION" -d "WebView2Installer=$WV2_WIN"             -d "PayloadDir=$(cygpath -w "$PWD/payload")" -o "out/OffManual-$VERSION.msi"
           rm -f out/SHA256SUMS.txt
           (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 

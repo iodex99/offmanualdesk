@@ -99,11 +99,13 @@ Long-lived connection for push (release available, policy changed): Server-Sent 
 
 ```
 C:\Program Files\OffManual\
+  redist\              WebView2 Evergreen Standalone Installer (MSI only; setup runs it when WebView2 is missing, ADR-072)
   current\              junction → versions\<semver>
   versions\<semver>\
     server-agent.exe
     desk\               Tauri app
     node\               pinned Node runtime
+    python\             pinned embeddable Python 3.14 + openpyxl/pandas for skills, first on the gateway's PATH (ADR-072)
     openclaw\           pinned OpenClaw
     plugins\guard\      openclaw.plugin.json, package.json, dist\ (channel-relay not shipped while ADR-023 is open)
     skills\             signed skill pack

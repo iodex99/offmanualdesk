@@ -23,8 +23,8 @@ Goal: a firm live in under 2 hours (M11). The MSI does the server setup in one s
    `CONSOLEURL`/`ENROLCODE` to enrol later with `server-agent.exe enroll`. If enrolment fails (wrong or expired
    code), the install rolls back; make a new code and run it again.
 2. **Pre-flight with the share**: `"C:\Program Files\OffManual\current\server-agent.exe" preflight -share \\server\Clients`.
-   Fix every FAIL (the line under each says how). If WebView2 is reported missing, install Microsoft's
-   Evergreen WebView2 runtime (not bundled in the MSI yet).
+   Fix every FAIL (the line under each says how). The firm installs nothing else: the MSI carries Node,
+   OpenClaw, Python with the Excel libraries, and Microsoft's WebView2 runtime (installed only if missing).
 3. **Telegram (optional)**: create the firm's bot with BotFather, then
    `server-agent.exe telegram-setup -username <FirmBot>` and paste the token when asked. Restart the
    `OffManualAgent` service.

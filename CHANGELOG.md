@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- Everything ships with Off Manual: Python with the Excel libraries for skills, Microsoft's WebView2 runtime (installed by the MSI only if missing), and Desk no longer needs the Visual C++ runtime. The Excel and Word skills are approved.
 - MSI installer: one command installs Off Manual on the firm's server, enrols it, starts the service, and sets up Desk autostart and Explorer's "Ask Off Manual"; uninstall removes it cleanly.
 - Excel and Word skills from the ClawHub starter pack, adapted and pinned in the repo (pending review). The PDF skill was not taken because its licence is proprietary.
 - Approve on Telegram: after today's authenticator code, Desk can be unlocked from the linked phone instead of the PIN.

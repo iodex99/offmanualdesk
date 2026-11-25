@@ -32,6 +32,7 @@
         <Directory Id="VersionsDir" Name="versions">
           <Directory Id="VersionDir" Name="$(var.Version)" />
         </Directory>
+        <Directory Id="RedistDir" Name="redist" />
       </Directory>
     </StandardDirectory>
 
@@ -40,7 +41,18 @@
       <ComponentRef Id="DeskAutostart" />
       <ComponentRef Id="ExplorerVerbFiles" />
       <ComponentRef Id="ExplorerVerbFolders" />
+      <?ifdef WebView2Installer ?>
+      <ComponentRef Id="WebView2Redist" />
+      <?endif ?>
     </Feature>
+
+    <?ifdef WebView2Installer ?>
+    <!-- Microsoft's Evergreen Standalone Installer; `server-agent setup` runs it only when
+         WebView2 is missing (ADR-072). Release builds pass -d WebView2Installer=<path>. -->
+    <Component Id="WebView2Redist" Directory="RedistDir">
+      <File Id="WebView2InstallerExe" Source="$(var.WebView2Installer)" Name="MicrosoftEdgeWebView2RuntimeInstallerX64.exe" KeyPath="yes" />
+    </Component>
+    <?endif ?>
 
     <ComponentGroup Id="Payload" Directory="VersionDir">
       <!-- Named so the custom actions can run it. -->

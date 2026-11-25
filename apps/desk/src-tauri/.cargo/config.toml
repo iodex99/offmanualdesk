@@ -1,0 +1,4 @@
+# Off Manual ships everything the firm needs (ADR-072): link the C runtime statically so
+# Desk doesn't need the Visual C++ Redistributable on the firm's server.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

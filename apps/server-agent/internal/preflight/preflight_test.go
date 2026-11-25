@@ -103,3 +103,19 @@ func TestStandardRunsOnThisMachine(t *testing.T) {
 		t.Logf("%-16s %-4s %s", res.ID, res.Status, res.Detail)
 	}
 }
+
+func TestPythonCheck(t *testing.T) {
+	if st, _, fix := PythonCheck(`Z:\nope\python.exe`).Run(context.Background()); st != Fail || fix == "" {
+		t.Fatalf("missing python: %s", st)
+	}
+	// A real bundle (tools/release/bundle_python.py) when one is available.
+	exe := os.Getenv("OFFMANUAL_TEST_PYTHON")
+	if exe == "" {
+		t.Skip("set OFFMANUAL_TEST_PYTHON to a bundled python.exe to run it")
+	}
+	st, detail, _ := PythonCheck(exe).Run(context.Background())
+	if st != Pass || !strings.Contains(detail, "Excel libraries") {
+		t.Fatalf("%s %s", st, detail)
+	}
+	t.Log(detail)
+}

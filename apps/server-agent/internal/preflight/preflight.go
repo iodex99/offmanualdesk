@@ -153,6 +153,21 @@ func NodeCheck(nodeExe string) Check {
 	}}
 }
 
+// PythonCheck runs the Python shipped for skills and imports the Excel libraries (ADR-072).
+func PythonCheck(pythonExe string) Check {
+	return Check{ID: "python_runtime", Title: "Bundled Python for skills", Run: func(ctx context.Context) (Status, string, string) {
+		if _, err := os.Stat(pythonExe); err != nil {
+			return Fail, "The bundled Python is missing.", "Reinstall Off Manual."
+		}
+		// The path is <install dir>\current\python\python.exe (admin-only Program Files), not user input.
+		out, err := exec.CommandContext(ctx, pythonExe, "-c", "import openpyxl, pandas, sys; print(sys.version.split()[0])").Output() //nolint:gosec // see above
+		if err != nil {
+			return Fail, "The bundled Python did not start or its Excel libraries are missing.", "Check antivirus logs for blocked files under Program Files\\OffManual, then reinstall."
+		}
+		return Pass, "Python " + strings.TrimSpace(string(out)) + " with the Excel libraries runs.", ""
+	}}
+}
+
 // HTTPSCheck confirms outbound HTTPS to url and measures clock skew from the
 // server's Date header.
 func HTTPSCheck(id, title, url string, client *http.Client) Check {
@@ -194,7 +209,8 @@ func hostOf(u string) string {
 // Standard returns the full check list for this platform.
 func Standard(o Options) []Check {
 	checks := platformChecks(o)
-	checks = append(checks, NodeCheck(o.InstallDir+`\current\node\node.exe`), ShareCheck(o.Share))
+	checks = append(checks, NodeCheck(o.InstallDir+`\current\node\node.exe`),
+		PythonCheck(o.InstallDir+`\current\python\python.exe`), ShareCheck(o.Share))
 	for i, u := range o.URLs {
 		checks = append(checks, HTTPSCheck(fmt.Sprintf("https_%d", i+1), "Internet access to "+hostOf(u), u, nil))
 	}

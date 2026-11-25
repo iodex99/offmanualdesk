@@ -26,5 +26,5 @@
 
 ## Review
 
-- Status: pending Dwahnil's approval in `skills/registry.lock.json`.
+- Status: approved by Dwahnil on 25-11-2026 (`skills/registry.lock.json`).
 - Reviewer notes: see the session log entry of 25-11-2026 in PROGRESS.md.

@@ -95,4 +95,4 @@ Use when the main artifact is a Microsoft Excel workbook or spreadsheet file, es
 
 - Work only on files in folders the employee can already open; if Windows says access is denied, stop and say so. Never copy a file elsewhere to get around it.
 - Save results as a new file next to the source with the firm's naming rule (`<Task>_<Client>_<Period>`); don't overwrite the original unless the employee asked for exactly that.
-- Python with `openpyxl` (and `pandas` for analysis) must be installed on the server for the code examples; this skill is only offered where Python is on PATH.
+- Python 3.14 with `openpyxl` and `pandas` ships with Off Manual and is first on PATH as `python`; use it for the code examples. Nothing else needs installing, and never run `pip install`.

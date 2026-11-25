@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "comment": "Bundled Python for skills (ADR-072). Pinned 25-11-2026: embeddable from python.org (python.exe signed by the Python Software Foundation), wheels from PyPI with the sha256 PyPI publishes. Bump with care and re-run CI's Bundled Python job.",
+  "python": {
+    "version": "3.14.10",
+    "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-embed-amd64.zip",
+    "sha256": "90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159",
+    "pth": "python314._pth"
+  },
+  "wheels": [
+    {
+      "name": "openpyxl",
+      "version": "3.1.5",
+      "file": "openpyxl-3.1.5-py2.py3-none-any.whl",
+      "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2"
+    },
+    {
+      "name": "et-xmlfile",
+      "version": "2.0.0",
+      "file": "et_xmlfile-2.0.0-py3-none-any.whl",
+      "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"
+    },
+    {
+      "name": "pandas",
+      "version": "3.1.1",
+      "file": "pandas-3.1.1-cp314-cp314-win_amd64.whl",
+      "sha256": "fdd87cf4d59a3c45f17af6ec965d0bd10b9f15e1b5082d2da11a577439551bcd"
+    },
+    {
+      "name": "numpy",
+      "version": "2.5.5",
+      "file": "numpy-2.5.5-cp314-cp314-win_amd64.whl",
+      "sha256": "20145b11776d2f7570cd61351b156a51d3a341822282095baa819d87272bc710"
+    },
+    {
+      "name": "python-dateutil",
+      "version": "4.0.0",
+      "file": "python_dateutil-4.0.0-py3-none-any.whl",
+      "sha256": "a5e246f79eb80475e691bf93862cead98decd8a498cf53ba0516fcdc0f50dc1c"
+    },
+    {
+      "name": "tzdata",
+      "version": "2026.6",
+      "file": "tzdata-2026.6-py2.py3-none-any.whl",
+      "sha256": "0a10eec6e13ef16b627fabed9a5f2ba61a62b1c67f327305f4e7e412a70b4aec"
+    }
+  ]
+}

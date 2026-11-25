@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"offmanual/desk/server-agent/internal/app"
+	"offmanual/desk/server-agent/internal/preflight"
 	"offmanual/desk/server-agent/internal/update"
 	"offmanual/desk/server-agent/pkg/manifest"
 )
@@ -31,7 +32,13 @@ type setupDeps struct {
 	serviceInstalled func() bool
 	install          func(dataDir string) error
 	uninstall        func() error
+	// WebView2 (Desk's web engine) is installed by setup when missing (ADR-072).
+	webView2Version func() string
+	installWebView2 func(installer string) error
 }
+
+// WebView2Installer is the Evergreen Standalone Installer the MSI places in <root>\redist.
+const WebView2Installer = "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
 
 // layoutFromExe expects <root>\versions\<version>\server-agent.exe.
 func layoutFromExe(exe string) (root, version string, err error) {
@@ -56,6 +63,9 @@ func runSetup(ctx context.Context, d setupDeps, dataDir, consoleURL, code string
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "current → versions\\%s\n", version)
+	if err := ensureWebView2(d, root, out); err != nil {
+		return err
+	}
 	switch {
 	case code == "":
 		_, _ = fmt.Fprintln(out, "No enrolment code given; enrol later with: server-agent enroll -console URL CODE")
@@ -134,5 +144,29 @@ func realSetupDeps() (setupDeps, error) {
 		serviceInstalled: serviceInstalled,
 		install:          installService,
 		uninstall:        uninstallService,
+		webView2Version:  preflight.WebView2Version,
+		installWebView2:  installWebView2,
 	}, nil
+}
+
+// ensureWebView2 installs the bundled WebView2 runtime when the server doesn't have it.
+func ensureWebView2(d setupDeps, root string, out io.Writer) error {
+	if v := d.webView2Version(); v != "" {
+		_, _ = fmt.Fprintf(out, "WebView2 %s is installed.\n", v)
+		return nil
+	}
+	inst := filepath.Join(root, "redist", WebView2Installer)
+	if _, err := os.Stat(inst); err != nil {
+		_, _ = fmt.Fprintln(out, "WebView2 is not installed and this package doesn't include it; Desk needs it.")
+		return nil
+	}
+	if err := d.installWebView2(inst); err != nil {
+		return fmt.Errorf("installing WebView2: %w", err)
+	}
+	v := d.webView2Version()
+	if v == "" {
+		return errors.New("WebView2 still isn't installed after running its installer")
+	}
+	_, _ = fmt.Fprintf(out, "Installed WebView2 %s.\n", v)
+	return nil
 }

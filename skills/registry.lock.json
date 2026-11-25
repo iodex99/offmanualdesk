@@ -133,13 +133,13 @@
       "path": "vendored/ivangdavila__excel-xlsx",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
-        "PROVENANCE.md": "6610fe86defb8b7b7aa81ebec2883766c187f8b824ede885700704f97208545c",
-        "SKILL.md": "35852a17a5c7e92870f5d435f59c4a156ab895b4c4d215a5a8e2068cf3f9f912"
+        "PROVENANCE.md": "ebbb303c029d4501fc22d00d96c2869f8414a1921d948e967eff1411baf4620c",
+        "SKILL.md": "65bead38f18841174da6892532d086743d8ba9f0ab8055a05d02047f14f1e4c4"
       }
     },
     {
@@ -148,12 +148,12 @@
       "path": "vendored/ivangdavila__word-docx",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
-        "PROVENANCE.md": "d4e6806e2031cd58ff4f7bc508561f8fb1ae5777a91c47f65b314ef5c05ad943",
+        "PROVENANCE.md": "b81bb867d63699e231c42219ec427956605d5bc272be5cad184b20505ca6a815",
         "SKILL.md": "ca8077e7c9f75fb278253fc9d204ef481bbb7abc1b6f6f42dc071e6efd73f3e2"
       }
     }

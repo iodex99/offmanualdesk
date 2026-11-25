@@ -160,6 +160,16 @@ jobs:
       - name: cargo test
         working-directory: apps/desk/src-tauri
         run: cargo test --locked
+      - name: No Visual C++ runtime needed (static CRT, ADR-072)
+        working-directory: apps/desk/src-tauri
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem target/debug/deps -Filter 'offmanual_desk-*.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'test binary not found' }
+          $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
+          $text = [System.Text.Encoding]::ASCII.GetString($bytes)
+          if ($text -match '(?i)vcruntime140\.dll') { throw "$($exe.Name) still imports VCRUNTIME140.dll" }
+          Write-Host "$($exe.Name): no VCRUNTIME140.dll import"
 
   lab:
     name: Lab scripts parse (PowerShell 5.1)
@@ -234,7 +244,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          wix build installer/OffManual.wxs -arch x64 -d Version=0.0.1 -d "PayloadDir=$env:RUNNER_TEMP\payload" -o "$env:RUNNER_TEMP\OffManual-test.msi"
+          # A stand-in for the WebView2 installer: the runner already has WebView2, so setup must not run it.
+          Copy-Item "$env:RUNNER_TEMP\payload\server-agent.exe" "$env:RUNNER_TEMP\wv2-standin.exe"
+          wix build installer/OffManual.wxs -arch x64 -d Version=0.0.1 -d "PayloadDir=$env:RUNNER_TEMP\payload" -d "WebView2Installer=$env:RUNNER_TEMP\wv2-standin.exe" -o "$env:RUNNER_TEMP\OffManual-test.msi"
           if ($LASTEXITCODE -ne 0) { throw 'wix build failed' }
       - name: Install, check, uninstall
         shell: pwsh
@@ -257,6 +269,7 @@ jobs:
           if ($flag -notmatch 'FAILURE_ACTIONS_ON_NONCRASH_FAILURES\s*:\s*TRUE') { throw "recovery flag: $flag" }
           $run = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run').OffManualDesk
           if ($run -ne "`"$root\current\desk\offmanual-desk.exe`"") { throw "Run key: $run" }
+          if (-not (Test-Path (Join-Path $root 'redist\MicrosoftEdgeWebView2RuntimeInstallerX64.exe'))) { throw 'WebView2 installer not placed' }
           $verb = (Get-ItemProperty 'Registry::HKEY_LOCAL_MACHINE\Software\Classes\*\shell\OffManualDesk\command').'(default)'
           if ($verb -notmatch '--ask "%1"$') { throw "Explorer verb: $verb" }
           if (Select-String -Path "$env:RUNNER_TEMP\install.log" -Pattern 'ENROLCODE = ' -Quiet) { Write-Host 'note: ENROLCODE property appears in the log (empty here)' }
@@ -268,4 +281,17 @@ jobs:
           if ((Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run').OffManualDesk) { throw 'Run key still there' }
           if (Test-Path 'Registry::HKEY_LOCAL_MACHINE\Software\Classes\*\shell\OffManualDesk') { throw 'Explorer verb still there' }
           if (Test-Path (Join-Path $root 'versions\0.0.1\server-agent.exe')) { throw 'files still there' }
+          if (Test-Path (Join-Path $root 'redist\MicrosoftEdgeWebView2RuntimeInstallerX64.exe')) { throw 'WebView2 installer left behind' }
           Write-Host 'MSI install and uninstall verified.'
+
+  python:
+    name: Bundled Python (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Bundle pinned Python + openpyxl/pandas and smoke-test it (ADR-072)
+        shell: pwsh
+        run: |
+          python tools/release/bundle_python.py --out "$env:RUNNER_TEMP\python" --smoke
+          if ($LASTEXITCODE -ne 0) { throw 'bundled Python failed' }

@@ -19,6 +19,10 @@ type fakeSvc struct {
 	enrols               []string
 	enrolledAs           string
 	enrolErr             error
+	webview              string // installed WebView2 version
+	webviewRuns          int
+	webviewAfter         string // version after the installer runs
+	webviewErr           error
 }
 
 func installedTree(t *testing.T, versions ...string) (root string) {
@@ -53,6 +57,15 @@ func deps(root, v string, f *fakeSvc) setupDeps {
 		uninstall: func() error {
 			f.uninstalls++
 			f.installed = false
+			return nil
+		},
+		webView2Version: func() string { return f.webview },
+		installWebView2: func(string) error {
+			f.webviewRuns++
+			if f.webviewErr != nil {
+				return f.webviewErr
+			}
+			f.webview = f.webviewAfter
 			return nil
 		},
 	}
@@ -139,5 +152,45 @@ func TestTeardownRemovesServiceCurrentAndStagedVersions(t *testing.T) {
 	// Teardown twice is harmless.
 	if err := runTeardown(deps(root, "1.0.0", f), io.Discard); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSetupInstallsWebView2WhenMissing(t *testing.T) {
+	ctx := context.Background()
+	// Already there: the installer isn't run.
+	root := installedTree(t, "1.0.0")
+	f := &fakeSvc{webview: "130.0.1"}
+	if err := runSetup(ctx, deps(root, "1.0.0", f), "", "", "", io.Discard); err != nil || f.webviewRuns != 0 {
+		t.Fatalf("%v %+v", err, f)
+	}
+	// Missing and the package has no installer (test builds): setup carries on, says so.
+	f2 := &fakeSvc{}
+	var out bytes.Buffer
+	if err := runSetup(ctx, deps(installedTree(t, "1.0.0"), "1.0.0", f2), "", "", "", &out); err != nil || f2.webviewRuns != 0 {
+		t.Fatalf("%v %+v", err, f2)
+	}
+	if !strings.Contains(out.String(), "doesn't include it") {
+		t.Fatalf("output %q", out.String())
+	}
+	// Missing with the bundled installer: run once, then confirmed.
+	root3 := installedTree(t, "1.0.0")
+	_ = os.MkdirAll(filepath.Join(root3, "redist"), 0o755)
+	_ = os.WriteFile(filepath.Join(root3, "redist", WebView2Installer), []byte("x"), 0o600)
+	f3 := &fakeSvc{webviewAfter: "131.0.2"}
+	out.Reset()
+	if err := runSetup(ctx, deps(root3, "1.0.0", f3), "", "", "", &out); err != nil || f3.webviewRuns != 1 || f3.installs != 1 {
+		t.Fatalf("%v %+v", err, f3)
+	}
+	if !strings.Contains(out.String(), "Installed WebView2 131.0.2") {
+		t.Fatalf("output %q", out.String())
+	}
+	// Installer fails, or runs but nothing is installed: setup fails before the service.
+	f4 := &fakeSvc{webviewErr: errors.New("exit 1")}
+	if err := runSetup(ctx, deps(root3, "1.0.0", f4), "", "", "", io.Discard); err == nil || f4.installs != 0 {
+		t.Fatal("failed WebView2 install accepted")
+	}
+	f5 := &fakeSvc{}
+	if err := runSetup(ctx, deps(root3, "1.0.0", f5), "", "", "", io.Discard); err == nil || f5.installs != 0 {
+		t.Fatal("WebView2 still missing accepted")
 	}
 }

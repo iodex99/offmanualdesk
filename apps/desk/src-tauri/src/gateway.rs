@@ -33,6 +33,8 @@ pub struct Layout {
     pub state_dir: PathBuf,
     /// State snapshots taken before Doctor runs (ADR-025).
     pub backups_dir: PathBuf,
+    /// Python shipped with the release for skills (ADR-072).
+    pub python_dir: PathBuf,
 }
 
 impl Layout {
@@ -47,6 +49,7 @@ impl Layout {
             guard_dir: root.join("plugins").join("guard"),
             skills_dir: root.join("skills"),
             bridge: root.join("server-agent.exe"),
+            python_dir: root.join("python"),
             state_dir: local_app_data.join("OffManual").join("openclaw-state"),
             backups_dir: local_app_data.join("OffManual").join("backups"),
         }
@@ -110,6 +113,12 @@ pub fn environment(layout: &Layout, token: &str) -> Vec<(String, String)> {
         ("OPENCLAW_STATE_DIR".into(), path(&layout.state_dir)),
         ("OPENCLAW_CONFIG_PATH".into(), path(&layout.config_path())),
         ("OPENCLAW_GATEWAY_TOKEN".into(), token.to_string()),
+        // The release's own Python comes first, so skills never use whatever Python
+        // happens to be on the server; isolated, no bytecode writes, UTF-8 (ADR-072).
+        ("PATH".into(), path_with_python(layout)),
+        ("PYTHONNOUSERSITE".into(), "1".into()),
+        ("PYTHONDONTWRITEBYTECODE".into(), "1".into()),
+        ("PYTHONUTF8".into(), "1".into()),
         ("OPENCLAW_NO_RESPAWN".into(), "1".into()),
         ("OPENCLAW_NO_AUTO_UPDATE".into(), "1".into()),
         ("OPENCLAW_DISABLE_BONJOUR".into(), "1".into()),
@@ -238,6 +247,15 @@ pub fn doctor_arguments(layout: &Layout) -> Vec<String> {
         "--yes".into(),
         "--non-interactive".into(),
     ]
+}
+
+/// PATH with the bundled Python directory first (ADR-072).
+fn path_with_python(layout: &Layout) -> String {
+    let py = layout.python_dir.to_string_lossy().to_string();
+    match std::env::var("PATH") {
+        Ok(p) if !p.is_empty() => format!("{py};{p}"),
+        _ => py,
+    }
 }
 
 /// Doctor needs the state and config locations, not the gateway token.
@@ -464,6 +482,10 @@ mod tests {
         assert!(env
             .iter()
             .any(|(k, v)| k == "OPENCLAW_NO_RESPAWN" && v == "1"));
+        // Bundled Python first on PATH, isolated (ADR-072).
+        let path = &env.iter().find(|(k, _)| k == "PATH").unwrap().1;
+        assert!(path.starts_with(&l.python_dir.to_string_lossy().to_string()));
+        assert!(env.iter().any(|(k, v)| k == "PYTHONNOUSERSITE" && v == "1"));
         let args = arguments(&l, 18800);
         assert!(!args.iter().any(|a| a.contains("secret-token-123")));
         assert_eq!(

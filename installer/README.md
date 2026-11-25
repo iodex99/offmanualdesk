@@ -8,5 +8,8 @@ payload. Updates after the first install never use the MSI: the Server Agent sta
 
 The MSI: installs `versions\<v>\` and the `current` junction under `C:\Program Files\OffManual\`, runs `server-agent setup` (the `current` junction, optional enrolment
 with `CONSOLEURL` + `ENROLCODE`, service registered through `current`), sets Desk autostart for all users (HKLM Run)
-and the Explorer "Ask Off Manual" verb. Uninstall runs `server-agent teardown` first. Not yet: WebView2
-bootstrapper (pre-flight reports it), Authenticode-signing the MSI itself.
+and the Explorer "Ask Off Manual" verb. Uninstall runs `server-agent teardown` first. Everything ships inside (ADR-072): the
+payload carries Node, OpenClaw and the pinned Python with openpyxl/pandas; the MSI also carries Microsoft's WebView2
+Evergreen Standalone Installer in `redist\`, which `setup` runs (after checking its Microsoft signature) only when
+WebView2 is missing; Desk links the C runtime statically, so no Visual C++ Redistributable is needed. Not yet:
+Authenticode-signing the MSI itself.
