@@ -5,6 +5,7 @@ All notable changes. Format: Keep a Changelog; versions follow SemVer. Claude Co
 ## Unreleased
 
 ### Added
+- The nine Off Manual skills (client directory, compliance calendar, ledger scrutiny, GSTR-2B vs books, 26AS/AIS vs books, TDS checks, notice reply draft, document chaser, Tally MIS) are approved and ship with the next release.
 - Firm admins get an emailed receipt for every payment, with what is still to pay.
 - Desk Settings: dock on the left or right, and lock sooner than the firm's limit if you like.
 - Invoices get a Razorpay payment link ("Pay online" on the firm page); payments arrive by webhook and mark the invoice paid.

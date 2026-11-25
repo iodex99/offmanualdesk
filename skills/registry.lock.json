@@ -7,9 +7,9 @@
       "path": "offmanual/client-directory",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "c5621b578493edeb7e2cad8ec8d3f9f07f078c2a97fe8c7e625488f61def4c3f"
@@ -21,9 +21,9 @@
       "path": "offmanual/compliance-calendar",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "5a8ffa359139baae3730e8940e2f4dba9cbdd59788135805d88f3dd6653b7157"
@@ -35,9 +35,9 @@
       "path": "offmanual/ledger-scrutiny",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "d757f182ae35278b137c33b0c8d85739efd92b72fab647f017d33225dcbe77ab"
@@ -49,9 +49,9 @@
       "path": "offmanual/gstr2b-vs-books",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "c6640f96be70239b46737d7412ebe83dbe2b6ac68649695fd79088d74b4ec958"
@@ -63,9 +63,9 @@
       "path": "offmanual/ais-26as-vs-books",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "4d439144e503566daff245af56b18bc9345ba1195e0d931c8c617f505d882301"
@@ -77,9 +77,9 @@
       "path": "offmanual/tds-checks",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "f50e0314ff56dab471846a78c87807fe9a3ff0e07396d5467198a37ca3cc1e30"
@@ -91,9 +91,9 @@
       "path": "offmanual/notice-reply-draft",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "aef0a81659dd85f51971c9d80fdc58a8c0788e9d945b376ccb016428c5672357"
@@ -105,9 +105,9 @@
       "path": "offmanual/doc-chaser",
       "packs": ["core"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "7a62234d8617b40912e4db6451e763fa1482d0e53ee016b327428506e89134bb"
@@ -119,9 +119,9 @@
       "path": "offmanual/tally-mis",
       "packs": ["tally-read"],
       "review": {
-        "status": "pending",
-        "reviewer": "",
-        "date": ""
+        "status": "approved",
+        "reviewer": "Dwahnil",
+        "date": "2026-11-25"
       },
       "files": {
         "SKILL.md": "3995c10a948aedd8462c0647962124dd498b98dfb365e7bd2dad67e08c9927db"

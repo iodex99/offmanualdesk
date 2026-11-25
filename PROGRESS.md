@@ -20,7 +20,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [x] Proposed product ADRs accepted on Dwahnil's "do everything" instruction (016, 019, 023, 025, 026, 027, 028); overturn any by saying so. Lab-dependent ADRs (020, 021, 022, 024) stay Proposed until L1–L3.
 - [ ] **Lab VM** (M1): Windows Server 2022 VM with RDS Session Host, users labA/labB/labAdmin, `Clients` share, TallyPrime educational. Exact steps: `lab/README.md` §1. Then run the scripts in the order in `lab/README.md` and paste each output with `/lab-result L<n>`.
 - [ ] **Release signing key** (needed for the first real release; a dry run works without it): on your machine run `go run ./tools/sign-manifest keygen -key-id om-rel-2026a -out-public apps/server-agent/pkg/manifest/keys/om-rel-2026a.pub -out-private %USERPROFILE%\om-rel-2026a.seed`; add the seed file's content as GitHub secret `RELEASE_SIGNING_KEY` and variable `RELEASE_KEY_ID=om-rel-2026a`; commit the `.pub`; delete the seed file (keep an offline backup).
-- [ ] **Review and approve skills** (9 in `skills/offmanual/*`, status `pending` in `skills/registry.lock.json`): read each SKILL.md (ideally with your CA for the tax dates/limits), then set `review` to `{ "status": "approved", "reviewer": "Dwahnil", "date": "YYYY-MM-DD" }`. Only approved skills ship.
+- [x] **Skills approved** (25-11-2026, Dwahnil's instruction "put the 9 skills in"): all 9 in `skills/offmanual/*` are `approved` in `skills/registry.lock.json` and ship with the next release. A CA read of the tax dates and limits in compliance-calendar, tds-checks and ais-26as-vs-books is still worth doing before a pilot firm relies on them.
 - [ ] Optional for development: install Visual Studio 2022 Build Tools ("Desktop development with C++") so Desk's Rust code can compile locally; today only CI can.
 - [ ] Later (M3+): Postgres database URL, Vercel project (root `apps/console`), Google OAuth client and Microsoft Entra app registration (redirect URIs `<console>/auth/callback/<provider>` and `<console>/bind/callback/<provider>`), Resend API key, `CRON_SECRET` (16+ random characters) in Vercel
 - [ ] Later (M6): Telegram bot token for the lab firm
@@ -113,7 +113,7 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - [ ] Starter pack imported and reviewed (SKILLS.md §3)
 - [x] Client directory skill (pending review); scan started from the Desk task "Build client list" (ADR-054)
 - [x] Task buttons v1 (SKILLS.md §5): Desk Tasks tab (`tasks.ts`, `TaskButtons.tsx`) with client/month/FY/period/file inputs; each sends one request naming the skill and the §5 output file through the chat; role defaults (ADR-061: console task role per employee → policy → `session.hello` → role's buttons first, others under More tasks); [ ] Purchase bills to vouchers (needs the Tally-post pack)
-- [x] India pack v1 written (all `pending` CA review, never shipped until approved): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
+- [x] India pack v1 written and approved by Dwahnil on 25-11-2026 (ships with the next release): compliance-calendar, ledger-scrutiny, gstr2b-vs-books, ais-26as-vs-books, tds-checks (rates only from the firm's own reviewed table), notice-reply-draft (never files), doc-chaser (never contacts clients), tally-mis (tally-read pack)
 
 ### M8 Updates
 - [x] GitHub Actions release workflow (build, test, scan, sign, manifest, upload, register) — written and actionlint-clean; first run needs repo + signing key (done early at Dwahnil's request)
@@ -163,6 +163,10 @@ Branch `m4-desk` (CI green on every push; `main` fast-forwarded after each green
 - Tests: … (pass/fail)
 - Half-done / next: …
 -->
+
+### 2026-11-25 09:00: Skills approved
+- Changed: on Dwahnil's instruction, all 9 skills set to `approved` (reviewer Dwahnil, 2026-11-25) in `skills/registry.lock.json`; the release workflow now ships them.
+- Tests: `verify-skills` → 9 approved, hashes match.
 
 ### 2026-11-24 04:10: Skills visible by pack (M5, ADR-069)
 - Changed: Server Agent `gateway.lease` returns the employee's `packs`; Desk `gateway::visible_skills` (approved skills in `current\skills\registry.lock.json` whose packs overlap; name = folder slug, vendored `<owner>__<slug>` → slug; strict characters; unreadable → none) and `agents.defaults.skills` in the generated config; `tools/release` `verify-skills` checks each SKILL.md `name` equals its folder slug (all 9 do).
